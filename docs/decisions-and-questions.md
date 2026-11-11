@@ -58,8 +58,8 @@ Resolve when a task depends on them, not as a pretext to stop all work. Do not r
 | ID | Question / evidence needed | Proposed handling meanwhile | Blocks |
 | --- | --- | --- | --- |
 | Q01 | One ISA confirmed; GBP primary currency confirmed; connected identity and history still need source verification | Verify connected identity/coverage; owner supplied annual/activity PDF statements for read-only inspection; do not re-ask account scope | Full replay/since-inception claims |
-| Q02 | Snapshot schema verified; execution-history export and API/CSV aliases remain unverified | Slice=ticker, Total-row Name=group; see CSV contract | Transaction CSV parser and event dedupe |
-| Q03 | Are opening holdings/cash, transfers, corporate actions and external relevant accounts fully evidenced? | Show current observed positions with explicit historical limits | Complete NAV replay, cost basis and since-inception results |
+| Q02 | Snapshot and three PDF structures verified; complete execution-history export/API aliases remain unverified | Slice=ticker, Total-row Name=group; see CSV contract | Transaction CSV parser and event dedupe |
+| Q03 | Opening cash/holdings and complete earlier acquisitions remain unestablished after three PDF inspections; account-boundary transfers/corporate actions still need reconciliation. | Show current observed positions with explicit historical limits | Complete NAV replay, cost basis and since-inception results |
 | Q05 | £100,000 goal settled; original 30 April date retained; timing/partial periods and scenario rates remain | Legacy model separate; actual contributions private | Final scenario output |
 | Q06 | How should date-only cash flows be timed; which actual valuations exist around intraday flows? | No exact TWR claim; use timed Dietz when supported | Return paths with unknown flow timing |
 | Q09 | What financial condition should holding RAG measure, with which thresholds? | No invented score or recommendation | RAG output |

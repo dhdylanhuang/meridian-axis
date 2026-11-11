@@ -74,3 +74,7 @@ Tolerances must follow source precision, not a blanket percentage that conceals 
 An accepted import cannot simply be deleted while derived records remain. Preview the affected events/dates, preserve original evidence, add a reversal/superseding normalisation where supported, then replay dependent holdings/cash/tax/valuations. Log actor, reason and run. A correction must not reverse an event still supported by another accepted source alias.
 
 Before the first real import, test a database backup and restore. Provide a dry-run report for imports and corrections. No financial transaction remains open while downloading files, fetching pages, waiting for rate limits or polling prices.
+
+## Implemented boundary
+
+The local holdings-snapshot evidence slice now implements full-file preview, short durable attempt logging, accepted-hash deduplication, atomic source/audit commit and rollback-safe failure categories. No normalized ledger event or current group membership is booked. Account/currency validation rejects invalid administrative scope before creating a run. Parser failures create failed scoped attempts with no financial/source residue. Failed oversized input has a null content hash rather than a misleading digest of its bounded prefix. Other lifecycle, replay, corrections and group workflows above remain target contracts. Three private PDF statements have been [inspected structurally](statement-source-contract.md); their availability does not establish a production PDF parser or complete opening history.

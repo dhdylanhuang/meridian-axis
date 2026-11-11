@@ -43,3 +43,7 @@ When a holding appears in more than one exported group, preserve competing group
 Create a public fixture later with invented names, tickers, quantities and amounts, the same headers, a synthetic Total row, `N/A` dividends and `-` total quantity. Include a separate deliberately nonadditive dividend-control case. It must be explicitly marked synthetic and must not be an anonymised copy that retains real position sizes.
 
 Private source paths are configured locally. The original workbook and CSV remain unchanged and outside the repository. See [imports](imports-and-reconciliation.md) and [integration](trading212-integration.md) for shared processing rules.
+
+## Implemented source-evidence slice
+
+The pure parser and local preview/atomic evidence-import service are implemented and covered by offline synthetic tests. Caller-supplied currency and aware observation time are mandatory because this format omits both; do not invent them from an execution or export timestamp. Parsed records retain raw rows and exact decimal strings. Total controls do not become holdings or economic events. Listing resolution, group review/override workflows and history normalization remain later work. See [local commands](local-development.md) and [current evidence](status-and-handoff.md).

@@ -29,6 +29,7 @@ This is the working specification for Great Dyke Meridian. Its purpose is to let
 | [Trading 212 integration](trading212-integration.md) | Provider coverage, authentication, pagination, identities and reconciliation |
 | [Imports and reconciliation](imports-and-reconciliation.md) | File/sync lifecycle, atomicity, corrections and source precedence |
 | [Workbook baseline](workbook-baseline.md) | Public-safe workbook structure, methods and defects; exact values stay local |
+| [Statement evidence](statement-source-contract.md) | Three PDF schemas, account-section boundaries and historical coverage limits |
 | [CSV contract](csv-contract.md) | Verified snapshot headers, ticker/group semantics, missing tokens and limits |
 | [Calculation contracts](calculation-contracts.md) | Valuation, returns, risk, projections, attribution and edge cases |
 | [Correlation](correlation.md) | Sampling, matrices, shrinkage, weighting, clustering and diagnostics |

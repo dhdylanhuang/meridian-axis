@@ -1,6 +1,7 @@
 """Local administrative commands; no broker calls or unauthenticated financial API."""
 
 import argparse
+import json
 import sqlite3
 import sys
 from datetime import UTC, datetime
@@ -12,6 +13,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from meridian.adapters.holdings_csv import HoldingsCSVError, parse_holdings_csv
+from meridian.application.imports import ImportStorageError, ImportValidationError, import_holdings
 from meridian.backup import BackupError, create_backup, restore_backup
 from meridian.config import Settings
 from meridian.persistence.database import create_db_engine, upgrade_database
@@ -69,6 +72,11 @@ def main(argv: list[str] | None = None) -> int:
     restore = commands.add_parser("restore", help="Verify and restore to a new separate path")
     restore.add_argument("backup", type=Path)
     restore.add_argument("destination", type=Path)
+    for command in ("preview-holdings", "import-holdings"):
+        snapshot = commands.add_parser(command, help="Validate or store holdings snapshot evidence")
+        snapshot.add_argument("source", type=Path)
+        snapshot.add_argument("--currency", required=True)
+        snapshot.add_argument("--observed-at", required=True, type=_observation_time)
     args = parser.parse_args(argv)
     try:
         settings = Settings()
@@ -76,12 +84,60 @@ def main(argv: list[str] | None = None) -> int:
             initialize_database(settings)
         elif args.command == "backup":
             create_backup(settings.database_path, args.destination)
-        else:
+        elif args.command == "restore":
             restore_backup(args.backup, args.destination, environment=settings.broker_environment)
+        else:
+            with args.source.open("rb") as stream:
+                content = stream.read(settings.max_import_bytes + 1)
+            if args.command == "preview-holdings":
+                snapshot = parse_holdings_csv(
+                    content,
+                    currency=args.currency,
+                    observed_at=args.observed_at,
+                    max_bytes=settings.max_import_bytes,
+                )
+                print(
+                    json.dumps(
+                        {
+                            "status": "valid_snapshot_evidence",
+                            "holding_rows": len(snapshot.holdings),
+                            "control_rows": 1,
+                            "economic_events_added": 0,
+                        },
+                        sort_keys=True,
+                    )
+                )
+            else:
+                if not settings.database_path.is_file():
+                    raise BackupError("database_not_initialized")
+                engine = create_db_engine(settings.database_path)
+                try:
+                    report = import_holdings(
+                        engine,
+                        account_id=f"{settings.broker_environment}-isa",
+                        content=content,
+                        currency=args.currency,
+                        observed_at=args.observed_at,
+                        max_bytes=settings.max_import_bytes,
+                    )
+                finally:
+                    engine.dispose()
+                print(
+                    json.dumps(
+                        {
+                            "status": report.status,
+                            "counts": report.counts,
+                            "error_code": report.safe_error,
+                        },
+                        sort_keys=True,
+                    )
+                )
+                if report.status != "succeeded":
+                    return 2
     except ValidationError:
         print("configuration_invalid: check environment settings", file=sys.stderr)
         return 2
-    except BackupError as exc:
+    except (BackupError, HoldingsCSVError, ImportValidationError, ImportStorageError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
     except (OSError, sqlite3.Error, SQLAlchemyError):
@@ -90,6 +146,16 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     print(f"{args.command}: verified")
     return 0
+
+
+def _observation_time(value: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.utcoffset() is None:
+            raise ValueError
+        return parsed.astimezone(UTC)
+    except ValueError:
+        raise argparse.ArgumentTypeError("Use an ISO 8601 observation time with timezone") from None
 
 
 if __name__ == "__main__":

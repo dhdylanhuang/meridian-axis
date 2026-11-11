@@ -12,6 +12,7 @@ Review baseline: **11 November 2026**. Links are primary sources. Provider/libra
 | SRC04 | Owner's local portfolio workbook | Read-only evidence; public-safe methods in [workbook baseline](workbook-baseline.md); exact hash/values stay local |
 | SRC05 | Documentation request and owner answers | One ISA; equal edit rights; £100,000 goal; tax deferred; recovery re-arm; 10% group and 2% two-trading-day portfolio peak-to-trough alerts; July date unknown; repository public |
 | SRC06 | Local holdings CSV | Verified [CSV contract](csv-contract.md); raw rows/digest/filename stay private |
+| SRC07 | Three local Trading 212 PDF statements | Read-only [structural/coverage inspection](statement-source-contract.md); no private values/paths/digests published or complete-history claim |
 
 The archived brief/amendment are historical source material, not active instructions to a future agent to build everything immediately. One real holdings CSV was inspected later in the same baseline; its schema is in [CSV contract](csv-contract.md). Execution-history CSV and authenticated broker responses remain uninspected.
 
