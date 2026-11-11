@@ -2,6 +2,21 @@
 
 Last reviewed: **11 November 2026**, including implementation/delegation authorisation, direct provider verification and the free-hosting constraint.
 
+## Paused checkpoint - 11 November 2026
+
+**PAUSED at the owner's explicit request.** All delegated tasks are complete; no new development or deployment is authorised during the pause. This handoff and the prepared files are committed/pushed as a progress checkpoint, not an application-release claim.
+
+- Completed: local evidence/import foundation, read-only broker adapter, exact persistence/backup/restore, PostgreSQL parity and native Supabase bootstrap. Latest full verification: **150 offline tests and ten PostgreSQL-backed tests passed in CI**; local execution skipped the ten server-dependent cases. No extra application test run was needed solely to save this pause.
+- Hosted: dedicated Supabase project `ssqqjyrgrsjubxysobwy`, GitHub production deployment on `main`, working directory `.`, automatic previews off. Exact validated bootstrap commit `caa0ccd36ce70a605459a71915cabba9a1f73899` passed CI and the actual Supabase check. The owner confirmed five expected tables, parity revision `0002`, and empty application tables. No financial source was imported.
+- Prepared but **not deployed**: `prototype/worker-feasibility/wrangler.probe.jsonc`, its Cloudflare-native Builds settings and dry-run evidence. It is a public synthetic compatibility probe without credentials, database bindings or portfolio data. Original local-only config and all three dependency lockfiles remain unchanged.
+- Not implemented: finished frontend, application Auth/member policies, Worker-to-Postgres integration, durable scheduled jobs, financial ledger/reconciliation, market feeds, analytics and alerts. Full Stage 1 and hosted qualification remain open. Tax stays deferred.
+- Source context: workbook, holdings CSV and three PDF statements inspected read-only; complete opening/execution history and source aliases remain unverified. Do not ask for the same statements again. Temporary statement extraction copies were removed; originals remain outside this repository unchanged.
+- Access boundary: no authenticated provider Management API/CLI connection exists here. Use the established Supabase native GitHub path. Do not request account passwords, management tokens or broker keys in chat. Account contact information and actual finances stay out of public docs.
+
+**First task after an explicit resume:** connect a dedicated Cloudflare Worker named `meridian-axis-probe` to this repository using its native GitHub Builds flow. Use root `prototype/worker-feasibility`, build/deploy commands and non-secret build variables in [Worker feasibility](worker-feasibility.md). Verify the actual build SHA, returned workers.dev URL, synthetic health/probe responses and measured runtime limits. Do not guess the URL or treat the probe as the financial application. Then continue the remaining Stage 0H database/Auth/job/capacity/recovery gates before exposing real portfolio data.
+
+Public docs distinguish observed CI/provider results from owner dashboard confirmation. Existing decisions, open questions and staged delivery evidence below remain authoritative context; the pause takes precedence over their instructions to perform a next task.
+
 ## Actual state
 
 | Area | State | Evidence / limits |
@@ -20,7 +35,7 @@ Last reviewed: **11 November 2026**, including implementation/delegation authori
 | Application/database/tests | Local foundation + adapter/evidence slices verified | Locked Python backend, migrations, safe holdings preview/import and mocked broker adapter; full Stage 1 still open |
 | Frontend/auth/scheduler | Not started | No financial endpoint or portfolio UI; Stage 2 security remains a gate |
 | Secrets and Live access | Not configured | No credentials requested or used |
-| Hosted target | Cloudflare + Supabase approved | Owner created dedicated Supabase project `ssqqjyrgrsjubxysobwy` and confirmed native GitHub deployment settings; schema deployment still needs observation |
+| Hosted target | Supabase evidence bootstrap deployed; Cloudflare pending | Supabase check succeeded for tested commit; owner verified five tables/head 0002; no financial data or finished application deployed |
 | Commit/push | Explicitly authorised per verified stage | Owner has authorised implementation with subagents and stage commits/pushes |
 
 ## Public-content policy
@@ -92,4 +107,8 @@ Temporary PDF extraction text, rendered inspection crops and helper copies under
 
 The owner supplied project `ssqqjyrgrsjubxysobwy` and confirmed repository `dhdylanhuang/meridian-axis`, working directory `.`, production branch `main`, production deployment enabled, and automatic preview branching disabled. This is owner-confirmed setup, not an authenticated project inspection by the agent. No Supabase standalone app/CLI token is required for the native GitHub delivery path.
 
-The new `supabase/config.toml` and native SQL bootstrap are being validated on a temporary branch before `main` advances. Local verification: **150 passed, ten PostgreSQL tests skipped** without a local database. The native asset has an independent review and an offline DDL/model parity check; ten service-backed tests must pass on that exact validation commit before production publication. Actual Supabase migration status must then be observed separately. No `[remotes]` config, Auth/API reset, seed data, user creation or financial import is included. [ADR 0002](decisions/0002-hosted-migration-authority.md) establishes one hosted schema writer with paired schema parity.
+The native bootstrap passed [validation-branch CI](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43108792942) at exact commit `caa0ccd36ce70a605459a71915cabba9a1f73899`: 150 offline cases and ten PostgreSQL-backed cases, with Windows/Linux checks. The same commit was fast-forwarded to `main`; [main CI also passed](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43109240916). Local verification was 150 passed/ten skipped without a local database. Independent review and exact SQL/model parity preceded promotion. [ADR 0002](decisions/0002-hosted-migration-authority.md) establishes one hosted schema writer.
+
+Supabase's actual emitted check was **`Supabase Preview`**, app `supabase`, check ID `130820841480`, conclusion `success`, Details URL pointing to the owner's existing project. Its public output contained no migration details and there was no separate GitHub deployment record. The owner then confirmed in Table Editor that all five expected tables exist, `alembic_version` contains `0002`, and the four application tables are empty. This accepts the hosted empty-schema bootstrap with provider status plus owner inspection; it is not an authenticated Management API inspection by the agent. The check's name does not imply paid preview branching was enabled.
+
+No `[remotes]` config, Auth/API reset, seed data, user creation or financial import was included. Actual app login, member policies, Worker-to-Postgres access, scheduled jobs, market feeds and hosted restore still require their own gates. Do not request a database password or management token in chat to repeat this already confirmed bootstrap.

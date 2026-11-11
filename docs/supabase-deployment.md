@@ -107,4 +107,10 @@ First check the dedicated project, saved production-deploy toggle, `main`, worki
 
 If native deployment remains unavailable, a trusted authenticated administrative device may use the documented Supabase CLI workflow instead, after recording it as the single writer for that release. Inspect the installed CLI's current help and plan the exact command before use; this guide does not guess flags or request credentials here. Manual execution in the project's SQL console is a last fallback, requiring the exact reviewed asset, transaction/history reconciliation and post-apply checks; do not execute it and then let the integration blindly reapply the same bootstrap.
 
-No authenticated remote deployment or project inspection is performed by writing this document. Update the handoff only after actual commit/check/deployment results are observed. Hosted Auth, API routes, scheduled sync, market-provider access, streaming and backup/restore remain separate gates after this empty-schema bootstrap.
+## Observed bootstrap outcome
+
+The exact reviewed commit `caa0ccd36ce70a605459a71915cabba9a1f73899` passed [validation CI](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43108792942) before its fast-forward to `main`; [main CI passed too](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43109240916). The actual Supabase check was named `Supabase Preview`, app `supabase`, check ID `130820841480`, and completed successfully with Details pointing at this existing target. Its public output had no migration details; the name alone is not evidence of a paid preview branch.
+
+The owner separately confirmed the four empty application tables and `alembic_version` containing `0002` in Table Editor. This establishes the initial empty-schema deployment through provider status and owner inspection. It does not establish an authenticated Management API connection, application Auth, runtime database access, source import or financial reconciliation. Preserve that distinction in future handoffs; do not keep asking for this same table check after it is confirmed.
+
+Hosted Auth, API routes, scheduled sync, market-provider access, streaming and backup/restore remain separate gates after this bootstrap.

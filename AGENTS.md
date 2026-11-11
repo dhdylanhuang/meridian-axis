@@ -8,6 +8,8 @@
 
 Current repository status: local evidence/import foundations verified; Cloudflare + Supabase is the approved hosted target and is undergoing qualification. Check the actual tree and status document before claiming any feature exists.
 
+**Development is PAUSED by explicit owner request on 11 November 2026.** Preserve this checkpoint. Do not resume implementation, create resources or deploy the prepared Worker probe until the owner asks to continue. Read the pause handoff first.
+
 ## Authority and scope
 
 - The user's latest explicit instruction takes precedence. Documentation does not grant permission to deploy, trade, commit, contact others or change the user's workbook.

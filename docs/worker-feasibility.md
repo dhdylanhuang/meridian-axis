@@ -86,3 +86,46 @@ yfinance currently declares dependencies including `curl_cffi`, lxml, NumPy, pan
 6. **Startup and remote network:** dry-run does not report actual deployed snapshot startup validation, account quota behavior or a real broker/market request. These require the approved project/account setup and private credentials configured through the appropriate secret mechanism.
 
 The next shared contract is therefore the **hosted request/unit-of-work and job boundary**, preserving the existing pure calculations and source-evidence invariants while deliberately replacing local storage/session/job plumbing. The parent architecture decision should name which existing backend parts remain reusable and which are still local-only. Keep the application backend and this probe distinct until those gates pass.
+
+## Prepared public probe through Cloudflare-native Builds
+
+Preparation checkpoint: **11 November 2026**. A separate `wrangler.probe.jsonc` now describes a Worker named `meridian-axis-probe`, using the same synthetic source, compatibility date and Python flag. It enables a workers.dev URL, disables preview URLs and telemetry, and supplies **no** database binding, secrets, assets, custom-domain route, account ID or financial endpoint. The original local-only `wrangler.jsonc` is unchanged. No hosted deployment was made by this preparation.
+
+This public probe is harmless diagnostic content: fixed invented decimals, package versions, a compiled SQL string and mock HTTP output. It accepts no declared portfolio input and opens no database or provider connection. Do not attach Trading 212, Supabase, database or other application credentials. Its `synthetic-local-only` response label is the original fixture label, not evidence about where a later request executed. Actual portfolio data and authentication belong to the separate application work.
+
+Configure a **Worker** with Cloudflare-native Workers Builds, rather than a Pages static site. The owner connects GitHub on their own device and authorizes the Cloudflare Workers & Pages App for only this repository. Cloudflare manages its build deployment credential; it is not copied to this workspace or chat. The Worker name selected in the dashboard must match `meridian-axis-probe`. [Native GitHub integration](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/github-integration/), [Build configuration and managed credential](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
+
+| Workers Builds setting | Prepared value |
+| --- | --- |
+| Repository | The existing `meridian-axis` repository |
+| Production branch | `main` after the parent has published the reviewed probe configuration |
+| Root directory | `prototype/worker-feasibility` |
+| Build command | `npm ci && uv sync --frozen --python 3.13` |
+| Deploy command | `uv run --frozen pywrangler deploy -c wrangler.probe.jsonc` |
+| Non-production branch/preview builds | Disabled for this bounded probe |
+| Runtime variables/secrets/bindings | None |
+
+Build variables are non-secret tool configuration, separate from Worker runtime variables:
+
+| Build variable | Value / reason |
+| --- | --- |
+| `SKIP_DEPENDENCY_INSTALL` | `1`; use the explicit frozen install command above |
+| `PYTHON_VERSION` | `3.13.18`; native build/tool interpreter; Pywrangler selects its own WebAssembly runtime |
+| `NODE_VERSION` | `24.22.1`; current documented preinstalled Node version |
+| `WRANGLER_SEND_METRICS` | `false`; disable CLI telemetry |
+
+The current Workers Builds image documents Python/Node version overrides, preinstalled uv 0.13.4, and the dependency-install skip variable. Pywrangler 1.17.9's installed CLI source requires uv **at least 0.13.4**, so the documented image meets its version check. This investigation ran locally with uv 0.13.7; the remote Linux build and selected overrides have **not** been executed yet. There is no documented `UV_VERSION` override in the inspected build-image table; do not invent one. The current Python Workers package guide requires Python >=3.13 for development tooling. [Build image and variables](https://developers.cloudflare.com/workers/ci-cd/builds/build-image/), [Python package tooling](https://developers.cloudflare.com/workers/languages/python/packages/)
+
+An optional build watch path can restrict rebuilds to `prototype/worker-feasibility/**`; leaving watch paths at their default is acceptable for the initial connection. It is an optimisation, not an authorization boundary. Never use a preview build to bypass application security gates.
+
+### Configuration verification
+
+Wrangler 4.160.1's local `deploy --help` confirms `-c, --config` selects a configuration file and `--dry-run` bundles/checks without upload. The checked command is:
+
+```powershell
+uv run --frozen pywrangler deploy -c wrangler.probe.jsonc --dry-run --outdir dist/probe
+```
+
+With telemetry disabled, that local dry-run exited **0**, selected the explicit probe config, reported **19,927.58 KiB uncompressed / 4,663.03 KiB gzip**, reported **No bindings found**, and exited without deployment. Dependency download permissions were required locally; no Cloudflare account lookup, login or credential was used. The existing three dependency locks remain the basis for the probe.
+
+After the owner connects the project, verify the real build's commit/config, successful upload, actual workers.dev URL and `/health` plus `/probe` responses. Do not guess the account's workers.dev suffix. A hosted HTTP 200 establishes only this synthetic path; it does not prove representative authenticated imports, market polling, database transactions or correlation meet Free CPU/memory limits. Record actual hosted CPU measurements and error outcomes separately before accepting that gate.

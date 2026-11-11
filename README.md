@@ -6,11 +6,15 @@ The hosted target is Cloudflare + Supabase PostgreSQL, with React, Vite, Tailwin
 
 ## Current status
 
-**Local foundation, broker adapter and snapshot-evidence slices are verified.** Exact-decimal persistence, migrations, evidence/audit records, isolated configuration, backup/restore and holdings CSV preview/atomic import are available. The broker adapter is tested with mocked HTTP. The app exposes liveness only; there is no usable portfolio UI or hosted deployment yet. Full Stage 1 financial replay and reconciliation remain open.
+**Development paused at the owner's request on 11 November 2026.** Resume from [status and handoff](docs/status-and-handoff.md); no new implementation or deployment should begin until requested.
+
+**Local foundation, broker adapter and snapshot-evidence slices are verified.** Exact-decimal persistence, migrations, evidence/audit records, isolated configuration, backup/restore and holdings CSV preview/atomic import are available. The broker adapter is tested with mocked HTTP. The app exposes liveness only; there is no usable portfolio UI or hosted application yet. Full Stage 1 financial replay and reconciliation remain open.
 
 Start with the tested [local development guide](docs/local-development.md). The required provider YAML is verified; see [source contracts](docs/stage-0-source-verification.md) for account-history limitations.
 
 PostgreSQL foundation parity also passes disposable service-backed CI. This verifies migrations and evidence constraints, not a hosted Supabase login or deployment. The [status and handoff](docs/status-and-handoff.md) distinguishes completed slices from the remaining financial and hosting gates.
+
+The empty Supabase evidence schema has now deployed through the native GitHub integration and was confirmed in Table Editor. No real portfolio data, app logins or finished financial interface have been deployed. Cloudflare runtime qualification is next.
 
 The planning baseline was established on **11 November 2026** from the owner's requirements, a read-only review of the Excel tracker, and official provider documentation. The workbook's latest recorded snapshot is **11 October 2026**, not a current account valuation.
 
