@@ -70,7 +70,7 @@ Resolve when a task depends on them, not as a pretext to stop all work. Do not r
 | Q12 | Weekly reliability minimum and desired short-horizon descriptive display? | Propose 20 weekly observations; daily minimum remains 60 | Final weekly/reliability controls |
 | Q13 | Calendar source/coverage, portfolio valuation cutoff and cross-market time convention? | Cache sourced schedules, store session dates and ages | Production cross-market daily alignment |
 | Q14 | Which provider can actually supply required intraday benchmark/FX freshness and its timestamps/delay? | Capability disclosure; no real-time promise | Guaranteed polling expectations, not scheduler skeleton |
-| Q17 | Dedicated provider project/authentication setup | Owner authorised creation and will sign in; browser automation stopped because URL confidence could not be established; no project created | Hosted CPU/database/auth tests and deployment |
+| Q17 | Dedicated provider project/authentication setup | Creation authorised; separate dashboard login does not authenticate tools. Browser automation stopped because URL confidence could not be established; public project URL and trusted administrative connection remain outstanding. | Hosted CPU/database/auth tests and deployment |
 | Q18 | Can representative workloads and 90-day lossless quote retention fit free runtime/storage budgets? | [Worker probe](worker-feasibility.md), Postgres parity and measured capacity gates; no silent scope reduction | Final hosted runtime/storage design |
 | Q15 | What dated data/definition supports VNRG/VUAG overlap, revenue currencies and broader look-through? | Explicit unavailable/coverage; do not hardcode 19% | Evidence-based detailed exposure results |
 

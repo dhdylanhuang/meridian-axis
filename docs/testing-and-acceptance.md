@@ -1,6 +1,6 @@
 # Testing and acceptance strategy
 
-Status: acceptance strategy plus verified local foundation, broker-observation and snapshot-evidence slices. Their published checkpoint has **137 passing offline tests** and successful Windows/Linux CI. Later financial/UI rows remain planned. Hosted PostgreSQL/runtime/security qualification has separate evidence; see status/handoff. Workbook inspection alone is not an application-test pass.
+Status: acceptance strategy plus verified local foundation, broker-observation, snapshot-evidence and PostgreSQL foundation slices. Current checks include **149 passing offline tests** and **six passing service-backed PostgreSQL integration tests** in CI. Later financial/UI rows remain planned. Actual hosted Supabase/Cloudflare security and capacity remain separate gates; see status/handoff. Workbook inspection alone is not an application-test pass.
 
 ## Test layers
 

@@ -10,6 +10,8 @@ The hosted target is Cloudflare + Supabase PostgreSQL, with React, Vite, Tailwin
 
 Start with the tested [local development guide](docs/local-development.md). The required provider YAML is verified; see [source contracts](docs/stage-0-source-verification.md) for account-history limitations.
 
+PostgreSQL foundation parity also passes disposable service-backed CI. This verifies migrations and evidence constraints, not a hosted Supabase login or deployment. The [status and handoff](docs/status-and-handoff.md) distinguishes completed slices from the remaining financial and hosting gates.
+
 The planning baseline was established on **11 November 2026** from the owner's requirements, a read-only review of the Excel tracker, and official provider documentation. The workbook's latest recorded snapshot is **11 October 2026**, not a current account valuation.
 
 ## Start here

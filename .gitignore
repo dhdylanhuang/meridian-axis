@@ -244,6 +244,7 @@ __marimo__/
 node_modules/
 /frontend/dist/
 /frontend/.vite/
+/backend/pytest-*.xml
 
 # Keep real imports ignored. Add narrow exceptions only for reviewed,
 # explicitly synthetic fixture files; never blanket-allow a raw import folder.

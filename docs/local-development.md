@@ -69,3 +69,11 @@ This does **not** create trades, dividend payments, ledger holdings, reviewed gr
 ## Production qualification is separate
 
 Cloudflare/Supabase is the approved hosted target. The SQLite CLI above remains local tooling. The [Python Worker probe](worker-feasibility.md) owns a separate lock/runtime and is not an application deployment. Source-backed PostgreSQL parity uses disposable test schemas; Supabase policies, hosted backup/restore, Auth, Hyperdrive request concurrency, job leases and resource budgets remain separate gates. Do not point test fixtures at a production project.
+
+## PostgreSQL foundation verification
+
+Migration `0002` preserves the published `0001` history. On PostgreSQL it repairs accepted-hash partial uniqueness, enables RLS and revokes default financial-table grants; on SQLite it advances the schema revision without changing evidence tables. Canonical Decimal text remains exact in both dialects. The native maintenance helpers require verified TLS except for an explicitly requested disposable loopback test server. They do not configure a Supabase project, Auth policies or a Worker Hyperdrive binding.
+
+The default local suite skips six `postgres` tests when `MERIDIAN_TEST_POSTGRES_URL` is absent. The service-backed CI job supplies PostgreSQL 17, creates unprivileged Supabase-like test roles and runs `uv run --locked pytest -m postgres -q`. Its fixtures create and clean up only generated isolated schemas in an explicit disposable loopback database. Do not use a production project URL: remote hosts are deliberately rejected by those fixtures. The Windows/Linux offline suite and the six database-backed tests have passed; actual hosted Supabase/Hyperdrive/Auth and Postgres backup/restore remain unverified.
+
+The Postgres CI job selects Python 3.13 through `UV_PYTHON`, while the local foundation uses its pinned Python 3.12. Backend CI runs for backend/workflow changes; documentation and the isolated Worker prototype have their own recorded checks.

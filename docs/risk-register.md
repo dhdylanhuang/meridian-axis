@@ -15,10 +15,10 @@ Status: planning risks, not evidence that failures have occurred in an implement
 | RSK09 | Different pairwise samples create invalid covariance/eigenvalues | High | Common panel and PSD checks; exclusions/coverage visible | Stage 4 known/singular/missing-data cases |
 | RSK10 | Current weights presented as historical realised group performance | High | Label hypothetical constant-weight indices; historical weights for attribution | Stage 4/5 basis checks |
 | RSK11 | Spreadsheet defects become app acceptance targets | High | Preserve facts and legacy fixtures; independent correct formulas | Stage 1/3 baseline review |
-| RSK12 | Multi-worker scheduler repeats requests/events or locks SQLite | High | One owner, no overlapping jobs, bounded short transactions | Stage 2 reload/restart tests |
+| RSK12 | Concurrent/stateless scheduled invocations repeat requests or economic effects | High | Durable leases/fencing, idempotency, shared rate state and short transactions | Stage 0H/2 takeover/manual-overlap tests |
 | RSK13 | Credentials/portfolio data leak through logs, fixtures or repository | Critical | Environment secrets, redaction, safe evidence, runtime ignore rules | Stage 1/2 redaction and repository review |
 | RSK14 | Login/CSRF/security deferred until financial UI is exposed | High | Security gate before usable financial endpoints | Stage 2 negative-path checks |
-| RSK15 | Backups exist but cannot restore, or WAL file copied inconsistently | High | Consistent backup API and separate-path restore drill | Stage 1 then Stage 5 recovery |
+| RSK15 | Backups cannot restore, or local SQLite evidence is mistaken for hosted recovery | High | SQLite online backup locally; independent Postgres/evidence export and separate-target restore for production | Stage 0H/1 then Stage 5 recovery |
 | RSK16 | Multiple agents redefine contracts or overwrite shared files | High | Bounded write sets, single migration owner, integration review | Every task handoff |
 | RSK17 | Scope overwhelms a local-model implementation | High | Small cohesive modules and vertical slices; no extra infrastructure | Stage-sized verified deliveries |
 | RSK18 | Static look-through/currency evidence becomes stale or incomplete | Medium | Dated source/coverage, no inferred exposure claims | Stage 4/5 available/unavailable views |
@@ -26,5 +26,8 @@ Status: planning risks, not evidence that failures have occurred in an implement
 | RSK20 | API beta contract or library defaults drift | High | Verify YAML, schema fixtures, explicit adapter options and versioned dependencies | Stage 0 plus adapter-change review |
 | RSK21 | Two full-editor users silently overwrite each other's changes | Medium | Expected revisions, equal permissions and distinct audit/session identities | Stage 2/5 two-session tests |
 | RSK22 | Date-only/irregular snapshots become invented month-end history | High | Original labels/date precision and notes retained | Stage 1 history fixture |
+| RSK23 | Free runtime CPU/memory or database/storage quotas cannot fit requested workload | High | Measured Worker/analytics, row/index/archive/egress budgets; verified lossless retention; no silent scope reduction | Stage 0H hosted capacity evidence |
+| RSK24 | Authenticated unrelated users or owner/BYPASSRLS connections expose private data | Critical | Explicit two-member scope, grants/RLS and API checks, narrow runtime roles and protected mutations | Stage 0H/2 anonymous/nonmember/member tests |
+| RSK25 | A separate dashboard login is treated as tool authorisation or credentials reach an untrusted workspace | High | Verified account connection, trusted-device/cloud secret setup, public metadata only in handoffs | Provider setup and every deployment |
 
 Priority reflects potential financial-integrity/privacy impact, not a quantified probability model. A limitation should appear in the UI where it affects results, not only in this register. Do not add unrelated infrastructure to mitigate hypothetical scale; measure before changing the architecture.
