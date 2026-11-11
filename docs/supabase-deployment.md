@@ -2,7 +2,13 @@
 
 Reviewed **11 November 2026**. The owner reports creating a dedicated Supabase project and connecting this repository. Project reference **`ssqqjyrgrsjubxysobwy`** is a nonsecret identifier; it is not an API key or evidence that a deployment succeeded. [Project dashboard](https://supabase.com/dashboard/project/ssqqjyrgrsjubxysobwy)
 
-No authenticated Supabase Management API, CLI or standalone Supabase app connection is established in this workspace. The owner could not find the proposed standalone app connection, so the selected delivery path is the **native Supabase GitHub integration**. Dashboard authentication elsewhere does not authenticate tools here. Never request a database password, service-role key or persistent management token in chat or commit it to this public repository.
+The owner has now completed **Supabase CLI 3.1.0 browser login on the personal laptop**. Authenticated project inspection and a fixed synthetic read-only SQL check succeeded. The selected schema delivery path remains the **native Supabase GitHub integration**; administrative access does not add a second schema writer. Never request a database password, service-role key or persistent management token in chat or commit it to this public repository.
+
+## Resumed management inspection
+
+Authenticated project metadata matched `ssqqjyrgrsjubxysobwy`, `meridian-axis`, `ACTIVE_HEALTHY`, `eu-west-3`. Its database metadata reports `db.ssqqjyrgrsjubxysobwy.supabase.co`, version `17.11.0.018`, engine 17. This is observed provider connection metadata, rather than a hostname derived from the region. The native GitHub integration settings below remain owner-confirmed; they were not re-read through management solely because login succeeded.
+
+The command `supabase db query --remote=ssqqjyrgrsjubxysobwy --read-only` with fixed invented numeric multiplication returned text `1.55000000000000000000001240` and transaction read-only `on`. The query changed no schema and read no financial row. This verifies Management API SQL access and text serialization, not pg8000/Hyperdrive transport, financial reconciliation, runtime role permissions or Auth policies. Browser login used the local Terminal and provider credential store; no persistent token was copied into chat or source files.
 
 ## Free-plan production deployment
 

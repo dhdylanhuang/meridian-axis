@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "meridian-axis-database-gateway",
+  "main": "src/database_gateway.mjs",
+  "compatibility_date": "2026-11-11",
+  "workers_dev": true,
+  "preview_urls": false,
+  "send_metrics": false,
+  "durable_objects": {
+    "bindings": [{
+      "name": "PROBE",
+      "class_name": "DatabaseProbeDO",
+      "script_name": "meridian-axis-database-probe"
+    }]
+  }
+}

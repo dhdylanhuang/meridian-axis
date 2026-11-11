@@ -8,7 +8,7 @@
 
 Current repository status: local evidence/import foundations verified; Cloudflare + Supabase is the approved hosted target and is undergoing qualification. Check the actual tree and status document before claiming any feature exists.
 
-**Development resumed by explicit owner request on 11 November 2026**, on the owner's personal laptop, with delegated agents authorised. Preserve the historical pause checkpoint in the handoff. Continue Stage 0H qualification; the owner has now authorised direct Cloudflare CLI access through OAuth, stored in macOS Keychain. Supabase hosted migrations retain their native GitHub delivery path.
+**Development PAUSED at the owner's request on 11 November 2026.** Resume is authorised **no earlier than 04:00 Europe/London on 12 November 2026**, with continuing full project permission. No automatic wakeup is configured. Preserve this checkpoint and read the latest pause handoff before further implementation or remote changes. Cloudflare OAuth and Supabase CLI management access are established on the personal laptop; Supabase hosted migrations retain their native GitHub delivery path.
 
 The owner reaffirmed full project implementation, verification, commit/push and deployment authority for this conversation, asking not to repeat project permission questions. Continue within the agreed private-data and free-services scope. Platform sandbox approvals remain separate execution constraints.
 

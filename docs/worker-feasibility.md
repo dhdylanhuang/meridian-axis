@@ -21,7 +21,7 @@ After the newly created workers.dev subdomain finished TLS propagation, three co
 | GET `/probe`, 200 | 617 / 619 | 375 / 376 | 64 / 65 |
 | POST `/probe`, 405 | 13 / 13 | 5 / 5 | 5 / 5 |
 
-All nine outcomes were `ok`, with no reported exception. These are provider CPU measurements for fixed synthetic checks, not representative authenticated financial workloads. Cloudflare documents **10 ms** for ordinary Free HTTP requests and allows occasional bursts; successful responses above that budget do not prove sustained fit. The current Python/FastAPI path therefore remains **unqualified for ordinary Free CPU**. A native Python-handler control is next, with a Python Durable Object candidate only if separately measured and accepted. Python is not being silently replaced with browser formulas. [Worker CPU limits and burst behavior](https://developers.cloudflare.com/workers/platform/limits/#cpu-time)
+All nine outcomes were `ok`, with no reported exception. These are provider CPU measurements for fixed synthetic checks, not representative authenticated financial workloads. Cloudflare documents **10 ms** for ordinary Free HTTP requests and allows occasional bursts; successful responses above that budget do not prove sustained fit. The current Python/FastAPI path therefore remains **unqualified for ordinary Free CPU**. Subsequent native-handler and Python-object controls are recorded below. Python is not being silently replaced with browser formulas. [Worker CPU limits and burst behavior](https://developers.cloudflare.com/workers/platform/limits/#cpu-time)
 
 No account plan upgrade was made. Account billing plan and memory are not established by the runtime `standard` usage model or these outcomes. The 4,424 ms deployment diagnostic also needs interpretation against Python's snapshot lifecycle rather than being called a startup rejection. [Python runtime lifecycle](https://developers.cloudflare.com/workers/languages/python/how-python-workers-work/)
 
@@ -48,6 +48,44 @@ Prepared checks: **11 Python tests passed** (eight validator and three native-ro
 Dry-runs exited 0 without deployment: native **19,928.18 KiB / 4,660.62 KiB gzip**, no bindings; Python object **19,928.85 KiB / 4,660.84 KiB gzip**, only its expected namespace binding; gateway **0.76 KiB / 0.40 KiB gzip**, only its expected external namespace binding. The initial native/gateway runs encountered sandbox denial for Wrangler's external log file; subsequent object/gateway checks used an explicit temporary `WRANGLER_LOG_PATH` and had no such warning. These results establish bundle preparation, not a hosted migration or runtime result.
 
 Use the native probe config for its separate pinned deployment. For the Durable Object candidate, deploy the namespace-owning Python config with Pywrangler **before** deploying the gateway config with Wrangler. Never deploy the Python config as an application route or attach application secrets to these public controls.
+
+### Observed hosted controls
+
+Source checkpoint `491ff182cff6ee8f5d43ef2d7f5ae5c184ef8e33` was committed/pushed before deployment. Its [actual Linux/macOS CI run](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43117439060) passed both Python and Node suites; the emitted Supabase check also passed without a schema change.
+
+| Control | Actual provider version | Observed deployment |
+| --- | --- | --- |
+| Native Python | `1e8db4fb-da16-4f2a-8634-98e288982a3e` | `https://meridian-axis-native-probe.meridian-worker-feasibility.workers.dev`; startup diagnostic 4,164 ms |
+| Python object owner | `3d8d984d-4dc1-4200-9767-8209c77d97e9` | No public target deployed; expected namespace binding present |
+| JavaScript gateway | `e5e499c7-92ab-410e-b687-56163548cb99` | `https://meridian-axis-do-gateway.meridian-worker-feasibility.workers.dev`; startup diagnostic 1 ms |
+
+Both Python uploads contained 1,450 modules, **19,928.85 KiB / 4,660.84 KiB gzip**. The difference from the earlier native dry-run is the additional sibling Python control module, collected by Wrangler. Gateway upload remained **0.76 KiB / 0.40 KiB gzip**. Each deployment command carried the exact source commit annotation.
+
+The native Python endpoint passed two complete hosted response checks. Provider CPU / wall ms: health **19/19, 11/12**; full probe **624/625, 739/740**; POST rejection **18/18, 4/5**. All outcomes were `ok`. This control does not establish an ordinary Free fit; removing ASGI did not solve the measured full-probe budget issue.
+
+The object/gateway path passed three complete hosted response checks with the same exact Decimal results. The object trace identified `executionModel: durableObject`; gateway traces identified `stateless`, confirming where the workload executed.
+
+| Invocation | Run 1 CPU / wall ms | Run 2 CPU / wall ms | Run 3 CPU / wall ms |
+| --- | --- | --- | --- |
+| Python object GET `/health` | 46 / 47 | 21 / 23 | 16 / 18 |
+| Python object GET `/probe` | 456 / 462 | 38 / 38 | 35 / 35 |
+| Gateway GET `/health`, 200 | 0 / 998 | 0 / 37 | 0 / 30 |
+| Gateway GET `/probe`, 200 | 0 / 476 | 0 / 53 | 0 / 47 |
+| Gateway POST `/probe`, 405 | 0 / 0 | 0 / 0 | 0 / 0 |
+
+All outcomes were `ok`, with no reported exception. Gateway CPU **reported** 0 ms at provider precision; this is not a claim of literally zero computation. POST is rejected in the gateway and never invokes the object. The measurements support continuing with this candidate, not declaring all free quotas satisfied. Raw private traces were retained and the temporary tail sessions stopped.
+
+[ADR 0003](decisions/0003-python-object-qualification.md) selects this candidate for the next synthetic database/runtime checks while retaining Python and Supabase. The remaining gates include actual account plan, memory/duration capacity, real protected database transactions, Auth, providers, analytics and restore. No database, auth role, broker credential or financial source was attached to any control.
+
+### Protected database control preparation at pause
+
+The next control is implemented but **has not been deployed**. `database_worker.py` wraps the fixed `run_database_probe(connect)` operation inside a Python object with an isolate-level asyncio lock and a fresh pg8000 connection per invocation. `database_gateway.mjs` requires a generated bearer secret, verifies it with WebCrypto HMAC, and forwards only the fixed synthetic route. Missing/wrong authentication fails closed; no caller credentials/body/query reach the object.
+
+`database_probe.py` uses only a transaction-local TEMP table with `ON COMMIT DROP`, fixed invented numeric/timestamp inputs, a deliberate SQLSTATE 23505 failure, savepoint rollback and post-commit table-removal check. Its result explicitly sets `durable_commit_verified: false`: temporary data does not establish durable evidence/import acceptance. Errors return bounded categories without driver text. Connection/cursor cleanup is covered by offline tests.
+
+At the owner-requested pause: **15 Python tests and ten Node tests passed**, scoped Ruff passed, and both bundles passed non-deploying checks. Python object bundle: **19,933.96 KiB / 4,661.93 KiB gzip**, 1,452 modules; gateway: **2.06 KiB / 0.91 KiB gzip**. An initial outside-root config produced an incomplete 8.97 KiB bundle; the corrected configs live beside the prototype manifests/locks so Pywrangler includes the runtime wheels. Ignore rules cover generated `wrangler.database-runtime-*.jsonc` files. Never treat the smaller incomplete bundle as proof of compatibility.
+
+The templates contain no Hyperdrive ID or credential. A local helper for bounded temporary-role/Hyperdrive provisioning, protected checks and resource deletion is prepared in ignored tooling but **never executed**. Provider-issued temporary CLI credentials are an administrative diagnostic mechanism, not an application runtime role. Two native read-only direct pg8000 attempts failed TLS before proving any query; verification was not disabled. No Hyperdrive resource, protected database Worker or persistent schema change was made. Resume from the current handoff after the owner's authorised time.
 
 ## Original local result
 

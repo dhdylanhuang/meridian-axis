@@ -6,7 +6,7 @@ The hosted target is Cloudflare + Supabase PostgreSQL, with React, Vite, Tailwin
 
 ## Current status
 
-**Development resumed at the owner's request on 11 November 2026.** Continue from [status and handoff](docs/status-and-handoff.md). Stage 0H hosting qualification is the current gate; direct Cloudflare CLI access is now authorised.
+**Development paused at the owner's request on 11 November 2026.** Resume is authorised from **04:00 London time on 12 November 2026**; no automatic wakeup is configured. Continue from [status and handoff](docs/status-and-handoff.md). Stage 0H hosting qualification is the current gate; direct Cloudflare and Supabase management access is established.
 
 **Local foundation, broker adapter and snapshot-evidence slices are verified.** Exact-decimal persistence, migrations, evidence/audit records, isolated configuration, backup/restore and holdings CSV preview/atomic import are available. The broker adapter is tested with mocked HTTP. The app exposes liveness only; there is no usable portfolio UI or hosted application yet. Full Stage 1 financial replay and reconciliation remain open.
 
@@ -14,7 +14,7 @@ Start with the tested [local development guide](docs/local-development.md). The 
 
 PostgreSQL foundation parity also passes disposable service-backed CI. This verifies migrations and evidence constraints, not a hosted Supabase login or deployment. The [status and handoff](docs/status-and-handoff.md) distinguishes completed slices from the remaining financial and hosting gates.
 
-The empty Supabase evidence schema has deployed through the native GitHub integration and was confirmed in Table Editor. The synthetic Python Cloudflare probe is deployed and its responses verified; measured CPU exceeds the ordinary Free request budget, so runtime qualification remains open. No real portfolio data, app logins or finished financial interface have been deployed.
+The empty Supabase evidence schema has deployed through the native GitHub integration and was confirmed in Table Editor. Synthetic Cloudflare controls are deployed and measured: ordinary Python HTTP exceeds the documented Free CPU budget for the probe; a thin gateway to a Python Durable Object passed synthetic checks and is the next qualification candidate. Database/Auth/capacity/recovery remain open. No real portfolio data, app logins or finished financial interface have been deployed.
 
 The planning baseline was established on **11 November 2026** from the owner's requirements, a read-only review of the Excel tracker, and official provider documentation. The workbook's latest recorded snapshot is **11 October 2026**, not a current account valuation.
 

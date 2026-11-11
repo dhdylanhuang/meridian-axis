@@ -35,4 +35,4 @@ jobs:
         with:
           node-version: '24.22.1'
       - name: Check synthetic gateway routing and request isolation
-        run: node --test tests/test_probe_gateway.mjs
+        run: node --test tests/*.mjs

@@ -52,6 +52,7 @@ These are architect choices made for a coherent, minimal implementation plan. Th
 | DE17 | Polling cycles retained in typed import_log and filtered separately | Preserve requested logging without drowning imports; polling |
 | DE18 | Legacy workbook facts retained, known defects excluded from active calculations | Reconcile without institutionalising errors; workbook |
 | DE19 | Historical attribution uses effective membership; current exposure uses current groups | Prevent unlabelled historical restatement; data model |
+| DE20 | Qualify a thin gateway to a Python Durable Object after ordinary Python HTTP CPU exceeded the documented Free budget | Synthetic responses/CPU observed; [ADR 0003](decisions/0003-python-object-qualification.md); production database/Auth/capacity/recovery remain gates |
 
 ## Open decisions and source gaps
 
@@ -70,7 +71,7 @@ Resolve when a task depends on them, not as a pretext to stop all work. Do not r
 | Q12 | Weekly reliability minimum and desired short-horizon descriptive display? | Propose 20 weekly observations; daily minimum remains 60 | Final weekly/reliability controls |
 | Q13 | Calendar source/coverage, portfolio valuation cutoff and cross-market time convention? | Cache sourced schedules, store session dates and ages | Production cross-market daily alignment |
 | Q14 | Which provider can actually supply required intraday benchmark/FX freshness and its timestamps/delay? | Capability disclosure; no real-time promise | Guaranteed polling expectations, not scheduler skeleton |
-| Q17 | Cloudflare project/runtime connection and later trusted administration | Supabase native deployment is confirmed through its actual check and owner table inspection. Cloudflare native GitHub setup remains; do not re-ask for the confirmed Supabase project/tables or copy credentials here. | Hosted CPU/Worker-database/Auth tests and app deployment |
+| Q17 | Least-privilege Worker database connection and later trusted administration | Cloudflare OAuth and synthetic deployments are verified. Supabase native schema deployment, CLI management login and a synthetic read-only SQL check are confirmed; the Worker driver/runtime credential remains open. Do not re-ask for confirmed project/tables or copy credentials here. | Worker-database/Auth tests and app deployment |
 | Q18 | Can representative workloads and 90-day lossless quote retention fit free runtime/storage budgets? | [Worker probe](worker-feasibility.md), Postgres parity and measured capacity gates; no silent scope reduction | Final hosted runtime/storage design |
 | Q15 | What dated data/definition supports VNRG/VUAG overlap, revenue currencies and broader look-through? | Explicit unavailable/coverage; do not hardcode 19% | Evidence-based detailed exposure results |
 
@@ -93,4 +94,4 @@ These drawdown rules do not define holding RAG (Q09) or tech stress (Q11). Resol
 
 ## Implementation authorisation and hosting clarification
 
-On 11 November 2026 the owner authorised implementation, delegated agents and stage commits/pushes. The owner requires free hosting services only and confirmed GBP account currency. Hosting remains behind security/recovery acceptance, with a researched [free-hosting comparison](hosting-options.md); Cloudflare + Supabase is now selected; no hosted deployment exists. Three statement PDFs were inspected privately; source coverage and alias gaps remain explicit. Routine engineering decisions remain delegated to the orchestrator.
+On 11 November 2026 the owner authorised implementation, delegated agents and stage commits/pushes, then reaffirmed project-wide development/deployment authority during the personal-device resume. The owner requires free hosting services only and confirmed GBP account currency. The empty Supabase evidence schema and synthetic Cloudflare controls are deployed; the financial application remains behind security/recovery and capacity acceptance. Three statement PDFs were inspected privately; source coverage and alias gaps remain explicit. Routine engineering decisions remain delegated to the orchestrator.

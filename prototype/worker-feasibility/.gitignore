@@ -8,3 +8,4 @@ src/vendor/
 .cache/
 *.log
 dist/
+/wrangler.database-runtime-*.jsonc
