@@ -1,14 +1,14 @@
 # Development plan and stage gates
 
-Status: ADOPTED dependency order. All implementation stages are **not started**. Stage 0 documentation exists, but its source-verification gate is still incomplete. This plan is not authorisation to begin code or commit.
+Status: ADOPTED dependency order; implementation, delegation, stage commits/pushes and eventual private hosting are now owner-authorised. The [Stage 0 provider contract](stage-0-source-verification.md) is verified. Account-history/alias gates remain open; Stage 1A may proceed independently. Actual slice evidence is in the status/handoff document.
 
 ## Delivery discipline
 
 Deliver one reviewable vertical capability at a time. Complete offline tests, reconciliation, operational instructions and affected documentation before declaring a stage verified. Do not build nine placeholder tabs as evidence that nine financial capabilities are done.
 
-Original stages mixed prerequisites: holdings value before prices, imports before audit, authentication after the UI, and many undefined metrics in one large stage. The revised sequence moves foundations earlier while retaining the requested scope. Stage 6 remains later remote access.
+Original stages mixed prerequisites: holdings value before prices, imports before audit, authentication after the UI, and many undefined metrics in one large stage. The revised sequence moves foundations earlier while retaining the requested scope. Stage 6 is required private hosting after the operational gates, using free services only.
 
-For every stage, deliver actual code/file tree when authorised, migration implications, tested run commands, fixture/test evidence, assumptions/limitations, requirement IDs and a next handoff. During this documentation task, do not create fictional code/test deliverables.
+For every stage, deliver actual code/file tree when authorised, migration implications, tested run commands, fixture/test evidence, assumptions/limitations, requirement IDs and a next handoff. Only record code/test deliverables that exist and have been checked.
 
 ## Stage 0 — verify sources and settle foundational contracts
 
@@ -106,7 +106,7 @@ Performance and projection slices can be assigned separately after shared contra
 
 **Entry:** explicit owner request, local acceptance and operational restore evidence.
 
-Compare Tailscale versus Cloudflare Tunnel/Access, document the selected access boundary and deploy only after authorisation. Verify intended identities, HTTPS/session/CSRF, SSE, secrets, host storage, backup and rollback. Keep broker integration read-only. Public portfolio access is not a requirement.
+Use the [free-hosting review](hosting-options.md) to select persistent compute and a private access boundary. The owner has authorised eventual hosting; external account/capacity/domain/device dependencies still need resolution. Do not purchase paid resources. Compare Tailscale versus Cloudflare Tunnel/Access and verify the chosen host before deployment. Verify intended identities, HTTPS/session/CSRF, SSE, secrets, host storage, backup and rollback. Keep broker integration read-only. Public portfolio access is not a requirement.
 
 ## Completion checklist per slice
 

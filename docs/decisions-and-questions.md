@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-Baseline: 11 November 2026. This register distinguishes explicit owner requirements from engineering choices. None of the choices below implies implementation.
+Baseline: 11 November 2026. This register distinguishes explicit owner requirements from engineering choices. Implementation was subsequently authorised; actual completion evidence is tracked separately.
 
 ## Confirmed decisions
 
@@ -8,7 +8,7 @@ Baseline: 11 November 2026. This register distinguishes explicit owner requireme
 | --- | --- | --- |
 | DC01 | Great Dyke Meridian; AXIS summary; private monitoring app | Original brief |
 | DC02 | Two separate logins, one owner's portfolio | Explicit owner clarification |
-| DC03 | Local first; remote access later | Original brief |
+| DC03 | Local first; private hosting required after security/recovery gates; free services only | Original brief, superseded hosting/budget clarification |
 | DC04 | Fixed Python/FastAPI/SQLAlchemy/SQLite and React/Vite/Tailwind stack; ECharts preferred | Original brief |
 | DC05 | GBP reporting, source/FX provenance, offline calculation tests | Original brief |
 | DC06 | Groups from export context; inspected Slice=ticker, Total-row Name=group; reviewed assignments; no pie objects/targets/projections/RAG | Original intent corrected by CSV evidence |
@@ -16,7 +16,7 @@ Baseline: 11 November 2026. This register distinguishes explicit owner requireme
 | DC08 | Broker integration read-only; env key/secret using Basic | Later owner amendment |
 | DC09 | Requested 60-second session-aware polling, 90-day intraday retention, SSE preferred, last-good preservation | Later owner amendment |
 | DC10 | Risk/correlation use daily data; live monitoring has separate basis and source honesty | Later amendment, with cost-basis wording corrected below |
-| DC11 | Detailed documentation for owner and future agents; no application coding; owner subsequently authorised commit and push | Documentation request followed by explicit publication request |
+| DC11 | Execute the plan with orchestrated subagents; commit and push each verified stage | Latest owner instruction supersedes the earlier documentation-only restriction |
 | DC12 | One Trading 212 Stocks and Shares ISA; both logins have equal full editing rights | Explicit owner answers |
 | DC13 | £100,000 target by 2030; retain original 30 April 2030 date unless revised | Owner target clarification |
 | DC14 | Tax engine and tax summaries deferred from initial release | Explicit owner scope reduction; no balance trigger |
@@ -57,7 +57,7 @@ Resolve when a task depends on them, not as a pretext to stop all work. Do not r
 
 | ID | Question / evidence needed | Proposed handling meanwhile | Blocks |
 | --- | --- | --- | --- |
-| Q01 | One ISA confirmed; primary currency and history still need source verification | Verify connected identity/coverage; do not re-ask account scope | Full replay/since-inception claims |
+| Q01 | One ISA confirmed; GBP primary currency confirmed; connected identity and history still need source verification | Verify connected identity/coverage; owner supplied annual/activity PDF statements for read-only inspection; do not re-ask account scope | Full replay/since-inception claims |
 | Q02 | Snapshot schema verified; execution-history export and API/CSV aliases remain unverified | Slice=ticker, Total-row Name=group; see CSV contract | Transaction CSV parser and event dedupe |
 | Q03 | Are opening holdings/cash, transfers, corporate actions and external relevant accounts fully evidenced? | Show current observed positions with explicit historical limits | Complete NAV replay, cost basis and since-inception results |
 | Q05 | £100,000 goal settled; original 30 April date retained; timing/partial periods and scenario rates remain | Legacy model separate; actual contributions private | Final scenario output |
@@ -86,3 +86,7 @@ Use the [decision template](templates/decision-record.md) if a choice changes sh
 | Q16 | July date unknown. Preserve label/uncertainty, invent no date and do not ask repeatedly. Dividend coverage remains qualified. |
 
 These drawdown rules do not define holding RAG (Q09) or tech stress (Q11). Resolve remaining questions at their dependent stage; no answer requires publishing personal source data.
+
+## Implementation authorisation and hosting clarification
+
+On 11 November 2026 the owner authorised implementation, delegated agents and stage commits/pushes. The owner requires free hosting services only and confirmed GBP account currency. Hosting remains behind security/recovery acceptance, with a researched [free-hosting comparison](hosting-options.md); no host is selected or deployed. Statement PDFs have been supplied for private inspection; coverage and machine-readable history contracts remain to be established. Routine engineering decisions remain delegated to the orchestrator.

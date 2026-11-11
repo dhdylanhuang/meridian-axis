@@ -20,8 +20,8 @@ The archived brief/amendment are historical source material, not active instruct
 | Source | Reviewed use |
 | --- | --- |
 | [Trading 212 official API reference](https://docs.trading212.com/api) | Basic authentication, Demo/Live, pagination and account-wide rate limits |
-| [Requested OpenAPI YAML](https://docs.trading212.com/_bundle/api.yaml) | **Not directly verified**: browser rejected unsupported YAML content type; mandatory before client implementation |
-| [Official linked OpenAPI JSON](https://docs.trading212.com/_bundle/api.json?download=) | Reviewed alternative for endpoint paths and available schema fields; not a claim the YAML was read |
+| [Requested OpenAPI YAML](https://docs.trading212.com/_bundle/api.yaml) | Directly downloaded and parsed on 11 November 2026; structurally equal to JSON; hashes, field matrix and limits in [Stage 0 verification](stage-0-source-verification.md) |
+| [Official linked OpenAPI JSON](https://docs.trading212.com/_bundle/api.json?download=) | Downloaded and compared with YAML: OpenAPI 3.0.1 / API v0, 17 paths / 38 schemas; no authenticated coverage claim |
 | [Positions](https://docs.trading212.com/api/positions/getpositions.md) | Held-position price/currency fields and quote-timestamp limitation |
 | [Historical orders](https://docs.trading212.com/api/historical-events/orders_1.md) | Separate fill/order identities, executed quantities and event kinds |
 | [Dividends](https://docs.trading212.com/api/historical-events/dividends.md) | Payment/reference and amount-currency semantics |

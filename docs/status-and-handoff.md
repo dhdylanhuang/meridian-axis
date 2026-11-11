@@ -1,12 +1,12 @@
 # Status and handoff
 
-Last reviewed: **11 November 2026**, including the owner's pre-publication answers and holdings CSV inspection.
+Last reviewed: **11 November 2026**, including implementation/delegation authorisation, direct provider verification and the free-hosting constraint.
 
 ## Actual state
 
 | Area | State | Evidence / limits |
 | --- | --- | --- |
-| Repository | Public GitHub; documentation only | Public-safe source summaries and synthetic examples; no application implementation |
+| Repository | Public GitHub; implementation underway | Documentation baseline published; foundations in progress, not a usable tracker |
 | Account and access | Confirmed | One Trading 212 Stocks and Shares ISA; two logins with equal full editing rights |
 | Goal | Confirmed | £100,000 by 2030; original 30 April 2030 target date retained |
 | Tax engine | Deferred | Explicit owner decision; no initial tax schemas/screens/matching required |
@@ -16,11 +16,11 @@ Last reviewed: **11 November 2026**, including the owner's pre-publication answe
 | Holdings CSV | Verified read-only | Slice=ticker; Total-row Name=group; no execution IDs/dates/currency; see CSV contract |
 | Transaction-history CSV | Not inspected | Snapshot is not a replacement for execution/cash-flow history |
 | Provider research | Documentation reviewed | Official OpenAPI JSON/endpoint pages, no authenticated calls |
-| OpenAPI YAML | Still to verify directly | Mandatory before client implementation; browser could not render YAML |
-| Application/database/frontend/tests | Not started | No manifests, runnable app, schema, scheduler or automated application tests |
+| OpenAPI YAML | Verified directly | Parsed equality with official JSON; [field matrix and hashes](stage-0-source-verification.md) |
+| Application/database/frontend/tests | Foundations in progress | No completed application stage; runtime evidence will be recorded at its slice gate |
 | Secrets and Live access | Not configured | No credentials requested or used |
-| Remote access | Deferred | Later owner-authorised stage |
-| Commit/push | Explicitly authorised | Owner requested committing and pushing the sanitised documentation baseline; inspect Git history/remote status for the resulting publication state |
+| Remote access | Required, free services only | [Hosting review](hosting-options.md); no host selected or configured |
+| Commit/push | Explicitly authorised per verified stage | Owner has authorised implementation with subagents and stage commits/pushes |
 
 ## Public-content policy
 
@@ -28,7 +28,7 @@ Real workbook/CSV files, balances, position sizes, contribution amounts, dividen
 
 ## Next bounded task
 
-Complete Stage 0 source contracts when implementation work is requested. Read requirements, CSV contract, broker integration, imports, and remaining Q01/Q02/Q03 gaps. Verify OpenAPI YAML; inspect a real execution-history export or broker history coverage; confirm primary currency and map stable execution/dividend/cash identities. Do not re-ask resolved account scope, edit rights, tax deferral, alert recovery or July date.
+Deliver Stage 1A foundations while inspecting the newly supplied private annual/activity PDF statements. Read requirements, CSV contract, broker integration, imports, and remaining Q01/Q02/Q03 gaps. The YAML prerequisite is complete and GBP currency is owner-confirmed. Establish statement/broker history coverage and stable execution/dividend/cash identity aliases before production replay. Do not re-ask resolved account scope, edit rights, tax deferral, alert recovery or July date.
 
 Deliver a public-safe field matrix, synthetic fixture design and updated decisions. API remains primary unless the owner explicitly changes it. Snapshot group context is already understood; it does not provide historical trades.
 
@@ -46,3 +46,7 @@ The public-safe revision audit checked 29 Markdown files (27 under docs), 69 loc
 - Rebound alone erases an earlier decline from a rolling maximum.
 - Tax becomes necessary because ISA market value passes an annual subscription limit.
 - Remaining scenario/RAG/stress defaults are owner-approved.
+
+## Source-contract checkpoint ? 11 November 2026
+
+Direct OpenAPI YAML and official JSON were downloaded and parsed: structurally identical, 17 paths and 38 schemas. Seven read routes, exact query/continuation contracts, provider rate budgets and unsupported semantics are recorded in the Stage 0 field matrix. This accepts the public provider-contract slice, not the full account-history gate. Owned-file link/fence/whitespace checks passed. No authenticated broker request or financial computation was performed.

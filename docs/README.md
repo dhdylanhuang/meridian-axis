@@ -1,6 +1,6 @@
 # Documentation guide
 
-Baseline: **11 November 2026**. Implementation status: **documentation only**.
+Baseline: **11 November 2026**. Implementation is authorised; see current status for verified delivery.
 
 This is the working specification for Great Dyke Meridian. Its purpose is to let an unfamiliar contributor implement a bounded task without reconstructing a conversation or inventing financial definitions.
 
@@ -23,6 +23,8 @@ This is the working specification for Great Dyke Meridian. Its purpose is to let
 | [Product requirements](product-requirements.md) | Scope, requirement IDs, exclusions and changes to the original brief |
 | [Architecture](architecture.md) | Component responsibilities, dependency rules, runtime and proposed source tree |
 | [Data model](data-model.md) | Identity, persistence, provenance, constraints and migrations |
+| [Stage 0 verification](stage-0-source-verification.md) | Direct YAML/JSON comparison, field coverage and remaining source gates |
+| [Free hosting](hosting-options.md) | Persistent free compute and private access options, provider limits and owner dependencies |
 | [Trading 212 integration](trading212-integration.md) | Provider coverage, authentication, pagination, identities and reconciliation |
 | [Imports and reconciliation](imports-and-reconciliation.md) | File/sync lifecycle, atomicity, corrections and source precedence |
 | [Workbook baseline](workbook-baseline.md) | Public-safe workbook structure, methods and defects; exact values stay local |

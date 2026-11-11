@@ -4,7 +4,7 @@ Status: CONFIRMED API-first requirement; VERIFIED documentation observations dat
 
 ## Verify before implementing
 
-The owner specified [OpenAPI YAML](https://docs.trading212.com/_bundle/api.yaml) as the client contract. Browser retrieval could not render its MIME type. The [official linked JSON](https://docs.trading212.com/_bundle/api.json?download=) and endpoint pages were inspected instead. **Direct YAML verification remains a Stage 0 gate before client code.** Record source URL, retrieval date, digest and relevant schema differences. Archive the non-secret specification only when obtained; do not create a fictional local spec file.
+The owner specified [OpenAPI YAML](https://docs.trading212.com/_bundle/api.yaml) as the client contract. On 11 November 2026, the YAML and [official linked JSON](https://docs.trading212.com/_bundle/api.json?download=) were downloaded directly, parsed and found structurally identical: OpenAPI 3.0.1, API v0, 17 paths and 38 schemas. **The direct YAML prerequisite is verified.** Public source hashes, field matrix, exact request/query contracts and remaining real-history gaps are in [Stage 0 verification](stage-0-source-verification.md). Earlier browser MIME failures did not establish source verification; the subsequent direct download did. Recheck the bundle when changing the client contract.
 
 Use the configured origin and the path from the verified specification exactly once. The documented origin is `https://demo.trading212.com` or `https://live.trading212.com`; paths include `/api/v0`. Do not concatenate `/api/v0` twice. Demo is the default. Live requires an explicit validated setting and clearly visible environment label. Separate accounts, state, evidence and checkpoints across environments.
 
@@ -44,7 +44,9 @@ Candidate identity is `(broker, environment, account, event_kind, external_id)`:
 
 ## Pagination and resilient sync
 
-Follow returned `nextPagePath` until null for paginated histories. Validate it resolves to the same allowlisted origin and permitted route before attaching credentials. Detect repeated cursors/paths and cap pages/time to avoid infinite loops. Persist a checkpoint only with the accepted financial generation.
+Follow returned `nextPagePath` until null for paginated histories. Validate it resolves to the same allowlisted origin and the same history-family route before attaching credentials; do not follow cross-origin redirects. Detect repeated cursors/paths and cap pages/time to avoid infinite loops. Persist a checkpoint only with the accepted financial generation. The bundle prose defines null termination despite a string-only component schema; missing/malformed page fields are not an empty success.
+
+Orders/dividends use int64 cursors with optional ticker and limit; cash history uses a string cursor with optional date-time `time` and limit. Limits default to 20 with maximum 50. Preserve the entire continuation query rather than reconstructing it or inventing unverified date filters. Account summary is limited to 1 request/5 seconds, positions 1/second, each history 20/minute, instruments 1/50 seconds and exchanges 1/30 seconds.
 
 Use per-endpoint/account pacing shared by scheduled sync, manual sync and position reads. Respect provider reset headers; introduce bounded exponential backoff with jitter for transient transport/5xx/429 failures. Do not retry invalid credentials, missing permission or invalid request arguments indefinitely. A cap on exponential delay never permits retrying before a later provider reset. The provider documents per-account limits and `x-ratelimit-*` headers. [Rate limiting and pagination](https://docs.trading212.com/api)
 
@@ -58,7 +60,7 @@ Verify account-summary cash components against actual statements before treating
 
 Position `currentPrice` is in instrument currency. The documented response does not provide a market quote timestamp or delay; `createdAt` refers to the position, not a quote. Label these observations with retrieval time and unknown quote age. The positions endpoint documents a 1 request/second limit; the app's proposed interval is much slower. [Positions contract](https://docs.trading212.com/api/positions/getpositions.md)
 
-Stage 0 must publish a schema/field-coverage matrix without real balances or identifiers. One [holdings snapshot format](csv-contract.md) is verified; transaction-history export matching remains unverified. Present evidence:
+The [Stage 0 verification](stage-0-source-verification.md) publishes a schema/field-coverage matrix without real balances or identifiers. It also records unresolved fill-wallet signs/FX/charge semantics and account cash additivity: preserve those facts without guessing ledger economics. One [holdings snapshot format](csv-contract.md) is verified; transaction-history export matching remains unverified. Present evidence:
 
 | Field | Current evidence | Required policy |
 | --- | --- | --- |

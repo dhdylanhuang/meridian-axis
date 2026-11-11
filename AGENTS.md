@@ -6,12 +6,12 @@
 2. Read [product requirements](docs/product-requirements.md), [architecture](docs/architecture.md) and the current stage in [development stages](docs/development-stages.md).
 3. Read the domain contract for your task. Read [agent workflow](docs/agent-workflow.md) before coordinating parallel work.
 
-Current repository status: planning documentation only. Check the actual tree and status document before claiming any feature exists.
+Current repository status: implementation authorised; source verification and foundation delivery are underway. Check the actual tree and status document before claiming any feature exists.
 
 ## Authority and scope
 
 - The user's latest explicit instruction takes precedence. Documentation does not grant permission to deploy, trade, commit, contact others or change the user's workbook.
-- A documentation request alone does not authorise application implementation, commits or publication. Follow the owner's latest explicit instruction for each action; the owner has now requested committing and pushing this documentation baseline.
+- A documentation request alone does not authorise application implementation, commits or publication. Follow the owner's latest explicit instruction for each action; the owner has now requested executing the plan with delegated agents, committing and pushing each verified stage, and eventual private hosting using free services only.
 - Preserve the original brief in `docs/context/original-brief.md` as historical context. Active requirements and recorded resolutions take precedence over its contradictions.
 - Distinguish CONFIRMED requirements, VERIFIED observations, ADOPTED engineering decisions, PROPOSED defaults and OPEN owner decisions. A plan is not a completed feature.
 - Do not promote an assistant suggestion into an owner-confirmed requirement. Use [decisions and questions](docs/decisions-and-questions.md) for unresolved choices.
