@@ -19,7 +19,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from sqlalchemy import Column, MetaData, Table, event, insert, make_url, select, text
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
 from sqlalchemy.schema import CreateIndex, CreateSchema, DropSchema
@@ -358,8 +358,14 @@ def test_postgres_source_cannot_claim_another_accounts_run(postgres_engine):
         session.add(_run())
     with Session(postgres_engine) as session:
         session.add(_source(account_id="another-account"))
-        with pytest.raises(IntegrityError):
+        # pg8000 maps only unique violations (23505) to IntegrityError; its
+        # foreign-key violations are ProgrammingError. Assert the database's
+        # precise SQLSTATE and constraint instead of weakening the invariant.
+        with pytest.raises(DBAPIError) as caught:
             session.commit()
+        detail = caught.value.orig.args[0]
+        assert detail["C"] == "23503"
+        assert detail["n"] == "fk_source_run_account"
 
 
 @pytest.mark.postgres
