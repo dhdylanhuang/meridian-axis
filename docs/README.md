@@ -21,6 +21,8 @@ This is the working specification for Great Dyke Meridian. Its purpose is to let
 | Document | Owns |
 | --- | --- |
 | [Product requirements](product-requirements.md) | Scope, requirement IDs, exclusions and changes to the original brief |
+| [Hosting decision](decisions/0001-cloudflare-supabase.md) | Approved production platform and superseded local assumptions |
+| [Worker feasibility](worker-feasibility.md) | Reproducible synthetic local runtime/build probe and untested hosted gates |
 | [Architecture](architecture.md) | Component responsibilities, dependency rules, runtime and proposed source tree |
 | [Data model](data-model.md) | Identity, persistence, provenance, constraints and migrations |
 | [Stage 0 verification](stage-0-source-verification.md) | Direct YAML/JSON comparison, field coverage and remaining source gates |

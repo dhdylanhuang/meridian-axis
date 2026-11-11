@@ -1,12 +1,12 @@
 # Development plan and stage gates
 
-Status: ADOPTED dependency order; implementation, delegation, stage commits/pushes and eventual private hosting are now owner-authorised. The [Stage 0 provider contract](stage-0-source-verification.md) is verified. Account-history/alias gates remain open; Stage 1A may proceed independently. Actual slice evidence is in the status/handoff document.
+Status: implementation, delegation, stage commits/pushes and private hosting are owner-authorised. Cloudflare + Supabase is the approved free production target. The [provider contract](stage-0-source-verification.md) and local foundation slices are verified; account-history/alias gates remain open. Stage 0H qualifies hosted runtime/storage before further production-specific work. See [ADR 0001](decisions/0001-cloudflare-supabase.md) and actual slice evidence in the handoff.
 
 ## Delivery discipline
 
 Deliver one reviewable vertical capability at a time. Complete offline tests, reconciliation, operational instructions and affected documentation before declaring a stage verified. Do not build nine placeholder tabs as evidence that nine financial capabilities are done.
 
-Original stages mixed prerequisites: holdings value before prices, imports before audit, authentication after the UI, and many undefined metrics in one large stage. The revised sequence moves foundations earlier while retaining the requested scope. Stage 6 is required private hosting after the operational gates, using free services only.
+Original stages mixed prerequisites: holdings value before prices, imports before audit, authentication after the UI, and many undefined metrics in one large stage. The revised sequence moves foundations earlier while retaining the requested scope. Hosted feasibility now precedes further production work; Stage 6 performs the final private hosted release and restore acceptance.
 
 For every stage, deliver actual code/file tree when authorised, migration implications, tested run commands, fixture/test evidence, assumptions/limitations, requirement IDs and a next handoff. Only record code/test deliverables that exist and have been checked.
 
@@ -29,9 +29,21 @@ For every stage, deliver actual code/file tree when authorised, migration implic
 
 **Blocks:** missing real exports blocks a production-ready CSV contract, not drafting pure ledger interfaces. Unresolved scenario/RAG thresholds do not block schema/import work.
 
+## Stage 0H — qualify Cloudflare + Supabase
+
+**Outcome:** a measured, private production path that preserves the financial contracts within free-service limits.
+
+**Entry:** owner-approved platform change; synthetic inputs. Dedicated free projects are authorised, with account sign-in handled by the owner. No reuse of unrelated application projects.
+
+**Tasks:** Python Workers dependency/build and hosted CPU/startup/memory checks; Supabase Postgres migrations/precision/import atomicity; approved two-member Auth/session/RLS/grant boundaries; bounded scheduled jobs with durable leases/fencing/rate budgets; one representative daily-risk/correlation workload; 90-day lossless quote retention capacity including indexes/evidence; private backup/export/restore; same-origin HTTPS and streaming reconnect. Preserve SSE preference unless an explicit engineering transport decision qualifies private Realtime.
+
+**Exit evidence:** reproducible local and hosted probe results, authenticated nonmember/anonymous denials, measured budgets, accepted migration/restore evidence, account/project identity and rollback. A local bundle build does not prove free CPU fit or production readiness. Supabase RLS-enabled tables without member policies are a safe closed foundation, not completed authorization. No paid resources or trial-only dependencies.
+
+If a runtime cannot meet scope, record the measured limitation and propose the smallest alternative. Do not silently rewrite Python, reduce requested 60-second polling/90-day retention, or bypass a provider quota. Lossless private archival can preserve retention if it is verified before pruning the hot database.
+
 ## Stage 1 — durable evidence, ledger and safe import
 
-**Progress:** slice 1A verified; full Stage 1 remains open. See [status/handoff](status-and-handoff.md) for evidence.
+**Progress:** local 1A, broker-adapter portion of 1B and snapshot-evidence portion of 1C verified; full Stage 1 and hosted parity remain open. See [status/handoff](status-and-handoff.md).
 
 **Outcome:** accepted source data survives restart, replay is deterministic, and repeated imports do not change economics.
 
@@ -39,7 +51,7 @@ For every stage, deliver actual code/file tree when authorised, migration implic
 
 **Slices:**
 
-- **1A:** project manifests/locked dependencies, configuration validation, test harness, SQLAlchemy/Alembic, Decimal storage, account/environment identity, source records, import/audit and initial backup/restore.
+- **1A:** project manifests/locked dependencies, configuration validation, test harness, SQLAlchemy/Alembic, Decimal storage, account/environment identity, source records, import/audit and initial backup/restore. Local SQLite evidence is implemented; Supabase Postgres parity, grants/RLS and independent restore require hosted qualification.
 - **1B:** normalised events/cash ledger, corporate-action eligibility, holdings quantities/opening records, fill/reference dedupe and cross-source aliases. Mocked broker HTTP adapter with pagination, rate handling and checkpoints.
 - **1C:** CSV dry-run/atomic import, Excel baseline import, group evidence/mapping/conflicts, rename/merge/reassignment service and manual override persistence.
 
@@ -55,9 +67,9 @@ Quantity and recorded snapshot allocation can be reconciled here. Do not claim f
 
 **Slices:**
 
-- **2A:** local HTTPS, two-user bootstrap, password/session/CSRF, equal full-editor permissions (Q04 resolved), audit and exact-origin dev/prod configuration. No financial API exposed without login.
+- **2A:** same-origin HTTPS, two approved Supabase Auth identities, secure session/CSRF and explicit portfolio membership, equal full-editor permissions, audited mutations and exact dev/prod origins. Reject unrelated authenticated users as well as anonymous requests. No financial API exposed without login.
 - **2B:** mapping UI/service, market-data adapter, explicit adjusted/unadjusted bases, daily price/FX cache, approved selections, ledger/broker reconciliation, GBP NAV and holding/group weights.
-- **2C:** minimal AXIS/HOLDINGS/GROUPS and source-history views; no invented return/risk cards. One scheduler owner, manual jobs, startup daily backfill and job progress.
+- **2C:** minimal AXIS/HOLDINGS/GROUPS and source-history views; no invented return/risk cards. One scheduled-job authority, shared manual-job leases, durable backfill/checkpoints and job progress. No persistent in-process scheduler on Workers.
 - **2D:** basic quote monitoring with requested 60-second interval/capability disclosure, session calendars, stored observations, last-good/freshness, polling operation logs and authenticated SSE. End-session candidate remains provisional. Final alert/retention refinements are Stage 5.
 
 **Exit evidence:** both logins work; insecure/missing session/CSRF rejected; no secrets reach UI/logs; prices/FX convert accurately including pence; NAV decomposes; weights use NAV; missing price cannot improve a total; daily close selection isolated from intraday; duplicate jobs prevented; calendar/half-day/backoff tests pass; provider/network optional tests separately marked; real broker reconciliation differences explained.
@@ -92,23 +104,23 @@ Performance and projection slices can be assigned separately after shared contra
 
 **Milestone:** dependable monitoring plus requested central analytics. No alerts from unreliable short samples.
 
-## Stage 5 — complete local application and operational acceptance
+## Stage 5 — complete application and operational acceptance
 
 **Outcome:** all nine tabs and supported requested capabilities are usable, with a tested recovery path.
 
 **Entry:** prior financial contracts verified; Q08 re-arming/drawdown thresholds confirmed; Q09–Q11 resolved only for their corresponding features.
 
-**Slices:** remaining screens/detail views; thesis notes; durable alerts/re-arm; intraday alert basis and daily-close discrepancy review; historical attribution/currency interaction; defined trading statistics; stress scenarios; settings; retention; mature backup/restore and Windows fresh-install instructions.
+**Slices:** remaining screens/detail views; thesis notes; durable alerts/re-arm; intraday alert basis and daily-close discrepancy review; historical attribution/currency interaction; defined trading statistics; stress scenarios; settings; measured retention/archival; mature Postgres/evidence backup/restore and reproducible development/deployment instructions.
 
 **Exit evidence:** nine tabs satisfy the UI contract; values reconcile between summary/detail; alert state survives restart and does not spam; unsupported attribution/overlap states explained; scenario shocks deterministic and not doubled; SSE recovers after a missed delta for both users; retention preserves closing/alert provenance; upgrade and restore drill pass; launch/shutdown instructions verified; actual limitations listed against requirements.
 
 **Acceptance rule:** initial-release capabilities cannot disappear into vague future work. T01/T02 and tax summaries are explicitly owner-deferred. Either implement the supported scope or obtain an explicit owner scope decision for a documented limitation/deferment. A skeleton tab does not satisfy a calculation requirement.
 
-## Stage 6 — remote access, later
+## Stage 6 — private hosted release
 
-**Entry:** explicit owner request, local acceptance and operational restore evidence.
+**Entry:** owner-authorised Cloudflare/Supabase free projects, Stage 0H qualification, application acceptance and operational restore evidence.
 
-Use the [free-hosting review](hosting-options.md) to select persistent compute and a private access boundary. The owner has authorised eventual hosting; external account/capacity/domain/device dependencies still need resolution. Do not purchase paid resources. Compare Tailscale versus Cloudflare Tunnel/Access and verify the chosen host before deployment. Verify intended identities, HTTPS/session/CSRF, SSE, secrets, host storage, backup and rollback. Keep broker integration read-only. Public portfolio access is not a requirement.
+Deploy pinned Cloudflare assets/API and reviewed Supabase migrations only into dedicated projects. Verify two intended identities, anonymous/nonmember denial, HTTPS/session/CSRF, streaming, secrets, DB/Storage/Realtime policies, scheduler leases/backoff/recovery, measured free limits, private off-host backup and rollback. Conduct a restore into an isolated destination and verify financial controls before selecting it. Keep broker integration read-only. Public portfolio data is not a requirement. VM/Tailscale options are historical alternatives, not the selected target.
 
 ## Completion checklist per slice
 

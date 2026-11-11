@@ -1,32 +1,40 @@
-# Security and local operations
+# Security and operations
 
-Status: CONFIRMED requirements with ADOPTED local deployment design. Stage 1A provides local ISA metadata bootstrap and verified backup/restore; login accounts, certificates, scheduled backups and private hosting are not yet implemented.
+Status: CONFIRMED access/privacy requirements and owner-approved **Cloudflare + Supabase** production target, 11 November 2026. [ADR 0001](decisions/0001-cloudflare-supabase.md) supersedes production SQLite and the resident scheduler. Stage 1A's implemented bootstrap/backup/restore is an **offline SQLite foundation**, not a verified hosted deployment. Auth, Postgres/RLS, scheduled backups and production access remain unimplemented.
 
 ## Trust boundary
 
-Local application authentication protects one owner's portfolio from unintended browser/user access. It does not protect against an administrator reading the machine or SQLite files. Broker access is read-only. No order placement, modification or cancellation exists in the allowed integration surface.
+Application authentication and authorization protect one owner's portfolio from unintended access. They do not protect against a trusted database/platform administrator reading stored data. Broker access remains read-only: no placement, modification or cancellation exists in the allowed integration surface.
 
-Bind application and development services to loopback only. No `0.0.0.0`, public hosting or tunnel in the local stages. An authenticated connection is required for all financial endpoints and SSE. Health checks expose no holdings, credentials, file paths or sensitive configuration.
+Production target: React static assets and a Worker API under one Cloudflare HTTPS origin, with private Supabase Postgres behind it. Publicly downloadable application assets do not grant access to portfolio data. Require authenticated membership for every financial endpoint, source download, settings mutation and streaming subscription. Health checks expose no holdings, credentials, paths or sensitive configuration. Local development remains loopback-only; it does not acquire public access because the hosted target is now authorized.
+
+Use explicit database roles and RLS. Anonymous access to financial tables, private Storage and channels is denied; unrelated authenticated Supabase identities are also denied. Only the two approved members can access the shared ISA, with equal editing capabilities. Preserve server-side service boundaries: equal editors cannot directly rewrite immutable evidence or audit. Use narrow database functions or validated API services for financial changes. Test grants and RLS on every exposed table/function and separately test both approved identities, a nonmember and an anonymous client. Direct Postgres roles must not bypass these boundaries accidentally.
 
 ## Users and sessions
 
-Create two individual application users with the same full editing rights; never a shared password. The owner permits shared treatment for simplicity, but separate logins keep session revocation/audit attribution without a role hierarchy. ADOPTED password hashing choice: Argon2id with maintained library defaults verified at implementation. Store only password hashes. Sessions use high-entropy opaque tokens, server-side expiry/revocation and stored token hashes. Rotate on login; revoke on logout/password reset. Log successful and failed authentication safely and apply bounded login throttling.
+Create two individually authenticated identities with equal editing rights, separate sessions and audit attribution. Initial account provisioning is restricted administration; disable unrestricted signup or ensure signup can never grant portfolio membership. No default/shared password or open registration grants access.
 
-Cookies are HttpOnly, Secure and SameSite with a narrow path/origin policy. To satisfy Secure reliably, ADOPTED local deployment is same-origin HTTPS with a local certificate; document trust/setup and both-browser checks when implemented. Do not quietly weaken cookie security to make HTTP development easier. Any development-only exception needs an explicit recorded decision and must be impossible in a remote profile.
+**Preferred design pending prototype:** Supabase Auth manages identities; a same-origin Worker backend-for-frontend (BFF) keeps provider tokens server-side and issues high-entropy opaque application-session cookies. Store token hashes for lookup, bounded expiry/revocation and protected server-side token material only when necessary. The prototype must demonstrate provider refresh, session rotation, logout/reset, expired/revoked membership and concurrent sessions. Do not claim that Supabase JWT validation alone provides immediate application-session revocation. Log authentication outcomes safely and apply bounded throttling.
+
+The original local-only Argon2id/password-database design is superseded as the preferred hosted identity approach; it remains historical rationale, not an instruction to maintain two competing password systems. Final Auth/session transport must be accepted from prototype evidence. A browser-stored bearer-token alternative requires an explicit recorded security decision, not documentation falsely claiming HttpOnly protection.
+
+For the preferred BFF, cookies are HttpOnly, Secure and SameSite with narrow origin/path policy. Cloudflare terminates browser HTTPS; trust only the configured gateway/origin chain. Local secure-cookie development needs tested HTTPS/certificate setup. Any development-only exception is explicit and impossible in the remote profile.
 
 Use CSRF protection on state-changing routes, including account/session actions as appropriate; verify Origin and CSRF token. SameSite alone is not the whole CSRF design. SSE is a read-only authenticated connection, not a mutation channel. Use exact development origins/proxy settings, never wildcard credentialed CORS. Render thesis text safely without executable HTML.
 
 Implementation references: [OWASP sessions](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html), [CSRF](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html) and [password storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html). Recheck library parameters during implementation rather than copying a dated hash-cost constant.
 
-Bootstrap/reset is a local administrative operation with explicit account identity and audit, not a public password-reset email system or default password. Q04 is resolved: both logins can perform all application editing operations. This permission applies to local app data/settings; broker trading remains excluded for everyone.
+Bootstrap/reset remains an authenticated administrative operation with explicit identity and audit; no public password-reset email workflow is required initially. Q04 is resolved: both members can perform application editing operations. Broker trading remains excluded for everyone.
 
 ## Secrets and private data
 
-Broker key/secret come from environment variables, remain backend-only and never enter settings exports, URLs, logs, source fixtures, browser storage or API responses. Environment and base origin are validated together; do not send credentials to an arbitrary custom URL supplied by a browser. Test transports are injected without relaxing production origin validation.
+Broker key/secret come from local environment variables or production secret bindings and remain server-only. Keep Supabase secret/service-role keys, database passwords, scheduled-job credentials and any archive encryption keys out of React, settings exports, URLs, logs, fixtures and API responses. Only Supabase publishable/legacy anon keys may enter a client bundle, and those confer no financial access without validated user identity, grants and RLS. Secret/service-role keys bypass RLS; use them only in narrow server/admin operations with explicit authorization. A scheduled endpoint needs a verified job credential; being absent from frontend navigation is not protection.
+
+Environment and broker base origin are validated together; do not send credentials to an arbitrary browser-supplied URL. Separate Demo/Live and preview/production secrets and data. Preview builds must never silently connect to the real ISA or production database. Test transports are injected without relaxing production origin validation. [Supabase API key roles](https://supabase.com/docs/guides/getting-started/api-keys), [grants/RLS guidance](https://supabase.com/docs/guides/database/secure-data)
 
 The repository is public. Ignore rules now exclude real spreadsheet/CSV imports, runtime directories, database/WAL/SHM files, backups, uploads, Node output and environment-secret variants while retaining safe .env.example. Ignore rules do not remove already tracked content; review every staged diff. Never publish actual portfolio balances, position sizes, contribution schedules, private source paths/digests or personal/employment notes. Public fixtures use invented data; explicitly allowlist only reviewed synthetic files when needed.
 
-Keep the portfolio database and private sources in a configured local data directory with appropriate OS permissions. Do not use a cloud-synchronised/shared network folder for an actively written SQLite database without a separately validated design. A backup can be copied after consistent creation under an explicit retention/privacy policy.
+Keep local sources/runtime files in a private configured directory with appropriate OS permissions; active local SQLite must not live on a shared/synchronized network filesystem. Hosted source objects and quote archives use private access policies. If measured free-plan storage requires lossless archives, validate encryption/key recovery, authorized retrieval, integrity manifests and independent backups before deleting a database copy. Do not archive into the public Git repository or a publicly readable Storage bucket. The 90-day quote requirement is not permission to expose data or silently shorten retention.
 
 Audit before/after contains only relevant safe fields. Raw financial evidence is private, but never includes HTTP authentication/session headers. Redact exceptions from upstream libraries. File uploads have size/type limits; reject archive/path traversal and never execute workbook macros or external links. Treat imported strings as data, including spreadsheet-formula injection if later exporting CSV.
 
@@ -36,10 +44,12 @@ Initial environment settings are implemented in `backend/src/meridian/config.py`
 
 | Setting | Default / policy |
 | --- | --- |
-| Application bind/origin | Loopback, same-origin local HTTPS |
+| Application bind/origin | Local loopback; production Cloudflare same-origin HTTPS API/assets |
 | Broker environment | Demo; Live requires explicit setting |
-| Broker credentials | Environment-only key and secret; no default |
-| Database/data path | Explicit private local directory; distinct Demo/Live data |
+| Broker credentials | Environment/secret-binding key and secret; no default |
+| Database/data scope | Current offline private SQLite; production Supabase Postgres with isolated Demo/Live and preview scopes |
+| Hosted Auth/session | Preferred Supabase Auth + secure-cookie BFF; prototype and final contract pending |
+| Scheduled work | One authority; protected invocation, durable lease/checkpoint/retry state; no resident scheduler |
 | Quote interval | Requested 60 seconds, bounded by provider capability |
 | Quote stale threshold | 2× configured interval while session open; fetch/quote age separately |
 | Intraday retention | 90 days; configurable |
@@ -57,20 +67,24 @@ Validate ranges, currencies, time zones and chronology. Persist non-secret setti
 
 ## Backups and restore
 
-Use SQLite's online backup interface or a verified quiescent backup procedure; copying only the live database file while WAL writes occur is not a dependable backup method. [SQLite backup documentation](https://www.sqlite.org/backup.html)
+**Current offline foundation:** SQLite online backup and separate-path restore are implemented/tested. Copying only a live WAL database file is not a dependable backup procedure. These checks do not verify Postgres recovery. [SQLite backup documentation](https://www.sqlite.org/backup.html)
 
-Begin with a backup before real imports and schema upgrades. PROPOSED recurring policy: daily backups plus pre-migration/pre-correction backups, seven daily and four weekly generations, subject to owner storage preference. Backups exclude secrets; include schema version, timestamp, source DB identity and digest. Source evidence required for replay must be covered by the backup strategy as well as the DB.
+**Required hosted path:** Supabase Free has no included automatic database backups. Provide private off-host logical exports using a verified Supabase CLI/Postgres procedure, plus source/archive objects required for replay and operational identity/access metadata. Keep encryption keys and credentials protected and recoverable separately; do not bundle reusable secrets into ordinary financial exports. Storage objects require their own backup coverage. Include schema/migration version, scope, timestamp, digests and reconciliation controls. [Supabase backup guidance](https://supabase.com/docs/guides/platform/backups)
 
-Restore drill: stop app/jobs → preserve current DB → restore into a separate verified local path → validate integrity/schema → compare counts/financial controls → start on loopback → verify login and sample views → only then select the restored DB. Never overwrite the only working copy as the first recovery step. A backup task is incomplete until a restore drill passes.
+Begin with a backup before real imports, schema upgrades and corrections. The original proposed daily/seven-daily/four-weekly policy remains a target to qualify, not a working schedule. Measure export size, storage and egress against the free plan; record any revised recovery policy explicitly. A copy in the same Supabase project is not an off-host recovery path. Public CI logs/artifacts must never receive financial dumps or environment secrets.
 
-Document recovery point and time expectations after measuring the drill; do not promise untested RPO/RTO. Refresh cached market data after restore without reimporting duplicates. Reconcile abandoned jobs and scheduler ownership at startup.
+Restore drill: suspend mutations/scheduling → preserve the current target → restore into a separate isolated database/environment → restore referenced private evidence → validate migrations, identities/grants/RLS and financial controls → verify both logins, read-only broker configuration and sample views → reconcile durable job/alert state → only then select the restored target. Never overwrite the only working copy first. Verify the free-account/project limit permits the chosen drill; a local Postgres drill and a hosted access check are distinct pieces of evidence.
+
+Record measured recovery point/time and resume instructions, including free-project pause or exhausted-quota behavior. Do not promise an SLA or untested RPO/RTO. Refresh market data after restore without duplicate economics, recover expired leases/checkpoints and disclose missing intraday observations.
 
 ## Installation, upgrade and shutdown
 
-Tested foundation setup and maintenance commands are in [local development](local-development.md). The implementation must provide fresh-machine Windows instructions, supported Python/Node versions, locked dependencies, environment setup, local certificate setup, database migration, user bootstrap, fixture tests, launch and shutdown. Verify each command on the actual repository. Do not paste plausible commands into README before their manifests/scripts exist.
+Tested **offline foundation** setup/maintenance commands are in [local development](local-development.md). Hosted commands, Worker compatibility versions, Postgres migrations, Auth bootstrap, secret bindings and rollback instructions must be implemented and tested before being advertised. Provide fresh-machine Windows/local commands plus the actual hosted build/runtime qualification. A locally passing Python test does not establish Worker compatibility.
 
-Upgrade procedure: inspect release/schema notes → backup → stop writes → apply migrations → replay required derived data → run reconciliation/smoke checks → restart. On failure, restore a compatible backup rather than guessing at downgrade scripts. Graceful shutdown cancels jobs, closes HTTP clients and releases scheduler ownership; it does not leave a transaction open.
+Upgrade procedure: inspect release/schema notes → backup → suspend writes/scheduled dispatch → migrate the selected target → replay affected derived data → run reconciliation/security smoke checks → activate a versioned release and dispatch. On failure, restore a compatible backup or documented compatible application version. Worker shutdown closes resources; lease expiry/idempotency handle abrupt termination without a transaction spanning external waits. Do not assume a shutdown callback always executes.
 
-## Later remote access
+## Hosting qualification and activation
 
-Stage 6 compares Tailscale with Cloudflare Tunnel/Access after local acceptance. Preserve application authentication, HTTPS, CSRF, audit and backup even behind a gateway. Eventual private hosting is owner-authorised using free services only; verify the selected host and intended identities/access, examine SQLite host ownership and test remote logout/SSE. Do not publish a public portfolio, open firewall ports, change DNS or configure a tunnel during documentation/local development.
+The owner has selected Cloudflare + Supabase with free services only. Platform feasibility/security qualification is now an **early gate**, rather than leaving every hosting decision to Stage 6. Use synthetic accounts/data to establish private Postgres access, session/membership denial, atomicity, job recovery, streaming and resource budgets before real financial migration. Preserve final operational acceptance and actual release activation as explicit stage evidence.
+
+An origin reachable over the Internet must still disclose no financial data to anonymous/nonmember visitors. A custom domain, public Storage bucket or tunnel is not required by this target. Tailscale/Tunnel comparisons remain historical alternatives in the [hosting review](hosting-options.md); they are not the selected architecture. No production access has been configured merely by updating this document.

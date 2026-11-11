@@ -2,11 +2,11 @@
 
 Great Dyke Meridian is a private portfolio monitoring app in development. **AXIS** is its main dashboard. Two people have separate logins with equal full editing rights for one owner's Trading 212 Stocks and Shares ISA.
 
-The intended stack is Python 3.11+, FastAPI, SQLAlchemy, SQLite, React, Vite, Tailwind CSS and ECharts. Trading 212 is the primary broker-data source; CSV exports provide fallback and missing grouping metadata. Market prices and FX use a separate provider adapter, initially yfinance.
+The hosted target is Cloudflare + Supabase PostgreSQL, with React, Vite, Tailwind CSS and ECharts. Python/FastAPI/SQLAlchemy remain the preferred backend where free-runtime feasibility checks pass. SQLite supports the verified local evidence tooling. Trading 212 is the primary broker-data source; CSV exports provide fallback and missing grouping metadata. A separate market-data adapter supplies prices and FX; yfinance compatibility still needs hosting verification.
 
 ## Current status
 
-**Stage 1A foundation implemented and verified.** Exact-decimal SQLite persistence, Alembic migrations, evidence/audit records, isolated configuration and verified backup/restore commands are available. The HTTP app currently exposes liveness only; there is no usable portfolio UI or hosted deployment yet.
+**Local foundation, broker adapter and snapshot-evidence slices are verified.** Exact-decimal persistence, migrations, evidence/audit records, isolated configuration, backup/restore and holdings CSV preview/atomic import are available. The broker adapter is tested with mocked HTTP. The app exposes liveness only; there is no usable portfolio UI or hosted deployment yet. Full Stage 1 financial replay and reconciliation remain open.
 
 Start with the tested [local development guide](docs/local-development.md). The required provider YAML is verified; see [source contracts](docs/stage-0-source-verification.md) for account-history limitations.
 
@@ -25,7 +25,7 @@ The planning baseline was established on **11 November 2026** from the owner's r
 
 - One Trading 212 Stocks and Shares ISA; two equally authorised, individually authenticated users. No role hierarchy or separate portfolios in the initial scope.
 - Portfolio planning target: £100,000 by 2030; retain 30 April 2030 from the original brief unless explicitly revised.
-- Localhost first, then private hosting on free services only after security and recovery acceptance. See [hosting options](docs/hosting-options.md).
+- Cloudflare + Supabase is the approved free hosting target. Runtime, PostgreSQL, authentication and storage qualification now happen early; no real data is exposed before security/recovery acceptance. See [the hosting decision](docs/decisions/0001-cloudflare-supabase.md).
 - Broker integration is read-only: no placing, changing or cancelling orders.
 - Groups are labels on holdings, derived from verified CSV group context and reviewed assignments. In the inspected export, Slice is the holding ticker and the Total row's Name supplies group context. There are no broker-pie objects, pie targets or pie projections in the app.
 - GBP is the reporting currency. Imported facts, estimated values and calculated results remain distinguishable.

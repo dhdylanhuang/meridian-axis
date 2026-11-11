@@ -2,6 +2,12 @@
 
 Status: ADOPTED target logical model; Stage 1A implements accounts, import_log, source_records and audit_log with initial migration and precise storage types. Other tables below remain planned. Add tables when their delivery stage needs them; this model is not an instruction to build every table in Stage 1.
 
+## Production platform amendment
+
+The owner selected Supabase PostgreSQL for production; SQLite remains local evidence tooling. Preserve the entity/identity/provenance contracts below. Port migrations and partial uniqueness deliberately; enable RLS and revoke anonymous/unrelated-user grants before any financial route. Explicit approved portfolio membership and server-side mutation rules remain required; managed Auth alone does not authorize rows. Native Postgres parity is not a hosted pooler/Hyperdrive or Supabase Auth test. See [ADR 0001](decisions/0001-cloudflare-supabase.md).
+
+The foundation continues to preserve canonical Decimal text in both dialects; exact PostgreSQL NUMERIC can be adopted later through a reviewed migration and measured query need. No JavaScript Number or implicit float conversion is permitted at ledger/JSON boundaries. The source checkout migration chain is authoritative, not the historical SQLite-only proposed DDL.
+
 ## Identity and precision
 
 - `user_id` identifies an application login. `owner_id` identifies the one beneficial owner. `account_id` identifies an actual broker account and includes environment and wrapper. Two logins never create two tax owners.

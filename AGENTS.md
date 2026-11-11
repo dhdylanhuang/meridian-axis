@@ -6,7 +6,7 @@
 2. Read [product requirements](docs/product-requirements.md), [architecture](docs/architecture.md) and the current stage in [development stages](docs/development-stages.md).
 3. Read the domain contract for your task. Read [agent workflow](docs/agent-workflow.md) before coordinating parallel work.
 
-Current repository status: implementation authorised; source verification and foundation delivery are underway. Check the actual tree and status document before claiming any feature exists.
+Current repository status: local evidence/import foundations verified; Cloudflare + Supabase is the approved hosted target and is undergoing qualification. Check the actual tree and status document before claiming any feature exists.
 
 ## Authority and scope
 
@@ -18,10 +18,10 @@ Current repository status: implementation authorised; source verification and fo
 
 ## Engineering rules
 
-- Keep a modular monolith, one SQLite database per environment and one scheduler owner for the local stage. Do not introduce microservices, Redis, a queue server, a generic plugin framework or Kubernetes without a concrete requirement and a recorded decision.
+- Keep a modular application. Production uses private Supabase PostgreSQL and Cloudflare; SQLite is local tooling. Preserve Python/FastAPI where the hosting qualification passes. Bounded jobs use durable leases, checkpoints and retry times instead of a resident APScheduler process. Read [ADR 0001](docs/decisions/0001-cloudflare-supabase.md) before changing runtime/persistence.
 - Calculation modules are pure and independent of HTTP, SQLAlchemy, provider SDKs and React. Adapters return normalised contracts; they do not own financial formulas.
 - Imported evidence is immutable. Corrections, group overrides and provider revisions create traceable records; they do not rewrite raw evidence.
-- Store precise decimal ledger values without SQLite floating-point coercion. Convert to floating-point arrays only at the analytics boundary.
+- Store precise decimal ledger values without database or JavaScript floating-point coercion. Keep canonical decimal strings at public JSON boundaries; convert to floating-point arrays only at the analytics boundary.
 - All financial output has a source, as-of date, currency and availability/quality state. Never fill an unsupported metric with a plausible number.
 - Do not use intraday quotes as approved daily risk inputs. Do not use provider cost/PnL as HMRC results.
 - Follow the verified provider specification. Never invent endpoint paths, IDs, response fields, permissions or quote timestamps.

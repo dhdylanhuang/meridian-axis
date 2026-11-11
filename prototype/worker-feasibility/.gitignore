@@ -1,0 +1,10 @@
+.venv*/
+.wrangler/
+python_modules/
+src/vendor/
+.python_packages/
+.pytest_cache/
+.ruff_cache/
+.cache/
+*.log
+dist/

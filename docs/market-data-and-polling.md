@@ -1,12 +1,12 @@
 # Market data, intraday monitoring and daily closes
 
-Status: CONFIRMED polling requirements with ADOPTED correctness resolutions. Requested refresh is near-live monitoring, not a real-time-feed guarantee.
+Status: CONFIRMED polling requirements with ADOPTED correctness resolutions. The owner-approved Cloudflare + Supabase target replaces the resident polling process with bounded scheduled work; see [ADR 0001](decisions/0001-cloudflare-supabase.md). No hosted polling capability is implemented or verified yet. Requested refresh remains near-live monitoring, not a real-time-feed guarantee.
 
 ## Provider contracts
 
 Keep broker account sync and market-data refresh separate. A broker position price may support held-instrument monitoring, but unheld benchmarks, FX and historical closes require the market-data adapter. Expose capabilities: batch quotes, history, corporate actions, quote timestamps, reported delay, official-close status and supported symbols. Unsupported capabilities return explicit results, not guessed routes.
 
-Initially use yfinance behind this boundary. Pass adjustment, corporate-action, timezone and repair options explicitly; persist selected basis and provider/library version. Its documented download API has configurable OHLC adjustment and repair behaviour. [yfinance reference](https://ranaroussi.github.io/yfinance/reference/api/yfinance.download.html)
+The initial market-adapter candidate remains yfinance behind this boundary. Its Worker dependency/runtime suitability and provider access must pass qualification; ordinary CPython compatibility does not establish that. A substitute provider needs a recorded field/capability contract rather than guessed endpoints or a hidden freshness reduction. Pass adjustment, corporate-action, timezone and repair options explicitly; persist selected basis and provider/library version. Its documented download API has configurable OHLC adjustment and repair behaviour. [yfinance reference](https://ranaroussi.github.io/yfinance/reference/api/yfinance.download.html)
 
 Free/unofficial prices are labelled as such. A daily provider close may be approved by the app without being an official exchange close. Never upgrade a source's authority through a UI label.
 
@@ -33,15 +33,25 @@ FX uses its own session/provider policy and may remain relevant while an underly
 
 ## Worker lifecycle
 
-One scheduler owner runs inside the local FastAPI process. Use lifespan startup/shutdown and a bounded executor for blocking calls. No job overlaps itself. Manual refresh shares job state and provider rate budgets; it does not bypass them. One app worker is the supported initial deployment.
+**Production target:** one scheduling authority invokes bounded work, either a Cloudflare scheduled entry point or Supabase Cron invoking a protected endpoint, selected through the early hosting spike. Do not run both for the same job family. The prior local FastAPI/APScheduler singleton design is superseded for hosting; no continuously running thread, process or in-memory timer is assumed. Manual refresh shares persisted job/rate state and never bypasses it.
+
+Each job has a deterministic scope/cycle identity, status, lease owner/expiry, attempt count, retry-not-before and committed checkpoint in Postgres. Claim work atomically. A lease has a bounded expiry and generation/fencing check so a stale owner cannot commit after takeover. One active logical cycle is permitted per account/job family; duplicate scheduled deliveries and retried commits must not duplicate observations, alerts or financial effects. Exactly-once delivery is not assumed.
 
 Each cycle: snapshot the eligible universe/calendar → fetch price/FX outside DB transactions → validate/normalise observations → commit short writes and the poll result → compute eligible live valuation/alerts → publish committed changes. A partial batch retains last-good data for failed symbols, shows mixed as-of/coverage, and never silently converts failed responses to zero.
 
-A process crash cannot leave a cycle forever trusted as running: startup marks abandoned runs and backfills daily source data. When the local application is closed, it does not poll. Catch-up cannot reconstruct missed intraday ticks; disclose gaps. Cancel pending waits on shutdown and close clients/executors cleanly. No database transaction spans a sleep, network call or rate-limit wait.
+The invocation does only the bounded pages/symbol batches supported by its measured wall-clock, CPU and subrequest budget, then records progress and returns. Persist a retry/continuation time rather than waiting for the next poll or a long backoff inside the Worker. An expired lease is recoverable by a later invocation; an abrupt termination cannot leave a job permanently trusted as running. Close clients when possible, but correctness does not depend on a shutdown callback. No database transaction spans network I/O, a sleep or a rate-limit wait.
+
+Hosted dispatch can continue while the browser is closed if the selected services are active; free-plan pause, quota and provider outages can interrupt it. Detect missed cycles and backfill eligible daily data on recovery. Catch-up cannot recreate missed intraday ticks or retroactively promise continuous alerts. Preserve gaps and monitor scheduler last-success separately from a user's browser session. The offline foundation does not provide an always-on hosted scheduler.
+
+Requested intervals must be supported by the chosen trigger and measured provider budget. The default is still 60 seconds; do not advertise a configurable faster interval that the deployed scheduling mechanism cannot honor. [Supabase Cron scheduling](https://supabase.com/docs/guides/cron), [Cloudflare Worker limits](https://developers.cloudflare.com/workers/platform/limits/)
 
 ## Storage and retention
 
-Store every successful eligible observation in `intraday_prices` with its poll ID. Default retention **90 days**, configurable. Retain approved daily closes indefinitely. Retention cleanup must preserve daily-selection and alert evidence: retain the selected source observation in a durable daily record or archive the referenced data before deleting short-lived rows.
+Preserve every successful eligible observation in the logical `intraday_prices` history with its poll ID. Default retention remains **90 days**, configurable; approved daily closes are indefinite. Supabase Free's database budget must be measured against expected scope, indexes and provenance before production. The [hosting capacity example](hosting-options.md) shows why a naive row-per-quote 90-day table may not fit; it is synthetic sizing, not a measured account allocation.
+
+If storage measurements require it, keep recent observations in Postgres and move older immutable day/session blocks to encrypted, private, lossless archives with manifests and authorized retrieval. This physical design is conditional on a tested size/egress budget, exact round-trip precision, date-range queries, key recovery and independent backup. Preserve instrument, raw and GBP prices, timestamps, source, currency/unit, FX provenance, poll ID and quality. Do not declare the history available if only an unreadable archive exists, and do not silently shorten retention or reduce sampling to fit a free quota. A scope reduction requires the owner's explicit decision.
+
+Retention cleanup preserves daily-selection and alert evidence beyond tick expiry: retain the selected source facts in a durable daily/alert record or independently backed-up evidence archive. Publish an archive manifest only after verifying its complete write/checksum and read-back; remove hot rows only after durable references and retrieval are proven. Daily risk inputs remain approved daily selections, never reconstructed from arbitrary archived intraday points.
 
 Every polling cycle, including failures, writes `import_log` with `operation_type=price_poll`, start/end, success/failure counts, source and redacted error. Treat a cycle as one poll run; observations link to it. Keep default import-history views focused on financial imports, with polling operations separately filterable. Configure log retention separately from immutable financial audit; record cleanup outcomes without recursively auditing every deleted tick.
 
@@ -57,7 +67,9 @@ Daily portfolio valuation cutoff must be explicit: use the latest eligible instr
 
 ## Backoff and failures
 
-Use exponential backoff with jitter for retryable failures, cap the exponential component at **15 minutes**, and honour any later provider reset/Retry-After time. A successful call resets the consecutive-failure counter. Authentication/permission/schema errors are actionable failures, not endless retries. Backoff is per failing provider/job so one source does not unnecessarily disable another.
+Use exponential backoff with jitter for retryable failures, cap the exponential component at **15 minutes**, and honor any later provider reset/Retry-After time. Store failure count, next eligible request time and provider/endpoint rate-reset state durably; atomically reserve shared request budgets across Worker instances and manual/scheduled callers. Return the invocation when work is not yet eligible rather than sleeping until reset. The current offline broker client's in-process pacing/retry state is not this production coordination mechanism.
+
+A successful call resets the appropriate consecutive-failure counter. Authentication/permission/schema errors are actionable failures, not endless retries. Backoff is per failing provider/job so one source does not unnecessarily disable another. Persist only safe error categories/statuses; credentials, headers and raw upstream error bodies never enter the operation log.
 
 After a configurable consecutive-failure threshold, show a persistent AXIS banner with source, last success and safe reason. Preserve last-good values and their ages. A missing mapping, invalid price, unavailable FX and transport error are distinct states.
 
@@ -65,10 +77,14 @@ During an open session, the requested stale threshold is **2× configured pollin
 
 ## UI stream and alerts
 
-Use authenticated SSE for both users. Send a snapshot version, changed values and quality changes. Include periodic heartbeat/refresh-health information even when prices are unchanged. Reconnect always triggers an authoritative snapshot fetch; a lost delta cannot permanently corrupt the display.
+Authenticated SSE remains preferred, but its Worker lifecycle, session expiry and reconnection behavior must be tested before selecting a hosted implementation. Authorized private Supabase Realtime can be adopted after an explicit implementation decision if it better fits measured free-runtime limits. It is a transport alternative, not permission for a public channel or a parallel source of truth.
+
+Send a snapshot version, changed values and quality changes; batch cycle-level deltas rather than emitting one database-row notification per instrument to every client. Include heartbeat/refresh-health information even when prices are unchanged. Apply the approved-membership boundary to both users, revoke expired/removed access and test anonymous/nonmember denial. Reconnect fetches an authoritative snapshot; a lost delta cannot permanently corrupt the display. Measure messages/second, monthly delivery and egress with both users; no assumption that low user count alone guarantees quota fit.
 
 Daily-move alerts compare a compatible current quote with the prior approved session close. Live weight/drawdown alerts use a clearly labelled intraday GBP valuation and its coverage. They never overwrite end-of-day alert basis or risk data. Threshold-crossing persistence is defined in [alerts](alerts.md).
 
 ## Tests
 
-Use fixed clocks and mocked adapters: regular session, DST boundary, holiday, half-day, Asian lunch break, FX-only open period; held-only scope; batch limits; failure preserves last good; successful unchanged quote updates fetch health; unknown quote time disclosed; cap and provider-reset precedence; duplicate-worker protection; shutdown cancellation; no DB transaction across waits; missed-session backfill; provisional close excluded from risk; same-session 0.5% comparison; SSE reconnect/snapshot and both sessions; retention preserves referenced closing evidence.
+Use fixed clocks and mocked adapters: regular session, DST boundary, holiday, half-day, Asian lunch break, FX-only open period; held-only scope; batch limits; failure preserves last good; successful unchanged quote updates fetch health; unknown quote time disclosed; cap and later provider reset survive process replacement; concurrent/manual dispatch shares rate budgets; duplicate delivery and expired-lease takeover cannot duplicate effects; a stale owner cannot commit; no DB transaction across external waits; missed-session backfill; provisional close excluded from risk; same-session 0.5% comparison; authenticated stream reconnect/snapshot for both sessions and denial for anonymous/nonmembers; retention preserves referenced closing evidence.
+
+The early hosted feasibility gate additionally requires representative CPU/memory measurements, Postgres lease/idempotency tests, quota-aware batch delivery and a lossless 90-day retention/restore sizing result. Archive tests cover precision, corrupt/incomplete blobs, atomic manifest publication, unauthorized access and key recovery. These are required evidence, not tests claimed to exist today.

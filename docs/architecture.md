@@ -1,29 +1,36 @@
 # Architecture
 
-Status: ADOPTED target architecture. Stage 1A persistence/configuration/maintenance and liveness are implemented; the financial application, auth, scheduler and frontend remain later slices.
+Status: **CONFIRMED production platform change, 11 November 2026**. The owner selected Cloudflare + Supabase, replacing production SQLite and a continuously running APScheduler process. Preserve Python/FastAPI where a measured runtime spike passes. [ADR 0001](decisions/0001-cloudflare-supabase.md) records the decision, superseded assumptions and outstanding gates.
+
+**Implemented state remains an offline SQLite foundation**, with configuration, maintenance, liveness and observation adapters. It is not a deployed Postgres service. Hosted authentication, production migrations, scheduled jobs, frontend and analytics are not established by this architecture document; see the [current handoff](status-and-handoff.md) for exact verified slices.
 
 ## Choose the smallest system that can be checked
 
-Use a modular monolith: one FastAPI application, one React application and one local SQLite database per environment. A scheduler owned by the backend process runs bounded jobs. The local launch supports one application worker. Two equal full-editor logins share the same services and one live ISA. No initial role hierarchy is required; the tax module is an optional later extension.
+Keep a modular application: React static assets on Cloudflare, an API under the same browser origin, and private Supabase Postgres persistence. Python/FastAPI on Cloudflare Workers is the first compatibility candidate, not an assertion that the current CPython process deploys unchanged. Authenticated bounded scheduled invocations replace a resident scheduler. Two equal full-editor logins share one owner's live ISA; Demo and Live evidence remain isolated. No initial role hierarchy is required; tax remains a later optional extension.
+
+Qualify hosting before building further SQLite-specific production features: exact Decimal persistence, atomic imports, private access, dependency compatibility, representative analytics, job recovery, storage budgets and restore must pass. Use synthetic data first. The owner selected the platform; a TypeScript backend rewrite, reduced polling/retention or an unmeasured claim that every calculation fits free compute is not implied. The [hosting review](hosting-options.md) records current published budgets and candidate alternatives.
 
 This scale does not justify distributed jobs, microservices, Redis, event sourcing of every internal operation or a generic provider plugin registry. Preserve immutable financial evidence and audit without turning every read model into an event-stream platform.
 
 ```mermaid
 flowchart LR
-    U[Owner and partner] --> UI[React terminal dashboard]
-    UI -->|session and CSRF| API[FastAPI routes]
+    U[Owner and partner] --> UI[Cloudflare React static assets]
+    UI -->|same-origin session and CSRF| API[Cloudflare API entry point]
+    API --> AUTH[Supabase Auth and approved membership]
     API --> APP[Application services]
-    JOB[One scheduler owner] --> APP
+    JOB[One scheduled invocation authority] -->|authenticated bounded work| APP
     APP --> CALC[Pure calculation modules]
     APP --> STORE[Repositories and SQLAlchemy]
-    STORE --> DB[(SQLite)]
+    STORE --> DB[(Private Supabase Postgres)]
+    APP --> LEASE[Durable leases and checkpoints]
+    LEASE --> DB
     APP --> BROKER[Trading 212 read adapter]
     APP --> MARKET[Price and FX adapter]
     CSV[CSV files] --> IMPORT[Import normalisers]
     XLS[Excel baseline] --> IMPORT
     IMPORT --> APP
-    APP -->|after commit| SSE[Authenticated SSE snapshot updates]
-    SSE --> UI
+    APP -->|after commit| STREAM[Authorized versioned updates]
+    STREAM --> UI
 ```
 
 ## Dependency rules
@@ -52,13 +59,15 @@ An account can show broker-observed current positions before history is complete
 
 ## Runtime and concurrency
 
-- Use FastAPI lifespan to create and close application resources and scheduler ownership. Verify the selected scheduler version against its documentation before wiring APIs.
-- Async request handling must not execute blocking yfinance, workbook parsing or heavy analytics on the event loop. Use bounded worker threads for blocking I/O. Large calculations run as jobs off the request path; introduce a process worker only if profiling justifies it.
-- Do not share SQLAlchemy sessions across threads/jobs. Start a fresh unit of work for each commit.
-- Fetch and validate externally before opening a short write transaction. Stage a complete sync generation before making it visible.
-- Enable SQLite foreign keys, configure a bounded busy timeout and evaluate WAL in the local integration tests. WAL does not permit concurrent uncoordinated writers or multi-machine shared storage.
-- Allow only one active job per account/job family. Manual operations join or report an existing job. Job identity and startup ownership protect against duplicate schedulers/reload processes.
-- Start with one worker and no independently started second scheduler. If several workers become necessary, move scheduling to a designated process and record the architecture change first.
+- Worker instances are disposable and can run concurrently. FastAPI lifespan may manage request/runtime resources after compatibility verification; it must not start an always-on scheduler. Threads, filesystem durability and ordinary CPython/native package support are not assumed in Workers.
+- Select **one** scheduling authority during the hosting spike: Cloudflare scheduled entry points or Supabase Cron invoking a protected bounded endpoint. Do not enable both for the same family. Manual refresh uses the same persisted job/rate state.
+- Store job identity, status, lease owner/expiry, retry-not-before, provider rate-reset state, attempt count and checkpoints in Postgres. Acquire/renew a bounded lease atomically; stale owners cannot commit a newer generation after another owner takes over. Leases limit active work without pretending that network delivery is exactly once.
+- Each invocation does bounded work, commits its progress and returns. Persist continuation and retry time for a later invocation; do not sleep across worker lifetimes or rely on in-memory timers, locks or counters for correctness. The offline broker adapter's in-process pacing is insufficient by itself for production concurrency.
+- Do not share ORM sessions across invocations. Fetch and validate external data outside short write transactions. Use real Postgres transactions for financial commits; multiple HTTP Data API calls are not one transaction. Stage a complete accepted sync generation before making it visible; failed later pages do not advance its accepted checkpoint.
+- Choose and measure the Postgres driver/connection path. Current Cloudflare documentation supports Python Hyperdrive with synchronous SQLAlchemy, while async ORM lacks greenlet support. Use least-privilege database roles and transaction-local authorization where needed; prove pooling never leaks a prior user's context. Do not use query caching for session/authorization checks or mutable financial freshness without a separately correct policy.
+- CPU-intensive imports/analytics are bounded jobs rather than request-handler loops. Qualify actual package versions, memory and CPU, and preserve pure formula contracts. Failure to fit is a recorded implementation decision, not permission to silently move authoritative formulas into React.
+
+The previous one-process/one-SQLite-writer model remains valid for the offline foundation and its tests. Its WAL/busy-timeout and local backup behavior are not production Postgres or multi-instance evidence.
 
 ## Proposed source layout
 
@@ -75,9 +84,9 @@ backend/
     calculations/        # returns, risk, correlation, attribution; tax later
     adapters/            # trading212, csv, excel, yfinance, calendars
     persistence/         # models, repositories, database setup
-    jobs/                # scheduling, ownership, backfill
-    security/            # sessions, passwords, CSRF
-  migrations/
+    jobs/                # bounded dispatch, database leases, backfill
+    security/            # Auth integration, sessions, CSRF, membership
+  migrations/            # current SQLite history; Postgres evolution still to implement
   tests/                 # unit, integration, contract; synthetic fixtures
 frontend/
   package.json
@@ -97,10 +106,14 @@ Each computed result references a ledger revision, price/FX selection revision, 
 
 Imports invalidate affected dates and dependent results. A late acquisition can invalidate a prior disposal's 30-day allocation. Group changes invalidate grouped views. Price revisions invalidate affected valuations and analytics. Failed recomputation does not silently replace a prior valid result; display its age and current invalidation state.
 
-SSE publishes only committed result versions. On reconnect, the frontend fetches a complete snapshot. Transport events are not the source of truth.
+Publish only committed result versions. Authenticated SSE remains the preferred delivery contract, subject to Worker streaming/runtime tests. Authorized private Supabase Realtime batched updates are an alternative if recorded after qualification; accepting Cloudflare + Supabase does not automatically change the transport requirement. On reconnect, the frontend fetches a complete snapshot. Transport events are not the source of truth.
 
 ## Recovery and evolution
 
-Introduce Alembic migrations with the first schema, plus an initial backup/restore workflow before real financial imports. Schema upgrades, data backfills and analytical recomputation are separate steps with separate evidence. SQLite remains appropriate until measured operational limits or additional ownership requirements justify a change.
+The first SQLite migration and local online-backup workflow are implemented foundations. Add reviewed Postgres migrations and enforce equivalent uniqueness, account scope, evidence immutability and transaction invariants before hosted financial imports. Preserve exact values and IDs across any SQLite-to-Postgres transfer; validate controls in a separate target database before selecting it. Schema upgrades, backfills and analytical recomputation remain separate operations.
 
-Sources: [FastAPI lifespan](https://fastapi.tiangolo.com/advanced/events/), [APScheduler 3.x guide](https://apscheduler.readthedocs.io/en/3.x/userguide.html). These references guide lifecycle decisions; no dependency version is installed or pinned yet.
+Supabase Free lacks automatic database backups. A production gate must prove private off-host exports and restore of Postgres **and** necessary source/archive evidence. Do not treat an object archive as both the only copy and its own backup. Keep daily data indefinitely and the requested 90-day intraday history; if measured database size requires compact private archives, preserve lossless retrieval/provenance and verify the complete free-storage budget. A shorter retained history requires an explicit owner scope decision.
+
+The former recommendation to keep production SQLite until scaling pressure is **superseded by the owner's hosted-platform decision**, rather than by an observed SQLite performance failure. Tailscale/Cloudflare Tunnel remain documented historical alternatives, not the selected hosted topology.
+
+Sources: [Cloudflare FastAPI](https://developers.cloudflare.com/workers/languages/python/packages/fastapi/), [Python Hyperdrive and SQLAlchemy limits](https://developers.cloudflare.com/hyperdrive/examples/python-workers/), [Supabase Cron](https://supabase.com/docs/guides/cron), [Supabase free backup guidance](https://supabase.com/docs/guides/platform/backups). The [hosting review](hosting-options.md) owns dated quota details. No hosted capability test is claimed here.

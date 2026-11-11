@@ -20,7 +20,7 @@ Last reviewed: **11 November 2026**, including implementation/delegation authori
 | Application/database/tests | Local foundation + adapter/evidence slices verified | Locked Python backend, migrations, safe holdings preview/import and mocked broker adapter; full Stage 1 still open |
 | Frontend/auth/scheduler | Not started | No financial endpoint or portfolio UI; Stage 2 security remains a gate |
 | Secrets and Live access | Not configured | No credentials requested or used |
-| Remote access | Required, free services only | [Hosting review](hosting-options.md); no host selected or configured |
+| Hosted target | Cloudflare + Supabase approved | [ADR 0001](decisions/0001-cloudflare-supabase.md); dedicated free projects authorised; none created |
 | Commit/push | Explicitly authorised per verified stage | Owner has authorised implementation with subagents and stage commits/pushes |
 
 ## Public-content policy
@@ -48,22 +48,28 @@ The public-safe revision audit checked 29 Markdown files (27 under docs), 69 loc
 - Tax becomes necessary because ISA market value passes an annual subscription limit.
 - Remaining scenario/RAG/stress defaults are owner-approved.
 
-## Source-contract checkpoint ? 11 November 2026
+## Source-contract checkpoint - 11 November 2026
 
 Direct OpenAPI YAML and official JSON were downloaded and parsed: structurally identical, 17 paths and 38 schemas. Seven read routes, exact query/continuation contracts, provider rate budgets and unsupported semantics are recorded in the Stage 0 field matrix. This accepts the public provider-contract slice, not the full account-history gate. Owned-file link/fence/whitespace checks passed. No authenticated broker request or financial computation was performed.
 
-## Stage 1A accepted evidence ? 11 November 2026
+## Stage 1A accepted evidence - 11 November 2026
 
-Python 3.12.7, uv 0.13.7; pinned dependency versions/hashes in `backend/uv.lock`. From `backend`: `python -m pytest tests/test_persistence.py tests/test_config.py tests/test_app.py tests/test_backup.py -q` ? **36 passed**. Scoped Ruff check and format checks passed. Actual CLI `db-init`, `backup` and separate-path `restore` smoke commands succeeded using an empty synthetic Demo account in ignored storage. The tests verify committed WAL evidence/precision survives restore, corrupt/mismatched backups fail, original files are retained, and cross-account source links are rejected.
+Python 3.12.7, uv 0.13.7; pinned dependency versions/hashes in `backend/uv.lock`. From `backend`: `python -m pytest tests/test_persistence.py tests/test_config.py tests/test_app.py tests/test_backup.py -q` - **36 passed**. Scoped Ruff check and format checks passed. Actual CLI `db-init`, `backup` and separate-path `restore` smoke commands succeeded using an empty synthetic Demo account in ignored storage. The tests verify committed WAL evidence/precision survives restore, corrupt/mismatched backups fail, original files are retained, and cross-account source links are rejected.
 
 This accepts slice 1A, not all Stage 1: economic events, CSV/API aliases, group workflows and workbook reconciliation are not implemented. CI is configured for Windows/Linux but no remote CI result is asserted at this checkpoint. There are no credentials, real imported balances or financial HTTP routes. Source/audit immutability guards ordinary ORM operations; it is not administrator-proof. Migration packaging currently requires the source checkout. See local development for commands and limits.
 
-## Stage 1B adapter checkpoint ? 11 November 2026
+## Stage 1B adapter checkpoint - 11 November 2026
 
-`python -m pytest tests/test_trading212.py -q` ? **39 passed**; owned-file Ruff checks passed. Independent review found no material blocking issue in this observation adapter. Direct YAML/schema verification preceded implementation. No authenticated broker request was made. Full Stage 1B remains open for normalized events, verified aliases, persisted sync/checkpoints and source-backed cash/quantity replay. The preceding Stage 1A commit `073e2df` also passed [GitHub Actions on Windows/Linux](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43101048613).
+`python -m pytest tests/test_trading212.py -q` - **39 passed**; owned-file Ruff checks passed. Independent review found no material blocking issue in this observation adapter. Direct YAML/schema verification preceded implementation. No authenticated broker request was made. Full Stage 1B remains open for normalized events, verified aliases, persisted sync/checkpoints and source-backed cash/quantity replay. The preceding Stage 1A commit `073e2df` also passed [GitHub Actions on Windows/Linux](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43101048613).
 
-## Stage 1C snapshot-evidence checkpoint ? 11 November 2026
+## Stage 1C snapshot-evidence checkpoint - 11 November 2026
 
-The holdings parser, preview, durable import service and CLI are verified on invented data. Full backend suite: `python -m pytest -q` ? **137 passed**; Ruff lint/format passed. Tests include Total exclusion, exact arithmetic, N/A/nonadditive dividends, duplicate races, account isolation, transaction failure after inserted rows, safe failed-run persistence, source preservation and no database writes from preview. Independent service review found no material blocker; the oversized-input digest caveat was fixed and regression-tested.
+The holdings parser, preview, durable import service and CLI are verified on invented data. Full backend suite: `python -m pytest -q` - **137 passed**; Ruff lint/format passed. Tests include Total exclusion, exact arithmetic, N/A/nonadditive dividends, duplicate races, account isolation, transaction failure after inserted rows, safe failed-run persistence, source preservation and no database writes from preview. Independent service review found no material blocker; the oversized-input digest caveat was fixed and regression-tested.
 
 This accepts only the source-evidence portion of 1C. No economic ledger, PDF importer, group edit workflow, workbook migration or complete reconciliation is delivered. The three supplied statements were inspected read-only; the additional transactions statement is cash-only. It does not provide missing earlier executions or opening controls. Never re-ask for these same PDFs as though they were not inspected. Hosting is now owner-approved Cloudflare + Supabase, with an early runtime/Postgres/capacity/security qualification gate; the SQLite foundation is local tooling.
+
+## Hosting qualification in progress
+
+Cloudflare + Supabase is owner-selected. Dedicated free projects are authorised; the owner handles sign-in. Provider setup through computer use stopped because browser access was unavailable and the native fallback could not verify the browser URL confidently. No provider project, deployment, API credential or DNS change was created. Resume through supported provider CLI authentication or a verified dashboard session; never bypass the browser restriction.
+
+The isolated [Python Worker probe](worker-feasibility.md) passed local runtime smoke and non-deploying bundle checks. It did not connect to PostgreSQL or measure hosted CPU, Auth, analytics, network/provider compatibility or retention capacity. A separate PostgreSQL foundation migration/test slice is under qualification; report its CI-backed outcome before calling parity verified. Production auth/jobs/UI remain unimplemented.

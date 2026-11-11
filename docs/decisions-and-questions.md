@@ -9,7 +9,7 @@ Baseline: 11 November 2026. This register distinguishes explicit owner requireme
 | DC01 | Great Dyke Meridian; AXIS summary; private monitoring app | Original brief |
 | DC02 | Two separate logins, one owner's portfolio | Explicit owner clarification |
 | DC03 | Local first; private hosting required after security/recovery gates; free services only | Original brief, superseded hosting/budget clarification |
-| DC04 | Fixed Python/FastAPI/SQLAlchemy/SQLite and React/Vite/Tailwind stack; ECharts preferred | Original brief |
+| DC04 | React/Vite/Tailwind/ECharts; preserve Python/FastAPI/SQLAlchemy where hosted feasibility passes. Production PostgreSQL replaces SQLite. | Original stack superseded in part by explicit Cloudflare/Supabase approval; ADR 0001 |
 | DC05 | GBP reporting, source/FX provenance, offline calculation tests | Original brief |
 | DC06 | Groups from export context; inspected Slice=ticker, Total-row Name=group; reviewed assignments; no pie objects/targets/projections/RAG | Original intent corrected by CSV evidence |
 | DC07 | Trading 212 API v0 primary; CSV fallback/enrichment; verify YAML; Demo default; explicit Live | Later owner amendment |
@@ -23,7 +23,9 @@ Baseline: 11 November 2026. This register distinguishes explicit owner requireme
 | DC15 | Re-arm alerts after recovery | Explicit owner answer |
 | DC16 | Any group drawdown >=10%; portfolio largest peak-to-trough fall >=2% within two trading days | Owner answer plus follow-up selection |
 | DC17 | July observation date unknown; preserve uncertainty | Explicit owner answer |
-| DC18 | GitHub public; actual financial data/source files stay local, examples synthetic | Owner visibility statement; conservative publication policy |
+| DC18 | GitHub public; financial runtime/evidence stay private, public examples synthetic | Owner visibility statement and approved private hosted target |
+| DC19 | Cloudflare + Supabase, free services only; production PostgreSQL and bounded scheduled jobs; retain Python where feasibility passes | Explicit owner approval; [ADR 0001](decisions/0001-cloudflare-supabase.md) |
+| DC20 | Create dedicated free projects; owner handles account sign-in | Explicit owner setup instruction; do not reuse unrelated projects |
 
 ## Adopted engineering decisions
 
@@ -31,7 +33,7 @@ These are architect choices made for a coherent, minimal implementation plan. Th
 
 | ID | Choice | Rationale / authoritative home |
 | --- | --- | --- |
-| DE01 | Modular monolith, single scheduler owner, separate environment DBs | Small local app; architecture |
+| DE01 | Modular application; Cloudflare + private Supabase Postgres; one scheduled-job authority with durable leases; isolated environments | Owner-approved platform; ADR 0001 supersedes local resident scheduler |
 | DE02 | Pure financial modules and narrow broker/market adapters | Calculations remain provider-independent; architecture |
 | DE03 | Separate source evidence, normalised economics and rebuildable results | Avoid duplicate imports and hidden rewrites; data model |
 | DE04 | Immutable labels plus effective membership/overrides | Renames and syncs preserve provenance; imports |
@@ -46,7 +48,7 @@ These are architect choices made for a coherent, minimal implementation plan. Th
 | DE13 | Global clustering uses annotations; group-order mode draws boundaries | Clusters can interleave groups; correlation |
 | DE14 | Participation-ratio effective bets; raw/shrunk estimator explicit | Reproducible diagnostics; correlation |
 | DE15 | Security/audit/migrations/backup start before usable real-data UI | Retrofitting loses evidence; stages |
-| DE16 | Same-origin local HTTPS, Secure sessions, Argon2id | Meet local security requirements; security |
+| DE16 | Same-origin HTTPS; preferred Supabase Auth with Secure HttpOnly BFF sessions and CSRF, subject to qualification | ADR 0001 supersedes local password-hash implementation; security |
 | DE17 | Polling cycles retained in typed import_log and filtered separately | Preserve requested logging without drowning imports; polling |
 | DE18 | Legacy workbook facts retained, known defects excluded from active calculations | Reconcile without institutionalising errors; workbook |
 | DE19 | Historical attribution uses effective membership; current exposure uses current groups | Prevent unlabelled historical restatement; data model |
@@ -57,7 +59,7 @@ Resolve when a task depends on them, not as a pretext to stop all work. Do not r
 
 | ID | Question / evidence needed | Proposed handling meanwhile | Blocks |
 | --- | --- | --- | --- |
-| Q01 | One ISA confirmed; GBP primary currency confirmed; connected identity and history still need source verification | Verify connected identity/coverage; owner supplied annual/activity PDF statements for read-only inspection; do not re-ask account scope | Full replay/since-inception claims |
+| Q01 | One ISA confirmed; GBP primary currency confirmed; connected identity and history still need source verification | Verify connected identity/coverage; three PDFs inspected read-only; see statement contract; do not re-ask account scope | Full replay/since-inception claims |
 | Q02 | Snapshot and three PDF structures verified; complete execution-history export/API aliases remain unverified | Slice=ticker, Total-row Name=group; see CSV contract | Transaction CSV parser and event dedupe |
 | Q03 | Opening cash/holdings and complete earlier acquisitions remain unestablished after three PDF inspections; account-boundary transfers/corporate actions still need reconciliation. | Show current observed positions with explicit historical limits | Complete NAV replay, cost basis and since-inception results |
 | Q05 | £100,000 goal settled; original 30 April date retained; timing/partial periods and scenario rates remain | Legacy model separate; actual contributions private | Final scenario output |
@@ -68,6 +70,8 @@ Resolve when a task depends on them, not as a pretext to stop all work. Do not r
 | Q12 | Weekly reliability minimum and desired short-horizon descriptive display? | Propose 20 weekly observations; daily minimum remains 60 | Final weekly/reliability controls |
 | Q13 | Calendar source/coverage, portfolio valuation cutoff and cross-market time convention? | Cache sourced schedules, store session dates and ages | Production cross-market daily alignment |
 | Q14 | Which provider can actually supply required intraday benchmark/FX freshness and its timestamps/delay? | Capability disclosure; no real-time promise | Guaranteed polling expectations, not scheduler skeleton |
+| Q17 | Dedicated provider project/authentication setup | Owner authorised creation and will sign in; browser automation stopped because URL confidence could not be established; no project created | Hosted CPU/database/auth tests and deployment |
+| Q18 | Can representative workloads and 90-day lossless quote retention fit free runtime/storage budgets? | [Worker probe](worker-feasibility.md), Postgres parity and measured capacity gates; no silent scope reduction | Final hosted runtime/storage design |
 | Q15 | What dated data/definition supports VNRG/VUAG overlap, revenue currencies and broader look-through? | Explicit unavailable/coverage; do not hardcode 19% | Evidence-based detailed exposure results |
 
 ## Resolution process
@@ -89,4 +93,4 @@ These drawdown rules do not define holding RAG (Q09) or tech stress (Q11). Resol
 
 ## Implementation authorisation and hosting clarification
 
-On 11 November 2026 the owner authorised implementation, delegated agents and stage commits/pushes. The owner requires free hosting services only and confirmed GBP account currency. Hosting remains behind security/recovery acceptance, with a researched [free-hosting comparison](hosting-options.md); no host is selected or deployed. Statement PDFs have been supplied for private inspection; coverage and machine-readable history contracts remain to be established. Routine engineering decisions remain delegated to the orchestrator.
+On 11 November 2026 the owner authorised implementation, delegated agents and stage commits/pushes. The owner requires free hosting services only and confirmed GBP account currency. Hosting remains behind security/recovery acceptance, with a researched [free-hosting comparison](hosting-options.md); Cloudflare + Supabase is now selected; no hosted deployment exists. Three statement PDFs were inspected privately; source coverage and alias gaps remain explicit. Routine engineering decisions remain delegated to the orchestrator.

@@ -1,12 +1,12 @@
 # Testing and acceptance strategy
 
-Status: acceptance strategy plus verified Stage 1A evidence. The foundation suite has **36 passing offline tests**; later financial/UI rows below remain planned. See status/handoff for exact commands and slice limits. Workbook inspection alone is not an application-test pass.
+Status: acceptance strategy plus verified local foundation, broker-observation and snapshot-evidence slices. Their published checkpoint has **137 passing offline tests** and successful Windows/Linux CI. Later financial/UI rows remain planned. Hosted PostgreSQL/runtime/security qualification has separate evidence; see status/handoff. Workbook inspection alone is not an application-test pass.
 
 ## Test layers
 
 1. Pure calculation unit tests using small deterministic series/events with hand-checkable expectations.
 2. Adapter contract tests using sanitised fixtures and a mocked HTTP transport; no default network calls.
-3. SQLite integration tests for migrations, precise round-trips, constraints, transactions, dedupe, audit and recovery.
+3. SQLite local-tooling and PostgreSQL integration tests for migrations, precise round-trips, constraints, transactions, dedupe and audit. Hosted grants/RLS/Auth plus Postgres/evidence export/restore are separate gates; SQLite recovery tests do not establish them.
 4. Application/API tests for authentication, CSRF, authorisation, jobs and versioned result semantics.
 5. Focused UI tests and visual inspection for data states, dense tables/matrices, concurrent changes and streaming recovery.
 6. Optional provider integration tests explicitly marked/opted in; never require Live credentials to run ordinary checks.

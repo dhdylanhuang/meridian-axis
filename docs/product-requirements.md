@@ -13,7 +13,7 @@ Optimise for readable financial tables, dependable imports, explainable calculat
 | ID | Requirement | Contract / delivery gate |
 | --- | --- | --- |
 | P01 | One Trading 212 ISA; two equal full-editor logins; localhost first | Security; Stage 2 |
-| P02 | Python 3.11+, FastAPI, SQLAlchemy, SQLite; React, Vite, Tailwind; prefer ECharts | Architecture; Stage 1/2 |
+| P02 | Cloudflare + Supabase PostgreSQL hosted target; retain Python/FastAPI/SQLAlchemy where runtime qualification passes; React, Vite, Tailwind/ECharts; SQLite local tooling only | Owner-approved platform amendment; architecture / Stage 0H |
 | P03 | GBP values, performance and risk; retain FX used | Data model and calculations; Stage 2 |
 | D01 | Trading 212 Public API v0 is primary; Demo default, explicit Live setting; HTTP Basic key/secret | Integration; Stage 0/1 |
 | D02 | Read account summary, positions, historical fills/orders, dividends and cash events; cursor pagination and bounded retries | Integration; Stage 1 |
