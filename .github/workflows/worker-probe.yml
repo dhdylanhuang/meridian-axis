@@ -3,13 +3,11 @@ name: Worker probe validator
 on:
   push:
     paths:
-      - 'prototype/worker-feasibility/smoke_test.py'
-      - 'prototype/worker-feasibility/tests/**'
+      - 'prototype/worker-feasibility/**'
       - '.github/workflows/worker-probe.yml'
   pull_request:
     paths:
-      - 'prototype/worker-feasibility/smoke_test.py'
-      - 'prototype/worker-feasibility/tests/**'
+      - 'prototype/worker-feasibility/**'
       - '.github/workflows/worker-probe.yml'
 
 permissions:
@@ -33,3 +31,8 @@ jobs:
           python-version: '3.13'
       - name: Check synthetic validation with an isolated loopback server
         run: python -m unittest discover -s tests -v
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.22.1'
+      - name: Check synthetic gateway routing and request isolation
+        run: node --test tests/test_probe_gateway.mjs

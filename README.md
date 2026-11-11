@@ -14,7 +14,7 @@ Start with the tested [local development guide](docs/local-development.md). The 
 
 PostgreSQL foundation parity also passes disposable service-backed CI. This verifies migrations and evidence constraints, not a hosted Supabase login or deployment. The [status and handoff](docs/status-and-handoff.md) distinguishes completed slices from the remaining financial and hosting gates.
 
-The empty Supabase evidence schema has now deployed through the native GitHub integration and was confirmed in Table Editor. No real portfolio data, app logins or finished financial interface have been deployed. Cloudflare runtime qualification is next.
+The empty Supabase evidence schema has deployed through the native GitHub integration and was confirmed in Table Editor. The synthetic Python Cloudflare probe is deployed and its responses verified; measured CPU exceeds the ordinary Free request budget, so runtime qualification remains open. No real portfolio data, app logins or finished financial interface have been deployed.
 
 The planning baseline was established on **11 November 2026** from the owner's requirements, a read-only review of the Excel tracker, and official provider documentation. The workbook's latest recorded snapshot is **11 October 2026**, not a current account valuation.
 

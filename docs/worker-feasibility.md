@@ -1,8 +1,55 @@
 # Python Workers feasibility evidence
 
-Reviewed **11 November 2026**. The owner selected Cloudflare + Supabase, with free services only. This bounded synthetic experiment verifies **local runtime compatibility**, not production readiness or the free-tier CPU budget. No Cloudflare account/login, hosted Worker, Supabase project, credentials, external provider request or database connection was used.
+Reviewed **11 November 2026**. The owner selected Cloudflare + Supabase, with free services only. The original local experiment below used no account, hosted deployment, credentials or database. The resumed hosted experiment now verifies synthetic response compatibility but **does not qualify ordinary Free CPU fit**. Neither experiment establishes production readiness.
 
-## Result
+## Hosted result after resume
+
+The owner completed Wrangler OAuth device authorization with credentials held in macOS Keychain. Direct CLI deployment of source commit `53cd2ab40aaa18d6c11bca51f907520ad96f7fac` succeeded:
+
+- URL: `https://meridian-axis-probe.meridian-worker-feasibility.workers.dev`.
+- Version: `bca2d322-ba23-45f8-bc51-465c49bb56db`; provider version inspection matched the source annotation, `2026-11-11` / `python_workers`, and empty bindings.
+- Upload: **19,927.56 KiB / 4,660.05 KiB gzip**. Reported startup: **4,424 ms**; upload and trigger deployment exited successfully. The accepted metric is not a measured request cold start or a rejected startup.
+- Native GitHub Builds remains unconnected. This deployment used the authorised local CLI, without changing Supabase's schema writer.
+
+After the newly created workers.dev subdomain finished TLS propagation, three controlled hosted smoke passes verified `/health` and `/probe` HTTP 200 with exact expected JSON and POST `/probe` HTTP 405. The default `Python-urllib` user agent received 403; identifying the synthetic client as `MeridianAxis-SyntheticProbe/1.0` resolved that failure without changing server access controls or disabling TLS verification. The client identification fix and eight offline regression tests were checked separately from the deployed Worker code.
+
+`wrangler tail meridian-axis-probe -c wrangler.probe.jsonc --format json` returned actual timing fields for the matching version:
+
+| Controlled invocation | Run 1 CPU / wall ms | Run 2 CPU / wall ms | Run 3 CPU / wall ms |
+| --- | --- | --- | --- |
+| GET `/health`, 200 | 50 / 51 | 15 / 16 | 8 / 8 |
+| GET `/probe`, 200 | 617 / 619 | 375 / 376 | 64 / 65 |
+| POST `/probe`, 405 | 13 / 13 | 5 / 5 | 5 / 5 |
+
+All nine outcomes were `ok`, with no reported exception. These are provider CPU measurements for fixed synthetic checks, not representative authenticated financial workloads. Cloudflare documents **10 ms** for ordinary Free HTTP requests and allows occasional bursts; successful responses above that budget do not prove sustained fit. The current Python/FastAPI path therefore remains **unqualified for ordinary Free CPU**. A native Python-handler control is next, with a Python Durable Object candidate only if separately measured and accepted. Python is not being silently replaced with browser formulas. [Worker CPU limits and burst behavior](https://developers.cloudflare.com/workers/platform/limits/#cpu-time)
+
+No account plan upgrade was made. Account billing plan and memory are not established by the runtime `standard` usage model or these outcomes. The 4,424 ms deployment diagnostic also needs interpretation against Python's snapshot lifecycle rather than being called a startup rejection. [Python runtime lifecycle](https://developers.cloudflare.com/workers/languages/python/how-python-workers-work/)
+
+Raw tail events include request/client metadata and stay in ignored private diagnostics. Public records retain only synthetic method/path/status, version, CPU/wall and outcome. In Wrangler 4.160.1, explicit `--sampling-rate 1` is rejected; omit that option for the default stream. Stop the temporary tail after the bounded measurements.
+
+The validator [Linux/macOS CI run](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43115439729) passed for the source checkpoint. No backend code or schema changed in that delivery; the separately observed Supabase emitted check passed. Database/Auth/job/analytics/retention/recovery gates remain open.
+
+## Separate runtime controls
+
+The CPU finding warrants bounded synthetic controls before choosing the application runtime. All reuse the original `main.py` workload and the existing dependency locks; they contain no portfolio input or credentials.
+
+| Configuration | Purpose | Boundary |
+| --- | --- | --- |
+| `wrangler.native-probe.jsonc` | `meridian-axis-native-probe`: native Python fetch calls the same `health`/`probe` functions for every request | Public synthetic GET routes; no bindings; no cached calculations |
+| `wrangler.do.jsonc` | `meridian-axis-do-probe`: existing FastAPI app inside a Python Durable Object | No workers.dev route; default entrypoint rejects requests; namespace binding only |
+| `wrangler.gateway.jsonc` | `meridian-axis-do-gateway`: small JavaScript gateway to that object | Public fixed GET routes; no forwarded caller headers/body/query; other methods rejected |
+
+The Durable Object's migration creates a **SQLite-backed runtime namespace**, required for Free eligibility, but the control makes **no storage calls**. This is not a Supabase migration or an application database; Supabase remains the sole application persistence target and native SQL remains its schema writer. Python Durable Objects and external namespace bindings are supported by the inspected provider SDK/configuration. [Python Durable Objects](https://developers.cloudflare.com/changelog/post/2025-05-14-python-worker-durable-object/), [namespace configuration](https://developers.cloudflare.com/workers/wrangler/configuration/#durable-objects), [Free namespace eligibility and quotas](https://developers.cloudflare.com/durable-objects/platform/pricing/)
+
+The Durable Object limit table documents a separate default CPU allowance, while other provider wording refers to ordinary Worker limits. This control is a qualification candidate, not an accepted guarantee of Free capacity. Measure both the gateway's stateless CPU and the object's CPU/outcomes, then assess daily request/duration quotas, memory, database behavior and recovery before adopting it. [Durable Object limits](https://developers.cloudflare.com/durable-objects/platform/limits/)
+
+Prepared checks: **11 Python tests passed** (eight validator and three native-routing/delegation cases), **four Node gateway tests passed**, and scoped Ruff passed. Native routing uses SDK doubles; only workerd/hosted execution proves the SDK bridge. The gateway tests verify route/method/input rejection and that forwarded requests contain no caller credentials or body. CI now includes both suites for all probe-source/config changes.
+
+Dry-runs exited 0 without deployment: native **19,928.18 KiB / 4,660.62 KiB gzip**, no bindings; Python object **19,928.85 KiB / 4,660.84 KiB gzip**, only its expected namespace binding; gateway **0.76 KiB / 0.40 KiB gzip**, only its expected external namespace binding. The initial native/gateway runs encountered sandbox denial for Wrangler's external log file; subsequent object/gateway checks used an explicit temporary `WRANGLER_LOG_PATH` and had no such warning. These results establish bundle preparation, not a hosted migration or runtime result.
+
+Use the native probe config for its separate pinned deployment. For the Durable Object candidate, deploy the namespace-owning Python config with Pywrangler **before** deploying the gateway config with Wrangler. Never deploy the Python config as an application route or attach application secrets to these public controls.
+
+## Original local result
 
 The [isolated prototype](../prototype/worker-feasibility/README.md) runs in local Wrangler/workerd using Python Workers' Pyodide runtime. `GET /health` and `GET /probe` returned HTTP 200; the smoke script verified exact Decimal values, canonical string output, Pydantic serialization, synchronous SQLAlchemy PostgreSQL dialect compilation, pg8000 import and HTTPX with an in-process mocked transport. `POST /probe` returned 405.
 
@@ -153,7 +200,7 @@ python3 -m unittest discover -s tests -v
 python3 -O -m unittest discover -s tests -v
 ```
 
-Eight tests passed on macOS, including malformed/oversized responses, wrong decimal/boolean types, mutation-route acceptance, redirects, URL/timeout validation and safe failure messages. The validator CI workflow runs on Linux/macOS with Python 3.13; its definition is not evidence of a completed remote run. Loopback socket binding required execution permission in the restricted development sandbox. No hosted request has yet been made.
+Eight tests passed on macOS, including malformed/oversized responses, wrong decimal/boolean types, mutation-route acceptance, redirects, URL/timeout validation and safe failure messages. The validator CI workflow runs on Linux/macOS with Python 3.13; actual completed results are linked above. Loopback socket binding required execution permission in the restricted development sandbox. Hosted response and CPU evidence is separately recorded above; the response script itself does not measure CPU.
 
 ### Authorised direct CLI path
 

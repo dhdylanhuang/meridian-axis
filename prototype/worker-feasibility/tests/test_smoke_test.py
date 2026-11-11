@@ -30,6 +30,7 @@ class SmokeTests(unittest.TestCase):
     def setUp(self):
         self.mode = "valid"
         self.paths = []
+        self.user_agents = []
         owner = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -38,6 +39,7 @@ class SmokeTests(unittest.TestCase):
 
             def do_GET(self):
                 owner.paths.append(self.path)
+                owner.user_agents.append(self.headers.get("User-Agent"))
                 if owner.mode == "redirect":
                     self.send_response(302)
                     self.send_header("Location", "/secret-target?token=private")
@@ -65,6 +67,7 @@ class SmokeTests(unittest.TestCase):
 
             def do_POST(self):
                 owner.paths.append("POST " + self.path)
+                owner.user_agents.append(self.headers.get("User-Agent"))
                 self.send_response(200 if owner.mode == "mutation" else 405)
                 self.end_headers()
 
@@ -81,6 +84,7 @@ class SmokeTests(unittest.TestCase):
     def test_full_contract_and_post_denial(self):
         smoke_test.check_probe(self.origin, 2)
         self.assertEqual(self.paths, ["/health", "/probe", "POST /probe"])
+        self.assertEqual(self.user_agents, ["MeridianAxis-SyntheticProbe/1.0"] * 3)
 
     def test_contract_failures(self):
         for mode in ("numeric", "boolean", "nested_boolean", "mutation", "invalid", "oversize"):
@@ -99,7 +103,7 @@ class SmokeTests(unittest.TestCase):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             smoke_test.main(["--origin", self.origin, "--timeout", "2"])
-        self.assertIn("hosted CPU and database remain untested", output.getvalue())
+        self.assertIn("this script measures no hosted CPU or database behavior", output.getvalue())
 
     def test_safe_network_error(self):
         output = io.StringIO()

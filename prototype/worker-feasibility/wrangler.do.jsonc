@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "meridian-axis-do-probe",
+  "main": "src/durable_probe.py",
+  "compatibility_date": "2026-11-11",
+  "compatibility_flags": ["python_workers"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "send_metrics": false,
+  "durable_objects": {
+    "bindings": [{ "name": "PROBE", "class_name": "SyntheticProbeDO" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SyntheticProbeDO"] }]
+}

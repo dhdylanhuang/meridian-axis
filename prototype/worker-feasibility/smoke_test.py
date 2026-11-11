@@ -11,6 +11,7 @@ from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_ope
 
 ORIGIN = "http://127.0.0.1:8791"
 MAX_RESPONSE_BYTES = 65536
+USER_AGENT = "MeridianAxis-SyntheticProbe/1.0"
 
 
 class ProbeFailure(Exception):
@@ -78,7 +79,8 @@ def require(condition, message):
 
 
 def get(opener, origin, path, timeout):
-    with opener.open(Request(origin + path), timeout=timeout) as response:
+    request = Request(origin + path, headers={"User-Agent": USER_AGENT})
+    with opener.open(request, timeout=timeout) as response:
         require(response.status == 200, "Expected HTTP 200.")
         body = response.read(MAX_RESPONSE_BYTES + 1)
         require(len(body) <= MAX_RESPONSE_BYTES, "Probe response is too large.")
@@ -120,7 +122,8 @@ def check_probe(origin=ORIGIN, timeout=20):
         "Missing compiled SQL diagnostic.",
     )
     try:
-        with opener.open(Request(origin + "/probe", method="POST"), timeout=timeout):
+        request = Request(origin + "/probe", method="POST", headers={"User-Agent": USER_AGENT})
+        with opener.open(request, timeout=timeout):
             raise ProbeFailure("Unexpected mutation route.")
     except HTTPError as error:
         try:
@@ -141,7 +144,9 @@ def main(argv=None):
     except (OSError, HTTPException, ValueError):
         # URL/HTTP exceptions can include credentials, redirects or response data.
         parser.exit(1, "Probe check failed: request or response could not be validated.\n")
-    print("Synthetic worker checks passed; hosted CPU and database remain untested.")
+    print(
+        "Synthetic response checks passed; this script measures no hosted CPU or database behavior."
+    )
 
 
 if __name__ == "__main__":
