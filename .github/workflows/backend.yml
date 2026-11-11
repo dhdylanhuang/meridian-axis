@@ -28,3 +28,49 @@ jobs:
       - run: uv run --locked ruff check .
       - run: uv run --locked ruff format --check .
       - run: uv run --locked pytest -q
+
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: meridian_test
+          POSTGRES_USER: postgres
+          # Disposable CI-only service credential; never a hosted secret.
+          POSTGRES_PASSWORD: synthetic-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d meridian_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      MERIDIAN_TEST_POSTGRES_URL: postgresql+pg8000://postgres:synthetic-ci-only@127.0.0.1:5432/meridian_test
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - run: python -m pip install uv==0.13.7
+      - run: uv sync --locked
+      - name: Create unprivileged Supabase-like roles in disposable service
+        run: |
+          uv run --locked python - <<'PY'
+          import os
+          from meridian.persistence.postgres import create_postgres_engine
+          engine = create_postgres_engine(
+              os.environ["MERIDIAN_TEST_POSTGRES_URL"], allow_loopback_insecure=True
+          )
+          with engine.begin() as connection:
+              connection.exec_driver_sql("CREATE ROLE anon NOLOGIN")
+              connection.exec_driver_sql("CREATE ROLE authenticated NOLOGIN")
+          engine.dispose()
+          PY
+      - run: uv run --locked pytest -m postgres -q

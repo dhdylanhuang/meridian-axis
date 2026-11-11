@@ -58,6 +58,7 @@ class ImportRun(Base):
             "content_hash",
             unique=True,
             sqlite_where=text("status = 'succeeded' AND content_hash IS NOT NULL"),
+            postgresql_where=text("status = 'succeeded' AND content_hash IS NOT NULL"),
         ),
     )
 

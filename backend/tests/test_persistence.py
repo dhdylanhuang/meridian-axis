@@ -101,7 +101,7 @@ def test_migration_from_base_matches_models_and_repeated_upgrade_keeps_evidence(
         migrate(engine)
         with engine.connect() as connection:
             context = MigrationContext.configure(connection)
-            assert context.get_current_revision() == "0001"
+            assert context.get_current_revision() == "0002"
             assert compare_metadata(context, Base.metadata) == []
         with Session(engine) as session:
             assert session.get(SourceRecord, "source-1").payload_json == '{"quantity":"1.25"}'
@@ -118,6 +118,28 @@ def test_sqlite_pragmas_and_foreign_keys(engine):
         session.add(make_run(account_id="missing"))
         with pytest.raises(IntegrityError):
             session.commit()
+
+
+def test_sqlite_upgrade_from_0001_to_0002_retains_evidence_and_partial_index(tmp_path):
+    engine = create_db_engine(tmp_path / "previous-version.db")
+    try:
+        migrate(engine, "0001")
+        with Session(engine) as session, session.begin():
+            add_account(session)
+            session.add(make_run())
+            session.flush()
+            session.add(make_source())
+        migrate(engine, "0002")
+        with Session(engine) as session, session.begin():
+            assert session.get(SourceRecord, "source-1").payload_json == '{"quantity":"1.25"}'
+            session.add(make_run("failed-retry", status="failed"))
+        with engine.connect() as connection:
+            index_sql = connection.exec_driver_sql(
+                "SELECT sql FROM sqlite_master WHERE name = 'uq_import_accepted_hash'"
+            ).scalar_one()
+            assert "WHERE status = 'succeeded'" in index_sql
+    finally:
+        engine.dispose()
 
 
 def test_exact_decimal_round_trip_is_text_and_does_not_round_with_context(engine):
