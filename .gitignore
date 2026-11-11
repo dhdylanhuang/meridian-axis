@@ -218,3 +218,31 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Public repository: private financial inputs and runtime state
+/private/
+/data/
+/uploads/
+/backups/
+/outputs/
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+*.tsv
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+.env*
+!.env.example
+
+# Frontend dependencies and generated output
+node_modules/
+/frontend/dist/
+/frontend/.vite/
+
+# Keep real imports ignored. Add narrow exceptions only for reviewed,
+# explicitly synthetic fixture files; never blanket-allow a raw import folder.

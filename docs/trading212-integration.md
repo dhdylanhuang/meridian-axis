@@ -1,0 +1,75 @@
+# Trading 212 integration contract
+
+Status: CONFIRMED API-first requirement; VERIFIED documentation observations dated 11 November 2026; ADOPTED normalisation design. No authenticated account requests have been made.
+
+## Verify before implementing
+
+The owner specified [OpenAPI YAML](https://docs.trading212.com/_bundle/api.yaml) as the client contract. Browser retrieval could not render its MIME type. The [official linked JSON](https://docs.trading212.com/_bundle/api.json?download=) and endpoint pages were inspected instead. **Direct YAML verification remains a Stage 0 gate before client code.** Record source URL, retrieval date, digest and relevant schema differences. Archive the non-secret specification only when obtained; do not create a fictional local spec file.
+
+Use the configured origin and the path from the verified specification exactly once. The documented origin is `https://demo.trading212.com` or `https://live.trading212.com`; paths include `/api/v0`. Do not concatenate `/api/v0` twice. Demo is the default. Live requires an explicit validated setting and clearly visible environment label. Separate accounts, state, evidence and checkpoints across environments.
+
+## Confirmed coverage
+
+| Capability | Documented request | Normalised use |
+| --- | --- | --- |
+| Account summary | `GET /api/v0/equity/account/summary` | Broker account/cash/value reconciliation |
+| Current positions | `GET /api/v0/equity/positions` | Observed holdings and current position prices |
+| Historical orders/fills | `GET /api/v0/equity/history/orders` | Execution and corporate-action evidence |
+| Paid dividends | `GET /api/v0/equity/history/dividends` | Dividend-event evidence |
+| Cash history | `GET /api/v0/equity/history/transactions` | Deposits, withdrawals and other supported cash events |
+| Instrument metadata | `GET /api/v0/equity/metadata/instruments` | Listing identity and currency mapping |
+| Exchange metadata | `GET /api/v0/equity/metadata/exchanges` | Working-schedule evidence |
+
+See [official specification](https://docs.trading212.com/_bundle/api.json?download=) for paths. Metadata listing is a cached discovery job, not part of every quote cycle. No dedicated quote/history-price/FX endpoint was found in the reviewed specification. The broker adapter therefore does not promise an unheld benchmark or FX feed.
+
+## Adapter boundary
+
+Expose account summary, positions, order history, dividend history, cash-transaction history, instrument metadata and exchange schedules. Each method returns typed normalised data plus source/run/coverage metadata. HTTP parsing is private to this adapter; calculation modules do not consume provider JSON.
+
+Methods must distinguish a complete empty response from an error, an incomplete paginated result and an unsupported capability. Preserve original event identifiers and raw numeric strings before normalisation. A successful positions response does not establish complete historical coverage.
+
+## Credentials, transport and permissions
+
+HTTP Basic uses the key as username and secret as password, sent only over HTTPS to the validated provider origin. Credentials come from environment variables and never reach React, local URLs, error messages, fixtures, audit JSON or request logs. Disable/redact HTTP tracing of Authorization. Allow only the specific read requests above. No order placement, modification, cancellation or pie mutations.
+
+Use keys with the required read permissions and no trading permissions. The initial account types supported by the provider are Invest and Stocks ISA. The owner confirms one Stocks and Shares ISA; verify that connected identity and primary currency during setup. Initial tax features are deferred. [Official authentication/environment documentation](https://docs.trading212.com/api)
+
+## History is not one generic transaction feed
+
+- Historical orders include an order and a fill, each with its own ID. Normalise executed fill quantity/price, not requested order quantity. Retain partially filled/cancelled status and supported corporate-action kinds. Unknown fill types are quarantined with a visible completeness warning. The documented historical-order limit is 20 requests/minute, up to 50 results per page. [Orders contract](https://docs.trading212.com/api/historical-events/orders_1.md)
+- Dividends use a `reference`, payment date and currency-specific amount fields. Preserve gross/net semantics only when established; do not infer withholding as zero from an absent field. This is a separate history family. [Dividend contract](https://docs.trading212.com/api/historical-events/dividends.md)
+- Cash history uses a `reference` and includes deposits, withdrawals, fees, transfers, free-cash interest and lending interest. It does not replace fill or dividend history. [Cash-history contract](https://docs.trading212.com/api/historical-events/transactions.md)
+
+Candidate identity is `(broker, environment, account, event_kind, external_id)`: fill ID for executions and reference for dividend/cash events. Confirm uniqueness and CSV equivalence using real samples. Store ID aliases where a CSV uses a different namespace. Never fuzzy-merge two same-day equal-amount trades automatically. Unknown matches become review items, not duplicate economic entries or guessed deletions.
+
+## Pagination and resilient sync
+
+Follow returned `nextPagePath` until null for paginated histories. Validate it resolves to the same allowlisted origin and permitted route before attaching credentials. Detect repeated cursors/paths and cap pages/time to avoid infinite loops. Persist a checkpoint only with the accepted financial generation.
+
+Use per-endpoint/account pacing shared by scheduled sync, manual sync and position reads. Respect provider reset headers; introduce bounded exponential backoff with jitter for transient transport/5xx/429 failures. Do not retry invalid credentials, missing permission or invalid request arguments indefinitely. A cap on exponential delay never permits retrying before a later provider reset. The provider documents per-account limits and `x-ratelimit-*` headers. [Rate limiting and pagination](https://docs.trading212.com/api)
+
+Use a small configurable overlap on incremental historical retrieval and deduplicate. Where the API offers no verified time filter, traverse its supported pagination; do not invent query parameters or assume IDs sort by execution time. Store history-family watermarks separately. Handle late records, corrected fields and out-of-order timestamps explicitly.
+
+Fetch all required history pages into staging outside the financial write transaction. Validate, normalise and reconcile. Commit a coherent generation plus audit and checkpoints together. A failed later page must not expose a new partial ledger as complete. Jobs are retryable and a resumed job cannot double count accepted events. Positions/account summary sampled at different times have bounded reconciliation tolerances and snapshot timestamps; do not claim provider-wide atomicity.
+
+## Position prices and missing fields
+
+Verify account-summary cash components against actual statements before treating them as additive. Funds available to trade, funds associated with groups/pies and reserved amounts may have overlapping meanings. Preserve provider components for reconciliation; do not invent NAV by summing every field containing the word cash. Likewise, a wallet-impact value already in primary currency must not receive a second FX conversion.
+
+Position `currentPrice` is in instrument currency. The documented response does not provide a market quote timestamp or delay; `createdAt` refers to the position, not a quote. Label these observations with retrieval time and unknown quote age. The positions endpoint documents a 1 request/second limit; the app's proposed interval is much slower. [Positions contract](https://docs.trading212.com/api/positions/getpositions.md)
+
+Stage 0 must publish a schema/field-coverage matrix without real balances or identifiers. One [holdings snapshot format](csv-contract.md) is verified; transaction-history export matching remains unverified. Present evidence:
+
+| Field | Current evidence | Required policy |
+| --- | --- | --- |
+| Raw CSV Slice | Not supplied by reviewed position/history contracts; snapshot Slice is ticker | Preserve raw Slice as identity evidence; Total-row Name supplies group context |
+| Group context | Inspected CSV Total-row Name identifies the exported group | Preserve metadata without importing Total as a holding; no pie-domain objects |
+| Original listing identity | Broker identifiers and metadata available | Verify exact listing and mapping; never guess yfinance suffix |
+| Current prices | Held-position price available | Retrieval-time disclosure; separate general market provider |
+| Historic close, FX history, benchmark prices | No dedicated route identified | Separate market-data adapter |
+| Full multi-currency cash/account detail | General provider limitations apply | Establish response coverage before claiming reconstructed NAV |
+| Look-through holdings / revenue currencies | Not established | Evidence-backed external data or explicit unavailable result |
+
+## Required evidence before Live use
+
+Mocked contract tests pass; credentials are redacted; Demo/Live isolation is verified; all history families reconcile on fixtures; CSV aliases are documented; account wrapper and coverage are known; backups restore; a positions mismatch produces a visible exception. Enabling Live reads does not enable broker trading.
