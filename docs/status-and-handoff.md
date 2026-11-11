@@ -2,9 +2,19 @@
 
 Last reviewed: **11 November 2026**, including implementation/delegation authorisation, direct provider verification and the free-hosting constraint.
 
-## Paused checkpoint - 11 November 2026
+## Resumed development - 11 November 2026
 
-**PAUSED at the owner's explicit request.** All delegated tasks are complete; no new development or deployment is authorised during the pause. This handoff and the prepared files are committed/pushed as a progress checkpoint, not an application-release claim.
+The owner explicitly resumed implementation and delegated development on the personal laptop. The checkout was clean at checkpoint `a325958`. Cloudflare GitHub Builds was not connected. The owner subsequently requested direct Cloudflare access and completed Wrangler's OAuth device authorization; successful CLI login and the intended account's access were verified. Credentials are held in macOS Keychain, outside the repository. This supersedes the former Cloudflare dashboard-only setup boundary, while Supabase retains native GitHub migrations. The historical pause below is preserved as evidence, not an active instruction.
+
+Current bounded delivery: restore the macOS development environment, reverify the backend foundation, and qualify the synthetic Worker through the newly authorised direct CLI path. Requirement coverage: P02, O01, QA01/QA02. Stage 0H remains open; no hosted result or financial application is claimed at this checkpoint. [Worker feasibility](worker-feasibility.md) retains the prepared native Builds alternative.
+
+Local backend verification on macOS with locked Python 3.12.16 dependencies: `.venv/bin/python -m pytest -q` → **150 passed, ten skipped** (no disposable PostgreSQL server configured); `.venv/bin/ruff check .` and `.venv/bin/ruff format --check .` → passed, 28 files already formatted. Dependency installation preserved `uv.lock`. This does not rerun PostgreSQL-backed CI or prove hosted behavior.
+
+Probe verification: eight offline validator tests passed, with independent review; exact string/boolean checks and mutation denial remain active under optimised Python. Scoped Ruff passes with the backend's explicit configuration. The new CI workflow defines Linux/macOS runs but has not yet been observed remotely. The macOS Worker dry-run succeeded with no bindings and no deployment; an actual local Worker on loopback passed `.venv/bin/python smoke_test.py --timeout 20`. Node 24.22.1 was installed in ignored tooling because system Node 20 is too old. All dependency lockfiles remain unchanged. The dedicated hosted Worker was confirmed absent before the first deploy attempt.
+
+## Historical paused checkpoint - 11 November 2026
+
+**The owner paused development at this checkpoint; the later resume above supersedes that instruction.** All then-delegated tasks were complete. This handoff and the prepared files were committed/pushed as a progress checkpoint, not an application-release claim.
 
 - Completed: local evidence/import foundation, read-only broker adapter, exact persistence/backup/restore, PostgreSQL parity and native Supabase bootstrap. Latest full verification: **150 offline tests and ten PostgreSQL-backed tests passed in CI**; local execution skipped the ten server-dependent cases. No extra application test run was needed solely to save this pause.
 - Hosted: dedicated Supabase project `ssqqjyrgrsjubxysobwy`, GitHub production deployment on `main`, working directory `.`, automatic previews off. Exact validated bootstrap commit `caa0ccd36ce70a605459a71915cabba9a1f73899` passed CI and the actual Supabase check. The owner confirmed five expected tables, parity revision `0002`, and empty application tables. No financial source was imported.
@@ -15,7 +25,7 @@ Last reviewed: **11 November 2026**, including implementation/delegation authori
 
 **First task after an explicit resume:** connect a dedicated Cloudflare Worker named `meridian-axis-probe` to this repository using its native GitHub Builds flow. Use root `prototype/worker-feasibility`, build/deploy commands and non-secret build variables in [Worker feasibility](worker-feasibility.md). Verify the actual build SHA, returned workers.dev URL, synthetic health/probe responses and measured runtime limits. Do not guess the URL or treat the probe as the financial application. Then continue the remaining Stage 0H database/Auth/job/capacity/recovery gates before exposing real portfolio data.
 
-Public docs distinguish observed CI/provider results from owner dashboard confirmation. Existing decisions, open questions and staged delivery evidence below remain authoritative context; the pause takes precedence over their instructions to perform a next task.
+Public docs distinguish observed CI/provider results from owner dashboard confirmation. Existing decisions, open questions and staged delivery evidence below remain authoritative context; follow the current resumed task above.
 
 ## Actual state
 

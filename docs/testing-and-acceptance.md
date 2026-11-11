@@ -1,6 +1,6 @@
 # Testing and acceptance strategy
 
-Status: acceptance strategy plus verified local foundation, broker-observation, snapshot-evidence and PostgreSQL foundation slices. Current checks include **149 passing offline tests** and **six passing service-backed PostgreSQL integration tests** in CI. Later financial/UI rows remain planned. Actual hosted Supabase/Cloudflare security and capacity remain separate gates; see status/handoff. Workbook inspection alone is not an application-test pass.
+Status: acceptance strategy plus verified local foundation, broker-observation, snapshot-evidence and PostgreSQL foundation slices. The saved CI checkpoint includes **150 passing offline tests** and **ten passing service-backed PostgreSQL integration tests**. The resumed macOS run independently passed the 150 offline tests and skipped the ten server-dependent cases. Later financial/UI rows remain planned. Actual hosted Supabase/Cloudflare security and capacity remain separate gates; see status/handoff. Workbook inspection alone is not an application-test pass.
 
 ## Test layers
 

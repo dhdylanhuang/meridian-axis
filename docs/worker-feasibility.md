@@ -45,6 +45,12 @@ Stop the local server, then measure the bundle without uploading:
 uv run --frozen pywrangler deploy --dry-run --outdir dist
 ```
 
+On macOS/zsh use `npm ci` instead of `npm.cmd ci` and `export WRANGLER_SEND_METRICS=false` instead of the PowerShell assignment. The other `uv` commands are the same. Keep backend and probe environments separate: backend verification uses Python 3.12, while the probe toolchain requires Python 3.13 or later. Locked Wrangler/Miniflare require **Node >=22.12.0**; use the configured hosted Node 24.22.1 to align tooling. The Mac's system Node is 20.18.1; the resumed qualification installed Node 24.22.1 in ignored project tooling without changing the system installation.
+
+The resumed macOS dry-run used Node 24.22.1, npm 10.8.2, uv 0.13.7 and native Python 3.13.5, retaining all three probe lockfiles. Pywrangler selected native Python 3.14.3 and Pyodide Python 3.14.2 for its separate Worker environments. The explicit probe configuration dry-run exited **0**, reporting **19,927.56 KiB uncompressed / 4,660.05 KiB gzip**, 1,448 vendored modules, **No bindings found** and **exiting without deployment**. Small bundle-size differences from the historical Windows result are recorded rather than treated as hosted runtime measurements.
+
+The same Mac then ran the original loopback configuration with `pywrangler dev --local --ip 127.0.0.1 --port 8791 --inspector-port 9231`. `.venv/bin/python smoke_test.py --timeout 20` passed against the actual Worker. Download and loopback execution permissions were needed in the restricted sandbox. No database or external provider was contacted by these local checks.
+
 The actual investigation invoked `.venv/Scripts/pywrangler.exe` directly after `uv sync`, with the isolated uv tool on PATH; the commands above select that same locked environment. Initial execution failed safely with `Command not found: uv` until PATH was configured. Network permission was needed to download tooling/packages, not to authenticate or deploy. Local development succeeded after setup; no platform workaround or account was required.
 
 ## Observed checks
@@ -129,3 +135,28 @@ uv run --frozen pywrangler deploy -c wrangler.probe.jsonc --dry-run --outdir dis
 With telemetry disabled, that local dry-run exited **0**, selected the explicit probe config, reported **19,927.58 KiB uncompressed / 4,663.03 KiB gzip**, reported **No bindings found**, and exited without deployment. Dependency download permissions were required locally; no Cloudflare account lookup, login or credential was used. The existing three dependency locks remain the basis for the probe.
 
 After the owner connects the project, verify the real build's commit/config, successful upload, actual workers.dev URL and `/health` plus `/probe` responses. Do not guess the account's workers.dev suffix. A hosted HTTP 200 establishes only this synthetic path; it does not prove representative authenticated imports, market polling, database transactions or correlation meet Free CPU/memory limits. Record actual hosted CPU measurements and error outcomes separately before accepting that gate.
+
+### Repeatable response validation
+
+The standard-library validator now accepts an explicit hosted origin, while retaining the loopback default. After obtaining the real URL from the provider, run from the probe directory (replace the uppercase placeholder):
+
+```sh
+python3 smoke_test.py --origin https://meridian-axis-probe.ACCOUNT.workers.dev --timeout 20
+```
+
+No Worker toolchain or account credentials are required by this script. It checks exact synthetic Decimal strings, mock HTTP/SQL diagnostics and POST rejection. It accepts only HTTP loopback with an explicit port or HTTPS workers.dev origins, refuses credentials/paths/queries/fragments and redirects, ignores environment proxies, bounds response size and socket timeout, and redacts network error details. Socket timeout is not an overall invocation deadline or a CPU measurement. It makes no database connection and cannot verify a deployment's source SHA; inspect the actual Cloudflare build record separately.
+
+Offline regression checks use an ephemeral loopback server with invented payloads:
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 -O -m unittest discover -s tests -v
+```
+
+Eight tests passed on macOS, including malformed/oversized responses, wrong decimal/boolean types, mutation-route acceptance, redirects, URL/timeout validation and safe failure messages. The validator CI workflow runs on Linux/macOS with Python 3.13; its definition is not evidence of a completed remote run. Loopback socket binding required execution permission in the restricted development sandbox. No hosted request has yet been made.
+
+### Authorised direct CLI path
+
+After resuming, the owner requested a direct Cloudflare connection and approved Wrangler's device authorization in their browser. `wrangler login --device --browser=false --use-keyring` succeeded; `wrangler whoami --json` verified account access without copying credentials into the repository or chat. The account's email/name are omitted from public evidence. This makes direct pinned CLI deployment an authorised alternative to the unconnected native Builds flow above; it does not alter Supabase's migration authority.
+
+Publish the reviewed checkpoint before deployment, use `uv run --frozen pywrangler deploy -c wrangler.probe.jsonc --message <source-commit>`, and record the returned deployment/version and actual URL. Only the dedicated synthetic probe is in scope. Do not attach database/broker credentials, create paid services, or infer free-runtime qualification from a successful upload.

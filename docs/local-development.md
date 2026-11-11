@@ -16,6 +16,19 @@ uv run --locked ruff format --check .
 
 The lockfile pins dependency versions and artifact hashes. uv 0.13.7 was used for the initial lock and is pinned in CI. Ordinary tests use synthetic data and mocked transports; no broker credentials are needed. CI is configured for Windows and Linux; a workflow definition is not evidence of a remote run passing.
 
+### macOS / zsh
+
+The install/test commands above also work in zsh. The resumed macOS checkout passed **150 offline tests** with Python 3.12.16 and uv 0.13.7; ten PostgreSQL tests skipped without a disposable server. Ruff check and formatting check passed. Lockfiles were unchanged. Install uv using the linked installation guide; avoid using the system Python to resolve unlocked application dependencies.
+
+Replace PowerShell's `$env:` assignments with shell exports when using the examples below:
+
+```sh
+export MERIDIAN_BROKER_ENVIRONMENT=demo
+export MERIDIAN_DATA_DIR=private/runtime
+```
+
+Run these in the same shell as the local CLI/server. This configures local evidence tooling only; it does not set up hosted credentials or connect the broker. During the resume, tooling and a managed interpreter were installed under temporary storage; those temporary paths are disposable and are not a permanent laptop setup.
+
 Configuration comes from the backend process environment, with `MERIDIAN_` prefixes. `.env.example` is a safe catalogue and is **not loaded automatically**. Credential validation errors never print input values through the CLI. Keep broker keys out of command history/source files; they are not needed by these commands.
 
 ## Initialise an isolated database
@@ -74,6 +87,6 @@ Cloudflare/Supabase is the approved hosted target. The SQLite CLI above remains 
 
 Migration `0002` preserves the published `0001` history. On PostgreSQL it repairs accepted-hash partial uniqueness, enables RLS and revokes default financial-table grants; on SQLite it advances the schema revision without changing evidence tables. Canonical Decimal text remains exact in both dialects. The native maintenance helpers require verified TLS except for an explicitly requested disposable loopback test server. They do not configure a Supabase project, Auth policies or a Worker Hyperdrive binding.
 
-The default local suite skips six `postgres` tests when `MERIDIAN_TEST_POSTGRES_URL` is absent. The service-backed CI job supplies PostgreSQL 17, creates unprivileged Supabase-like test roles and runs `uv run --locked pytest -m postgres -q`. Its fixtures create and clean up only generated isolated schemas in an explicit disposable loopback database. Do not use a production project URL: remote hosts are deliberately rejected by those fixtures. The Windows/Linux offline suite and the six database-backed tests have passed; actual hosted Supabase/Hyperdrive/Auth and Postgres backup/restore remain unverified.
+The default local suite skips ten `postgres` tests when `MERIDIAN_TEST_POSTGRES_URL` is absent (six foundation tests and four native Supabase migration tests). The service-backed CI job supplies PostgreSQL 17, creates unprivileged Supabase-like test roles and runs `uv run --locked pytest -m postgres -q`. Its fixtures create and clean up only generated isolated schemas in an explicit disposable loopback database. Do not use a production project URL: remote hosts are deliberately rejected by those fixtures. The Windows/Linux offline suite and the ten database-backed tests have passed in the recorded checkpoint; actual hosted Supabase/Hyperdrive/Auth and Postgres backup/restore remain unverified.
 
 The Postgres CI job selects Python 3.13 through `UV_PYTHON`, while the local foundation uses its pinned Python 3.12. Backend CI runs for backend/workflow changes; documentation and the isolated Worker prototype have their own recorded checks.

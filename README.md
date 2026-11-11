@@ -6,7 +6,7 @@ The hosted target is Cloudflare + Supabase PostgreSQL, with React, Vite, Tailwin
 
 ## Current status
 
-**Development paused at the owner's request on 11 November 2026.** Resume from [status and handoff](docs/status-and-handoff.md); no new implementation or deployment should begin until requested.
+**Development resumed at the owner's request on 11 November 2026.** Continue from [status and handoff](docs/status-and-handoff.md). Stage 0H hosting qualification is the current gate; direct Cloudflare CLI access is now authorised.
 
 **Local foundation, broker adapter and snapshot-evidence slices are verified.** Exact-decimal persistence, migrations, evidence/audit records, isolated configuration, backup/restore and holdings CSV preview/atomic import are available. The broker adapter is tested with mocked HTTP. The app exposes liveness only; there is no usable portfolio UI or hosted application yet. Full Stage 1 financial replay and reconciliation remain open.
 
