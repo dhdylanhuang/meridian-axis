@@ -73,4 +73,19 @@ jobs:
               connection.exec_driver_sql("CREATE ROLE authenticated NOLOGIN")
           engine.dispose()
           PY
-      - run: uv run --locked pytest -m postgres -q
+      - run: uv run --locked pytest -m postgres -q --junitxml=pytest-postgres.xml
+      - name: Surface synthetic database failures in public check annotations
+        if: failure()
+        run: |
+          uv run --locked python - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          report = Path("pytest-postgres.xml")
+          if report.exists():
+              for case in ET.parse(report).iter("testcase"):
+                  for failure in case:
+                      if failure.tag in {"failure", "error"}:
+                          message = (failure.text or failure.get("message", ""))[-6000:]
+                          message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+                          print(f"::error file=backend/tests/test_postgres.py,title={case.get('name')}::{message}")
+          PY

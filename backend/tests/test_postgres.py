@@ -202,8 +202,18 @@ def postgres_schema():
 
 @pytest.fixture
 def postgres_engine(postgres_schema):
-    upgrade_postgres_database(postgres_schema)
+    _migrate_test_schema(postgres_schema)
     return postgres_schema
+
+
+def _migrate_test_schema(engine, *, revision="head"):
+    try:
+        upgrade_postgres_database(engine, revision=revision)
+    except PostgresOperationError as exc:
+        # This fixture only accepts a disposable loopback server and invented
+        # data. Expose its underlying DDL error for CI diagnosis; production
+        # callers still receive only the safe operation category.
+        pytest.fail(f"Disposable migration failed: {exc.__context__!r}", pytrace=False)
 
 
 def _account(session, identifier="synthetic-account", environment="demo"):
@@ -249,7 +259,7 @@ def _source(**overrides):
 @pytest.mark.postgres
 def test_postgres_upgrade_preserves_0001_evidence_and_fixes_retry_index(postgres_schema):
     engine = postgres_schema
-    upgrade_postgres_database(engine, revision="0001")
+    _migrate_test_schema(engine, revision="0001")
     with Session(engine) as session, session.begin():
         _account(session)
         session.add(_run())
@@ -267,7 +277,7 @@ def test_postgres_upgrade_preserves_0001_evidence_and_fixes_retry_index(postgres
             if exists:
                 for table in _TABLES:
                     connection.execute(text(f'GRANT ALL PRIVILEGES ON TABLE "{table}" TO "{role}"'))
-    upgrade_postgres_database(engine)
+    _migrate_test_schema(engine)
     with Session(engine) as session, session.begin():
         assert session.get(SourceRecord, "source-1").payload_json == '{"quantity":"1.25"}'
         session.add_all(
