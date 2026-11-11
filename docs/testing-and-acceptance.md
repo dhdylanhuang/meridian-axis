@@ -1,6 +1,6 @@
 # Testing and acceptance strategy
 
-Status: planned evidence requirements. **No test suite has been implemented or run in this repository.** Workbook arithmetic inspection is evidence about the source, not an application-test pass.
+Status: acceptance strategy plus verified Stage 1A evidence. The foundation suite has **36 passing offline tests**; later financial/UI rows below remain planned. See status/handoff for exact commands and slice limits. Workbook inspection alone is not an application-test pass.
 
 ## Test layers
 

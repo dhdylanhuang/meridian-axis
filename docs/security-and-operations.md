@@ -1,6 +1,6 @@
 # Security and local operations
 
-Status: CONFIRMED requirements with ADOPTED local deployment design. No accounts, certificates, backups or launch scripts have been created.
+Status: CONFIRMED requirements with ADOPTED local deployment design. Stage 1A provides local ISA metadata bootstrap and verified backup/restore; login accounts, certificates, scheduled backups and private hosting are not yet implemented.
 
 ## Trust boundary
 
@@ -32,7 +32,7 @@ Audit before/after contains only relevant safe fields. Raw financial evidence is
 
 ## Configuration catalogue
 
-Names below are proposed implementation names, not existing variables or commands.
+Initial environment settings are implemented in `backend/src/meridian/config.py` and catalogued in `.env.example`; other runtime/financial settings below remain planned.
 
 | Setting | Default / policy |
 | --- | --- |
@@ -67,10 +67,10 @@ Document recovery point and time expectations after measuring the drill; do not 
 
 ## Installation, upgrade and shutdown
 
-There are no working setup commands yet. The implementation must provide fresh-machine Windows instructions, supported Python/Node versions, locked dependencies, environment setup, local certificate setup, database migration, user bootstrap, fixture tests, launch and shutdown. Verify each command on the actual repository. Do not paste plausible commands into README before their manifests/scripts exist.
+Tested foundation setup and maintenance commands are in [local development](local-development.md). The implementation must provide fresh-machine Windows instructions, supported Python/Node versions, locked dependencies, environment setup, local certificate setup, database migration, user bootstrap, fixture tests, launch and shutdown. Verify each command on the actual repository. Do not paste plausible commands into README before their manifests/scripts exist.
 
 Upgrade procedure: inspect release/schema notes → backup → stop writes → apply migrations → replay required derived data → run reconciliation/smoke checks → restart. On failure, restore a compatible backup rather than guessing at downgrade scripts. Graceful shutdown cancels jobs, closes HTTP clients and releases scheduler ownership; it does not leave a transaction open.
 
 ## Later remote access
 
-Stage 6 compares Tailscale with Cloudflare Tunnel/Access after local acceptance. Preserve application authentication, HTTPS, CSRF, audit and backup even behind a gateway. Require explicit deployment authorisation, verify intended identities/access, examine SQLite host ownership and test remote logout/SSE. Do not publish a public portfolio, open firewall ports, change DNS or configure a tunnel during documentation/local development.
+Stage 6 compares Tailscale with Cloudflare Tunnel/Access after local acceptance. Preserve application authentication, HTTPS, CSRF, audit and backup even behind a gateway. Eventual private hosting is owner-authorised using free services only; verify the selected host and intended identities/access, examine SQLite host ownership and test remote logout/SSE. Do not publish a public portfolio, open firewall ports, change DNS or configure a tunnel during documentation/local development.

@@ -31,6 +31,8 @@ For every stage, deliver actual code/file tree when authorised, migration implic
 
 ## Stage 1 — durable evidence, ledger and safe import
 
+**Progress:** slice 1A verified; full Stage 1 remains open. See [status/handoff](status-and-handoff.md) for evidence.
+
 **Outcome:** accepted source data survives restart, replay is deterministic, and repeated imports do not change economics.
 
 **Entry:** relevant Stage 0 contracts verified; implementation requested.

@@ -1,6 +1,6 @@
 # Architecture
 
-Status: ADOPTED planning architecture. Nothing here is implemented yet.
+Status: ADOPTED target architecture. Stage 1A persistence/configuration/maintenance and liveness are implemented; the financial application, auth, scheduler and frontend remain later slices.
 
 ## Choose the smallest system that can be checked
 

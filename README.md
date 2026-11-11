@@ -6,7 +6,9 @@ The intended stack is Python 3.11+, FastAPI, SQLAlchemy, SQLite, React, Vite, Ta
 
 ## Current status
 
-**Implementation authorised and underway.** The required Trading 212 OpenAPI YAML has been downloaded, parsed and compared with the official JSON. See [source verification](docs/stage-0-source-verification.md) for field coverage and remaining account-history gates. No usable financial application or hosted deployment is available yet.
+**Stage 1A foundation implemented and verified.** Exact-decimal SQLite persistence, Alembic migrations, evidence/audit records, isolated configuration and verified backup/restore commands are available. The HTTP app currently exposes liveness only; there is no usable portfolio UI or hosted deployment yet.
+
+Start with the tested [local development guide](docs/local-development.md). The required provider YAML is verified; see [source contracts](docs/stage-0-source-verification.md) for account-history limitations.
 
 The planning baseline was established on **11 November 2026** from the owner's requirements, a read-only review of the Excel tracker, and official provider documentation. The workbook's latest recorded snapshot is **11 October 2026**, not a current account valuation.
 

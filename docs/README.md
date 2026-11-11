@@ -24,6 +24,7 @@ This is the working specification for Great Dyke Meridian. Its purpose is to let
 | [Architecture](architecture.md) | Component responsibilities, dependency rules, runtime and proposed source tree |
 | [Data model](data-model.md) | Identity, persistence, provenance, constraints and migrations |
 | [Stage 0 verification](stage-0-source-verification.md) | Direct YAML/JSON comparison, field coverage and remaining source gates |
+| [Local development](local-development.md) | Verified installation, migration, liveness and backup/restore commands |
 | [Free hosting](hosting-options.md) | Persistent free compute and private access options, provider limits and owner dependencies |
 | [Trading 212 integration](trading212-integration.md) | Provider coverage, authentication, pagination, identities and reconciliation |
 | [Imports and reconciliation](imports-and-reconciliation.md) | File/sync lifecycle, atomicity, corrections and source precedence |

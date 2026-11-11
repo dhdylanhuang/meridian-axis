@@ -221,6 +221,7 @@ __marimo__/
 
 # Public repository: private financial inputs and runtime state
 /private/
+**/private/
 /data/
 /uploads/
 /backups/

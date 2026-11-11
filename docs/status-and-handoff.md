@@ -17,7 +17,8 @@ Last reviewed: **11 November 2026**, including implementation/delegation authori
 | Transaction-history CSV | Not inspected | Snapshot is not a replacement for execution/cash-flow history |
 | Provider research | Documentation reviewed | Official OpenAPI JSON/endpoint pages, no authenticated calls |
 | OpenAPI YAML | Verified directly | Parsed equality with official JSON; [field matrix and hashes](stage-0-source-verification.md) |
-| Application/database/frontend/tests | Foundations in progress | No completed application stage; runtime evidence will be recorded at its slice gate |
+| Application/database/tests | Stage 1A verified | Locked Python backend, initial migration, evidence/audit constraints, liveness, backup/restore; 36 offline tests pass |
+| Frontend/auth/scheduler | Not started | No financial endpoint or portfolio UI; Stage 2 security remains a gate |
 | Secrets and Live access | Not configured | No credentials requested or used |
 | Remote access | Required, free services only | [Hosting review](hosting-options.md); no host selected or configured |
 | Commit/push | Explicitly authorised per verified stage | Owner has authorised implementation with subagents and stage commits/pushes |
@@ -28,7 +29,7 @@ Real workbook/CSV files, balances, position sizes, contribution amounts, dividen
 
 ## Next bounded task
 
-Deliver Stage 1A foundations while inspecting the newly supplied private annual/activity PDF statements. Read requirements, CSV contract, broker integration, imports, and remaining Q01/Q02/Q03 gaps. The YAML prerequisite is complete and GBP currency is owner-confirmed. Establish statement/broker history coverage and stable execution/dividend/cash identity aliases before production replay. Do not re-ask resolved account scope, edit rights, tax deferral, alert recovery or July date.
+Continue Stage 1B broker adapter and Stage 1C verified holdings parser while inspecting the private annual/activity PDF statements. Read requirements, CSV contract, broker integration, imports, and remaining Q01/Q02/Q03 gaps. The YAML prerequisite is complete and GBP currency is owner-confirmed. Establish statement/broker history coverage and stable execution/dividend/cash identity aliases before production replay. Do not re-ask resolved account scope, edit rights, tax deferral, alert recovery or July date.
 
 Deliver a public-safe field matrix, synthetic fixture design and updated decisions. API remains primary unless the owner explicitly changes it. Snapshot group context is already understood; it does not provide historical trades.
 
@@ -50,3 +51,9 @@ The public-safe revision audit checked 29 Markdown files (27 under docs), 69 loc
 ## Source-contract checkpoint ? 11 November 2026
 
 Direct OpenAPI YAML and official JSON were downloaded and parsed: structurally identical, 17 paths and 38 schemas. Seven read routes, exact query/continuation contracts, provider rate budgets and unsupported semantics are recorded in the Stage 0 field matrix. This accepts the public provider-contract slice, not the full account-history gate. Owned-file link/fence/whitespace checks passed. No authenticated broker request or financial computation was performed.
+
+## Stage 1A accepted evidence ? 11 November 2026
+
+Python 3.12.7, uv 0.13.7; pinned dependency versions/hashes in `backend/uv.lock`. From `backend`: `python -m pytest tests/test_persistence.py tests/test_config.py tests/test_app.py tests/test_backup.py -q` ? **36 passed**. Scoped Ruff check and format checks passed. Actual CLI `db-init`, `backup` and separate-path `restore` smoke commands succeeded using an empty synthetic Demo account in ignored storage. The tests verify committed WAL evidence/precision survives restore, corrupt/mismatched backups fail, original files are retained, and cross-account source links are rejected.
+
+This accepts slice 1A, not all Stage 1: economic events, CSV/API aliases, group workflows and workbook reconciliation are not implemented. CI is configured for Windows/Linux but no remote CI result is asserted at this checkpoint. There are no credentials, real imported balances or financial HTTP routes. Source/audit immutability guards ordinary ORM operations; it is not administrator-proof. Migration packaging currently requires the source checkout. See local development for commands and limits.
