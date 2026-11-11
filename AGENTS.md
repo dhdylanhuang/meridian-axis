@@ -32,6 +32,7 @@ Current repository status: local evidence/import foundations verified; Cloudflar
 - Assign bounded tasks with explicit file ownership, contract dependencies, acceptance criteria and prohibited scope. Follow platform rules about when delegation is permitted.
 - Inspect the working tree before editing. Do not overwrite another contributor's work or reset unrelated changes.
 - Serialise shared schema migrations, package manifests, contract changes and integration. Agree interfaces before splitting dependent work.
+- Supabase native SQL migrations are the sole hosted schema writer. Keep their reviewed model/Alembic parity tests in the same delivery; never run automatic Alembic upgrades against the hosted project. Test on a validation branch before advancing the production-connected `main`. See [ADR 0002](docs/decisions/0002-hosted-migration-authority.md).
 - Test the changed behaviour with meaningful offline fixtures. Record exact commands and outcomes; do not invent command success or claim a whole stage from one passing test.
 - Update requirement traceability, open decisions and the status/handoff document where affected. Use the templates in `docs/templates/`.
 - No commits, pushes, publication or remote-access configuration unless the user has authorised that action.

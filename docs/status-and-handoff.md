@@ -20,7 +20,7 @@ Last reviewed: **11 November 2026**, including implementation/delegation authori
 | Application/database/tests | Local foundation + adapter/evidence slices verified | Locked Python backend, migrations, safe holdings preview/import and mocked broker adapter; full Stage 1 still open |
 | Frontend/auth/scheduler | Not started | No financial endpoint or portfolio UI; Stage 2 security remains a gate |
 | Secrets and Live access | Not configured | No credentials requested or used |
-| Hosted target | Cloudflare + Supabase approved | [ADR 0001](decisions/0001-cloudflare-supabase.md); dedicated free projects authorised; none created |
+| Hosted target | Cloudflare + Supabase approved | Owner created dedicated Supabase project `ssqqjyrgrsjubxysobwy` and confirmed native GitHub deployment settings; schema deployment still needs observation |
 | Commit/push | Explicitly authorised per verified stage | Owner has authorised implementation with subagents and stage commits/pushes |
 
 ## Public-content policy
@@ -70,7 +70,7 @@ This accepts only the source-evidence portion of 1C. No economic ledger, PDF imp
 
 ## Hosting qualification in progress
 
-Cloudflare + Supabase is owner-selected. Dedicated free projects are authorised; the owner handles sign-in. Provider setup through computer use stopped because browser access was unavailable and the native fallback could not verify the browser URL confidently. No provider project, deployment, API credential or DNS change was created. Resume through supported provider CLI authentication or a verified dashboard session; never bypass the browser restriction.
+Cloudflare + Supabase is owner-selected. Dedicated free projects are authorised; the owner handles sign-in. Provider setup through computer use stopped because browser access was unavailable and the native fallback could not verify the browser URL confidently. The owner subsequently created the dedicated Supabase target and connected GitHub; no authenticated Management API/CLI connection, deployment credential or DNS change was created by the agent. Use the native repository integration below; never bypass the browser restriction.
 
 The isolated [Python Worker probe](worker-feasibility.md) passed local runtime smoke and non-deploying bundle checks. It did not connect to PostgreSQL or measure hosted CPU, Auth, analytics, network/provider compatibility or retention capacity. Native PostgreSQL foundation parity is now CI-verified below; this is not an actual Supabase/Hyperdrive deployment. Production auth/jobs/UI remain unimplemented.
 
@@ -78,7 +78,7 @@ The isolated [Python Worker probe](worker-feasibility.md) passed local runtime s
 
 The [corrected qualification run](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43106146159) passed Windows/Linux backend checks and all six disposable PostgreSQL 17 integration tests. Local backend verification was **149 passed, six skipped** because no local test database is configured; the six integration tests ran against CI's explicit loopback database. Fresh and 0001-to-0002 migrations, evidence preservation, exact Decimal TEXT round-trip, successful-hash uniqueness, rollback/retry, cross-account foreign keys and closed default grants/RLS all passed.
 
-CI initially exposed a test expectation issue: pg8000 maps PostgreSQL foreign-key SQLSTATE 23503 to ProgrammingError, while unique violations map to IntegrityError. The regression now asserts the exact SQLSTATE and `fk_source_run_account` name through DBAPIError. It does not relax the database constraint. Synthetic-only failure annotations preserve useful diagnostics without account credentials. The PostgreSQL CI job now explicitly selects Python 3.13 rather than allowing the local `.python-version` to override setup-python; its next result must be checked before reporting that interpreter qualification.
+CI initially exposed a test expectation issue: pg8000 maps PostgreSQL foreign-key SQLSTATE 23503 to ProgrammingError, while unique violations map to IntegrityError. The regression now asserts the exact SQLSTATE and `fk_source_run_account` name through DBAPIError. It does not relax the database constraint. Synthetic-only failure annotations preserve useful diagnostics without account credentials. The PostgreSQL CI job now explicitly selects Python 3.13 rather than allowing the local `.python-version` to override setup-python; [that interpreter qualification passed](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43107073716).
 
 Published migration 0001 was retained. Migration 0002 repairs PostgreSQL partial uniqueness and closes PUBLIC/anon/authenticated table grants with RLS enabled; SQLite only advances its schema version. There are no member policies or hosted login/session implementation. Owner/BYPASSRLS powers remain outside RLS, so API authorization and least-privilege runtime credentials still require proof. Existing SQLite backups stay compatible with their recorded revision; use a pre-upgrade backup and a new restore drill for later schemas. No actual Supabase project or production database was changed.
 
@@ -87,3 +87,9 @@ Published migration 0001 was retained. Migration 0002 repairs PostgreSQL partial
 Provider dashboards were authenticated in a separate browser session; this does not authenticate the CLIs here. Use a trusted administrative device or cloud CI for provider setup and secret management. No persistent provider or broker credential should be copied into this workspace or chat. The Supabase app was not confirmed connected, so the current path is a dedicated Free project named `meridian-axis` created through the dashboard, with only its public project URL shared. Cloudflare dashboard/GitHub integration or cloud CI credentials remain candidate setup paths; none is configured. Do not repeatedly request a connection method the owner could not find.
 
 Temporary PDF extraction text, rendered inspection crops and helper copies under the task's private statement-review directory were removed after inspection. Original source PDFs, workbook and CSV were not targeted or modified. Public statements retain only structural/coverage observations; account contact information stays out of this repository.
+
+## Native Supabase bootstrap qualification
+
+The owner supplied project `ssqqjyrgrsjubxysobwy` and confirmed repository `dhdylanhuang/meridian-axis`, working directory `.`, production branch `main`, production deployment enabled, and automatic preview branching disabled. This is owner-confirmed setup, not an authenticated project inspection by the agent. No Supabase standalone app/CLI token is required for the native GitHub delivery path.
+
+The new `supabase/config.toml` and native SQL bootstrap are being validated on a temporary branch before `main` advances. Local verification: **150 passed, ten PostgreSQL tests skipped** without a local database. The native asset has an independent review and an offline DDL/model parity check; ten service-backed tests must pass on that exact validation commit before production publication. Actual Supabase migration status must then be observed separately. No `[remotes]` config, Auth/API reset, seed data, user creation or financial import is included. [ADR 0002](decisions/0002-hosted-migration-authority.md) establishes one hosted schema writer with paired schema parity.
