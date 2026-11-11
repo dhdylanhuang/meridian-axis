@@ -75,3 +75,9 @@ The [Stage 0 verification](stage-0-source-verification.md) publishes a schema/fi
 ## Required evidence before Live use
 
 Mocked contract tests pass; credentials are redacted; Demo/Live isolation is verified; all history families reconcile on fixtures; CSV aliases are documented; account wrapper and coverage are known; backups restore; a positions mismatch produces a visible exception. Enabling Live reads does not enable broker trading.
+
+## Implemented adapter checkpoint
+
+`backend/src/meridian/adapters/trading212.py` implements the seven typed read methods using the verified YAML. Offline fixtures cover exact Decimal decoding/string IDs, distinct fills under one order, complete pagination, same-family/origin restrictions, redirects, bounded retries/pacing, terminal authentication failures, and strict duplicate-key/nonfinite JSON rejection. **39 contract tests pass**. DTOs are observations with private raw payloads, not a ledger or browser response schema. One client must be shared per account to share endpoint budgets; separate client instances do not coordinate account-wide pacing yet.
+
+This accepts the adapter portion of Stage 1B only. No authenticated Demo/Live call, scheduled/manual persisted sync, event normalization, alias mapping, checkpoint or cash replay is implemented. The observations retain position opening time without claiming quote freshness. Source envelopes must add retrieval/run context when sync integration is built.

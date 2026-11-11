@@ -15,7 +15,7 @@ Last reviewed: **11 November 2026**, including implementation/delegation authori
 | July date | Known unknown | Owner cannot establish actual observation date; preserve source label and uncertainty |
 | Holdings CSV | Verified read-only | Slice=ticker; Total-row Name=group; no execution IDs/dates/currency; see CSV contract |
 | Transaction-history CSV | Not inspected | Snapshot is not a replacement for execution/cash-flow history |
-| Provider research | Documentation reviewed | Official OpenAPI JSON/endpoint pages, no authenticated calls |
+| Provider adapter | Stage 1B adapter portion verified | Seven typed GET methods, 39 mocked HTTP tests; no persisted sync or economic booking |
 | OpenAPI YAML | Verified directly | Parsed equality with official JSON; [field matrix and hashes](stage-0-source-verification.md) |
 | Application/database/tests | Stage 1A verified | Locked Python backend, initial migration, evidence/audit constraints, liveness, backup/restore; 36 offline tests pass |
 | Frontend/auth/scheduler | Not started | No financial endpoint or portfolio UI; Stage 2 security remains a gate |
@@ -57,3 +57,7 @@ Direct OpenAPI YAML and official JSON were downloaded and parsed: structurally i
 Python 3.12.7, uv 0.13.7; pinned dependency versions/hashes in `backend/uv.lock`. From `backend`: `python -m pytest tests/test_persistence.py tests/test_config.py tests/test_app.py tests/test_backup.py -q` ? **36 passed**. Scoped Ruff check and format checks passed. Actual CLI `db-init`, `backup` and separate-path `restore` smoke commands succeeded using an empty synthetic Demo account in ignored storage. The tests verify committed WAL evidence/precision survives restore, corrupt/mismatched backups fail, original files are retained, and cross-account source links are rejected.
 
 This accepts slice 1A, not all Stage 1: economic events, CSV/API aliases, group workflows and workbook reconciliation are not implemented. CI is configured for Windows/Linux but no remote CI result is asserted at this checkpoint. There are no credentials, real imported balances or financial HTTP routes. Source/audit immutability guards ordinary ORM operations; it is not administrator-proof. Migration packaging currently requires the source checkout. See local development for commands and limits.
+
+## Stage 1B adapter checkpoint ? 11 November 2026
+
+`python -m pytest tests/test_trading212.py -q` ? **39 passed**; owned-file Ruff checks passed. Independent review found no material blocking issue in this observation adapter. Direct YAML/schema verification preceded implementation. No authenticated broker request was made. Full Stage 1B remains open for normalized events, verified aliases, persisted sync/checkpoints and source-backed cash/quantity replay. The preceding Stage 1A commit `073e2df` also passed [GitHub Actions on Windows/Linux](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43101048613).
