@@ -3,6 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    BigInteger,
     CheckConstraint,
     ForeignKey,
     ForeignKeyConstraint,
@@ -60,6 +61,19 @@ class AccountMember(Base):
     slot: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+
+class LoginRateLimit(Base):
+    __tablename__ = "login_rate_limits"
+    __table_args__ = (
+        CheckConstraint("length(bucket) BETWEEN 1 AND 64", name="ck_login_bucket_length"),
+        CheckConstraint("window_started_at >= 0", name="ck_login_window_nonnegative"),
+        CheckConstraint("attempts BETWEEN 1 AND 1000", name="ck_login_attempts_range"),
+    )
+
+    bucket: Mapped[str] = mapped_column(String(64), primary_key=True)
+    window_started_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class AppSession(Base):

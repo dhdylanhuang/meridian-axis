@@ -22,7 +22,8 @@ SQL_PATH = (
     / "supabase/migrations/20261111000100_evidence_foundation.sql"
 )
 AUTH_SQL_PATH = SQL_PATH.with_name("20261112000100_membership_sessions.sql")
-SQL_PATHS = (SQL_PATH, AUTH_SQL_PATH)
+LIMIT_SQL_PATH = SQL_PATH.with_name("20261112000200_login_rate_limits.sql")
+SQL_PATHS = (SQL_PATH, AUTH_SQL_PATH, LIMIT_SQL_PATH)
 NOW = datetime(2026, 1, 2, 12, tzinfo=UTC)
 _TABLES = (
     "accounts",
@@ -31,6 +32,7 @@ _TABLES = (
     "audit_log",
     "account_members",
     "app_sessions",
+    "login_rate_limits",
     "alembic_version",
 )
 _OWN_SCHEMA = re.compile(r"meridian_test_[0-9a-f]{32}\Z")
@@ -73,13 +75,13 @@ def test_native_supabase_bootstrap_has_exact_schema_head_and_no_seeded_finances(
     assert set(inspect(native_engine).get_table_names()) == set(_TABLES)
     with native_engine.connect() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_revision() == "0003"
+        assert context.get_current_revision() == "0004"
         assert compare_metadata(context, Base.metadata) == []
         for table in _TABLES[:-1]:
             assert connection.scalar(text(f'SELECT count(*) FROM "{table}"')) == 0
         assert connection.execute(
             text("SELECT version_num FROM alembic_version")
-        ).scalars().all() == ["0003"]
+        ).scalars().all() == ["0004"]
 
 
 @pytest.mark.postgres
@@ -200,7 +202,33 @@ def test_native_membership_upgrade_preserves_existing_source_evidence(postgres_s
         assert sorted(after) == sorted(before)
     with engine.connect() as connection:
         assert MigrationContext.configure(connection).get_current_revision() == "0003"
-        assert compare_metadata(MigrationContext.configure(connection), Base.metadata) == []
+        assert "login_rate_limits" not in inspect(engine).get_table_names()
+
+
+@pytest.mark.postgres
+def test_native_limiter_conflict_preserves_0003_and_existing_table(postgres_schema):
+    engine = postgres_schema
+    _execute_native_asset(engine, paths=(SQL_PATH, AUTH_SQL_PATH))
+    with engine.begin() as connection:
+        connection.exec_driver_sql("CREATE TABLE login_rate_limits (marker TEXT)")
+        connection.exec_driver_sql("INSERT INTO login_rate_limits VALUES ('preexisting')")
+    with pytest.raises(DBAPIError) as caught:
+        _execute_native_asset(engine, paths=(LIMIT_SQL_PATH,))
+    assert caught.value.orig.args[0]["C"] == "42P07"
+    with engine.connect() as connection:
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0003"
+        assert connection.scalar(text("SELECT marker FROM login_rate_limits")) == "preexisting"
+
+
+@pytest.mark.postgres
+def test_native_limiter_wrong_revision_rolls_back_new_table(postgres_schema):
+    engine = postgres_schema
+    _execute_native_asset(engine, paths=(SQL_PATH,))
+    with pytest.raises(DBAPIError):
+        _execute_native_asset(engine, paths=(LIMIT_SQL_PATH,))
+    assert "login_rate_limits" not in inspect(engine).get_table_names()
+    with engine.connect() as connection:
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0002"
 
 
 @pytest.mark.postgres

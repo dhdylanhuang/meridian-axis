@@ -290,9 +290,9 @@ def test_postgres_upgrade_preserves_0001_evidence_and_fixes_retry_index(postgres
 def test_postgres_fresh_migration_matches_models(postgres_engine):
     with postgres_engine.connect() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_revision() == "0003"
+        assert context.get_current_revision() == "0004"
         assert compare_metadata(context, Base.metadata) == []
-    _assert_private_tables(postgres_engine, include_auth=True)
+    _assert_private_tables(postgres_engine, include_auth=True, include_limiter=True)
 
 
 @pytest.mark.postgres
@@ -304,13 +304,13 @@ def test_postgres_0002_to_0003_preserves_evidence_and_closes_new_auth_tables(pos
         session.add(_run())
         session.flush()
         session.add(_source())
-    _migrate_test_schema(engine)
+    _migrate_test_schema(engine, revision="0003")
     with Session(engine) as session:
         assert session.get(SourceRecord, "source-1").payload_json == '{"quantity":"1.25"}'
     _assert_private_tables(engine, include_auth=True)
 
 
-def _assert_private_tables(engine, *, include_auth=False):
+def _assert_private_tables(engine, *, include_auth=False, include_limiter=False):
     with engine.connect() as connection:
         states = dict(
             connection.execute(
@@ -318,11 +318,12 @@ def _assert_private_tables(engine, *, include_auth=False):
                     "SELECT c.relname,c.relrowsecurity FROM pg_class c JOIN pg_namespace n "
                     "ON n.oid=c.relnamespace WHERE n.nspname=current_schema() "
                     "AND c.relname IN ('accounts','import_log','source_records','audit_log',"
-                    "'account_members','app_sessions')"
+                    "'account_members','app_sessions','login_rate_limits')"
                 )
             ).all()
         )
         expected_tables = _TABLES + (("account_members", "app_sessions") if include_auth else ())
+        expected_tables += ("login_rate_limits",) if include_limiter else ()
         assert states == dict.fromkeys(expected_tables, True)
         forbidden_grants = connection.execute(
             text(
@@ -331,7 +332,7 @@ def _assert_private_tables(engine, *, include_auth=False):
                 "aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) e "
                 "WHERE n.nspname=current_schema() "
                 "AND c.relname IN ('accounts','import_log','source_records','audit_log',"
-                "'account_members','app_sessions') "
+                "'account_members','app_sessions','login_rate_limits') "
                 "AND (e.grantee=0 OR e.grantee IN "
                 "(SELECT oid FROM pg_roles WHERE rolname IN ('anon','authenticated')))"
             )

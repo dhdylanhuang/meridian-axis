@@ -101,7 +101,7 @@ def test_migration_from_base_matches_models_and_repeated_upgrade_keeps_evidence(
         migrate(engine)
         with engine.connect() as connection:
             context = MigrationContext.configure(connection)
-            assert context.get_current_revision() == "0003"
+            assert context.get_current_revision() == "0004"
             assert compare_metadata(context, Base.metadata) == []
         with Session(engine) as session:
             assert session.get(SourceRecord, "source-1").payload_json == '{"quantity":"1.25"}'
@@ -151,10 +151,10 @@ def test_sqlite_upgrade_from_0002_adds_closed_auth_without_changing_evidence(tmp
             session.add(make_run())
             session.flush()
             session.add(make_source())
-        migrate(engine)
+        migrate(engine, "0003")
         with engine.connect() as connection:
             assert MigrationContext.configure(connection).get_current_revision() == "0003"
-            assert compare_metadata(MigrationContext.configure(connection), Base.metadata) == []
+            assert "login_rate_limits" not in inspect(engine).get_table_names()
         with Session(engine) as session:
             assert session.get(SourceRecord, "source-1").payload_json == '{"quantity":"1.25"}'
     finally:
