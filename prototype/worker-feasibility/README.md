@@ -37,10 +37,15 @@ forwards a fresh request with a narrow header allowlist. No frontend assets or
 financial routes are attached. Render provider IDs/configuration privately;
 never commit credentials or deploy literal template placeholders.
 
-The finite JSON ASGI adapter uses the pinned SDK's scope conversion and awaits the
-complete application/middleware/lifespan call, with an 8 KiB request and 64 KiB
-response cap. The 25-second async deadline cannot preempt synchronous DBAPI calls;
-connection and per-statement bounds remain separate. A module lock serializes
-requests, while request-owned HTTPX clients and NullPool engines are closed before
-release. Runtime qualification and actual two-user login are separate gates; see
-[status](../../docs/status-and-handoff.md) for observed evidence and limitations.
+The session routes use the pinned SDK ASGI adapter. A direct privacy-header
+middleware preserves finite JSON responses, so the SDK joins the request task
+and lifespan before returning. Streaming and background work are outside this
+runtime contract. Cancellation waits for the SDK's finite exchange before
+releasing resources. The gateway caps input at 8 KiB; connection/provider and
+per-statement bounds remain separate, with no claimed overall latency guarantee.
+Request-owned HTTPX clients and NullPool engines close before the module lock is
+released. Hyperdrive local credentials may be proxy aliases; each new database
+connection checks the actual PostgreSQL role, database and schema and rolls back
+that check before use. The separately qualified origin must enforce verified TLS
+and disable caching. Actual runtime qualification and two-user login remain
+separate gates; see [status](../../docs/status-and-handoff.md).

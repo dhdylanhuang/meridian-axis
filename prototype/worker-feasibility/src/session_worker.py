@@ -1,6 +1,7 @@
 """Private session runtime. Only the public gateway can reach this namespace."""
 
 import asyncio
+from contextlib import suppress
 
 from workers import DurableObject, Response, WorkerEntrypoint
 
@@ -8,59 +9,28 @@ _REQUEST_LOCK = asyncio.Lock()
 
 
 async def buffered_fetch(app, request, env, ctx):
-    # Finite JSON-only ASGI exchange. Unlike SDK streaming fetch(), this awaits
-    # the entire application call (including middleware cleanup) under the lock.
-    # ASGI scope construction remains the installed SDK's implementation.
+    # Every current route is finite JSON and the privacy middleware is a direct
+    # ASGI wrapper, so the pinned SDK joins its HTTP task and lifespan shutdown
+    # before returning. No BaseHTTPMiddleware/streaming/background task is used.
     from workers import asgi
 
-    scope = asgi.request_to_scope(request, env)
-    payload, body, headers = bytearray(), bytearray(), []
-    status = None
-    received = False
-    finished = asyncio.Event()
-
-    async def receive():
-        nonlocal received
-        if not received:
-            received = True
-            return {"type": "http.request", "body": bytes(payload), "more_body": False}
-        await finished.wait()
-        return {"type": "http.disconnect"}
-
-    async def send(message):
-        nonlocal status, headers
-        if message["type"] == "http.response.start":
-            if status is not None:
-                raise ValueError("response_invalid")
-            status = message["status"]
-            headers = [
-                (key.decode("latin-1"), value.decode("latin-1"))
-                for key, value in message.get("headers", [])
-            ]
-        elif message["type"] == "http.response.body":
-            chunk = message.get("body", b"")
-            if status is None or len(body) + len(chunk) > 65536:
-                raise ValueError("response_invalid")
-            body.extend(chunk)
-            if not message.get("more_body", False):
-                finished.set()
-        else:
-            raise ValueError("response_invalid")
-
-    async with asyncio.timeout(25):
-        if request.body is not None:
-            async for chunk in request.body:
-                value = chunk.to_bytes()
-                if len(payload) + len(value) > 8192:
-                    raise ValueError("request_invalid")
-                payload.extend(value)
-        # No detached HTTP task or streaming writer survives this call. FastAPI
-        # owns any middleware child tasks through its structured task groups.
-        async with app.router.lifespan_context(app):
-            await app(scope, receive, send)
-        if status is None or not finished.is_set():
-            raise ValueError("response_incomplete")
-        return Response(bytes(body), status=status, headers=headers)
+    task = asyncio.create_task(asgi.fetch(app, request, env, ctx))
+    try:
+        return await asyncio.shield(task)
+    except asyncio.CancelledError:
+        # SDK process_request owns an internal HTTP task. Do not cancel its
+        # caller before that task is joined: keep resources/lock until the
+        # component-bounded finite exchange finishes, then propagate cancellation.
+        while not task.done():
+            try:
+                await asyncio.shield(task)
+            except asyncio.CancelledError:
+                continue
+            except Exception:  # noqa: BLE001 — preserve original cancellation
+                break
+        with suppress(Exception):
+            task.result()
+        raise
 
 
 class SessionApplicationDO(DurableObject):

@@ -224,3 +224,44 @@ def test_connection_verifies_actual_identity_not_proxy_alias(monkeypatch, identi
             )
 
     asyncio.run(run())
+
+
+def test_hosted_routes_remain_finite_json_for_sdk_lifecycle():
+    async def run():
+        async with hosted.hosted_application(binding(), **configuration()) as app:
+            for path, method, expected in [
+                ("/health", "GET", 200),
+                ("/api/v1/session/bootstrap", "GET", 200),
+                ("/api/v1/session/current", "GET", 401),
+                ("/api/v1/session/bootstrap", "POST", 405),
+                ("/api/v1/session/missing", "GET", 404),
+            ]:
+                messages = []
+
+                async def receive():
+                    return {"type": "http.request", "body": b"", "more_body": False}
+
+                async def send(message):
+                    messages.append(message)
+
+                await app(
+                    {
+                        "type": "http",
+                        "asgi": {"version": "3.0"},
+                        "method": method,
+                        "scheme": "https",
+                        "http_version": "1.1",
+                        "path": path,
+                        "raw_path": path.encode(),
+                        "query_string": b"",
+                        "headers": [(b"host", b"synthetic.invalid")],
+                    },
+                    receive,
+                    send,
+                )
+                assert messages[0]["status"] == expected
+                bodies = [m for m in messages if m["type"] == "http.response.body"]
+                assert len(bodies) == 1 and not bodies[0].get("more_body", False)
+                assert len(bodies[0]["body"]) < 1024
+
+    asyncio.run(run())
