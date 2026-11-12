@@ -68,6 +68,7 @@ class SessionApplicationDO(DurableObject):
         # The established synchronous database driver must not overlap requests
         # on the object's event loop. No transaction spans provider HTTP calls.
         async with _REQUEST_LOCK:
+            stage = "application_import"
             try:
                 # Heavy ORM/FastAPI imports exceeded the provider's startup
                 # snapshot memory bound. Initialise only in the object request;
@@ -75,6 +76,7 @@ class SessionApplicationDO(DurableObject):
                 from meridian.security.hosted import hosted_application
                 from pydantic import SecretStr
 
+                stage = "application_configuration"
                 async with hosted_application(
                     self.env.HYPERDRIVE,
                     origin=self.env.PUBLIC_ORIGIN,
@@ -82,11 +84,29 @@ class SessionApplicationDO(DurableObject):
                     publishable_key=SecretStr(self.env.SUPABASE_PUBLISHABLE_KEY),
                     login_csrf_key=SecretStr(self.env.LOGIN_CSRF_KEY),
                 ) as app:
+                    stage = "request_adapter"
                     return await buffered_fetch(app, request, self.env, self.ctx)
-            except Exception:  # noqa: BLE001 — fixed error at the external boundary
+            except Exception as error:  # noqa: BLE001 — fixed external categories
                 # Never expose binding values, provider errors or driver SQL.
+                # Only public, fixed categories; never exception messages,
+                # module names, SQL, values, traceback or request inputs.
+                category = type(error).__name__
+                if category not in {
+                    "ModuleNotFoundError",
+                    "ImportError",
+                    "ValueError",
+                    "RuntimeError",
+                    "AttributeError",
+                    "MemoryError",
+                    "TypeError",
+                }:
+                    category = "Unavailable"
                 return Response.json(
-                    {"error": "session_unavailable"},
+                    {
+                        "error": "session_unavailable",
+                        "component": stage,
+                        "category": category,
+                    },
                     status=503,
                     headers={"Cache-Control": "no-store"},
                 )
