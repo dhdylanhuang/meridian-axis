@@ -21,13 +21,19 @@ SQL_PATH = (
     Path(__file__).resolve().parents[2]
     / "supabase/migrations/20261111000100_evidence_foundation.sql"
 )
+AUTH_SQL_PATH = SQL_PATH.with_name("20261112000100_membership_sessions.sql")
+SQL_PATHS = (SQL_PATH, AUTH_SQL_PATH)
 NOW = datetime(2026, 1, 2, 12, tzinfo=UTC)
-_TABLES = ("accounts", "import_log", "source_records", "audit_log", "alembic_version")
+_TABLES = (
+    "accounts",
+    "import_log",
+    "source_records",
+    "audit_log",
+    "account_members",
+    "app_sessions",
+    "alembic_version",
+)
 _OWN_SCHEMA = re.compile(r"meridian_test_[0-9a-f]{32}\Z")
-
-
-def _sql():
-    return SQL_PATH.read_text(encoding="utf-8")
 
 
 def _space_normalized(value):
@@ -37,7 +43,7 @@ def _space_normalized(value):
 def test_checked_in_supabase_table_and_index_ddl_matches_authoritative_models():
     # This fast contract check catches drift in the checked-in bootstrap. Actual
     # PostgreSQL execution, constraints and privileges are verified separately.
-    actual = _space_normalized(_sql())
+    actual = _space_normalized("\n".join(path.read_text(encoding="utf-8") for path in SQL_PATHS))
     pg = dialect()
     for table in Base.metadata.sorted_tables:
         assert _space_normalized(str(CreateTable(table).compile(dialect=pg))) in actual
@@ -45,13 +51,14 @@ def test_checked_in_supabase_table_and_index_ddl_matches_authoritative_models():
             assert _space_normalized(str(CreateIndex(index).compile(dialect=pg))) in actual
 
 
-def _execute_native_asset(engine):
+def _execute_native_asset(engine, paths=SQL_PATHS):
     with engine.begin() as connection:
         schema = connection.scalar(text("SELECT current_schema()"))
         assert _OWN_SCHEMA.fullmatch(schema)
         # Execute the actual asset, without replacement, splitting or generated
         # substitute DDL. The fixture's trusted search_path confines every object.
-        connection.exec_driver_sql(_sql())
+        for path in paths:
+            connection.exec_driver_sql(path.read_text(encoding="utf-8"))
         assert connection.scalar(text("SELECT current_schema()")) == schema
 
 
@@ -66,13 +73,13 @@ def test_native_supabase_bootstrap_has_exact_schema_head_and_no_seeded_finances(
     assert set(inspect(native_engine).get_table_names()) == set(_TABLES)
     with native_engine.connect() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_revision() == "0002"
+        assert context.get_current_revision() == "0003"
         assert compare_metadata(context, Base.metadata) == []
         for table in _TABLES[:-1]:
             assert connection.scalar(text(f'SELECT count(*) FROM "{table}"')) == 0
         assert connection.execute(
             text("SELECT version_num FROM alembic_version")
-        ).scalars().all() == ["0002"]
+        ).scalars().all() == ["0003"]
 
 
 @pytest.mark.postgres
@@ -143,6 +150,57 @@ def test_native_supabase_conflicting_existing_table_fails_and_all_new_ddl_rolls_
             connection.scalar(text("SELECT version_num FROM alembic_version"))
             == "preexisting-unreviewed"
         )
+
+
+@pytest.mark.postgres
+def test_native_membership_upgrade_conflict_rolls_back_new_tables_and_keeps_0002(postgres_schema):
+    engine = postgres_schema
+    _execute_native_asset(engine, paths=(SQL_PATH,))
+    with engine.begin() as connection:
+        connection.exec_driver_sql("CREATE TABLE app_sessions (marker TEXT)")
+        connection.exec_driver_sql("INSERT INTO app_sessions VALUES ('preexisting')")
+    with pytest.raises(DBAPIError) as caught:
+        _execute_native_asset(engine, paths=(AUTH_SQL_PATH,))
+    assert caught.value.orig.args[0]["C"] == "42P07"
+    assert "account_members" not in inspect(engine).get_table_names()
+    with engine.connect() as connection:
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0002"
+        assert connection.scalar(text("SELECT marker FROM app_sessions")) == "preexisting"
+
+
+@pytest.mark.postgres
+def test_native_membership_upgrade_preserves_existing_source_evidence(postgres_schema):
+    engine = postgres_schema
+    _execute_native_asset(engine, paths=(SQL_PATH,))
+    with Session(engine) as session, session.begin():
+        session.add(Account(id="synthetic-account", environment="demo"))
+    outcome = import_holdings(
+        engine,
+        account_id="synthetic-account",
+        content=(
+            b"Slice,Name,Invested value,Value,Result,Owned quantity,"
+            b"Dividends gained,Dividends cash,Dividends reinvested\r\n"
+            b"SYN,Invented Holding,10,12,2,0.125,N/A,N/A,N/A\r\n"
+            b"Total,Invented Group,10,12,2,-,5,1,2\r\n"
+        ),
+        currency="GBP",
+        observed_at=NOW,
+        clock=lambda: NOW,
+    )
+    assert outcome.status == "succeeded"
+    with Session(engine) as session:
+        before = [
+            (row.id, row.digest, row.payload_json) for row in session.scalars(select(SourceRecord))
+        ]
+    _execute_native_asset(engine, paths=(AUTH_SQL_PATH,))
+    with Session(engine) as session:
+        after = [
+            (row.id, row.digest, row.payload_json) for row in session.scalars(select(SourceRecord))
+        ]
+        assert sorted(after) == sorted(before)
+    with engine.connect() as connection:
+        assert MigrationContext.configure(connection).get_current_revision() == "0003"
+        assert compare_metadata(MigrationContext.configure(connection), Base.metadata) == []
 
 
 @pytest.mark.postgres

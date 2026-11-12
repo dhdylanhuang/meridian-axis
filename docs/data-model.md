@@ -23,7 +23,7 @@ SQLite's [type-affinity documentation](https://www.sqlite.org/datatype3.html) ex
 
 | Entity | Essential data / constraints |
 | --- | --- |
-| `users`, `sessions` | Two equal full-editor identities, password hash; hashed opaque session token, expiry and revocation; no broker credentials |
+| Supabase Auth, `account_members`, `app_sessions` | External canonical Auth UUIDs; two active equal member slots per account with revocation history; hashed opaque session/CSRF tokens, bounded expiry and revocation; no application passwords or broker credentials |
 | `owners`, `accounts` | One owner and one live ISA; broker, private account reference, isolated demo/live, primary currency and history coverage |
 | `securities`, `instruments` | Security-class identity; listing ticker, name, ISIN when known, exchange, currency, unit multiplier, asset class and country evidence |
 | `ticker_map` | Instrument/provider symbol mapping, valid interval, reviewer and revision; editable and audited |
@@ -74,6 +74,8 @@ Prefer repository queries and a few explicit read models over precomputing every
 
 Numeric sorting must also preserve financial meaning: canonical decimal text cannot be ordered lexicographically as money. Use an explicitly designed sort representation/read model or bounded Decimal sorting, with pagination behaviour tested. Do not fix precision by storing text and then silently cast all ledger arithmetic back to floating point.
 
-The first migration establishes metadata/versioning, precise amounts, accounts, evidence, events, import/audit and grouping. Later stages introduce price/valuation/security and analytical tables. One agent owns the migration sequence at a time. Migrations require an upgrade test from the preceding schema and a backup/restore rehearsal before use with real data.
+The initial migrations establish accounts, precise storage types and import/source/audit evidence. Events, economic ledger and grouping remain later slices. The new `0003` foundation adds closed membership/session tables; it seeds no identity/member/session, exposes no policy or runtime grant, and supplies no usable login on its own. Supabase native SQL and Alembic/model parity must pass validation before hosted promotion. One agent owns the migration sequence at a time. Migrations require an upgrade test from the preceding schema and a backup/restore rehearsal before use with real data.
+
+Member slots are capacity identifiers, not permission levels: both have identical editing rights. A partial unique index limits each account to slots 1/2 while allowing revoked membership history. Sessions reference the composite account/member key, preventing a token from claiming another account's membership. Services still check active membership and expiry on every request; a foreign key alone does not authorize a session. Audit records contain the account/actor/action, never token or CSRF hashes. Runtime policies/roles remain a separate gate.
 
 Historical grouping is effective-dated. ADOPTED display default: exposures use current membership; historical attribution uses membership effective at that date. A separately labelled restatement mode may use current classification; it must not rewrite historical evidence.

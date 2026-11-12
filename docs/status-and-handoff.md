@@ -8,7 +8,13 @@ The owner explicitly resumed at 06:34 London time, after the authorised restart 
 
 A new disposable PostgreSQL integration test runs the unchanged TEMP-table probe twice through fresh DBAPI connections and checks exact values and cleanup. Local execution skipped without a test server; real execution awaits service-backed CI. The backend workflow now watches the shared SQL probe source. This does not add a hosted schema writer or prove durable imports.
 
-Next bounded outcome: complete the protected synthetic Hyperdrive transport check, record actual denial/value/rollback/cleanup outcomes and remove its temporary resources. Continue with the existing private-data and free-services constraints; no renewed routine project permission is needed.
+**Protected transport slice verified:** source `11239adb8785b62e2ada92424b5887e10ad8c00f` passed [Windows/Linux backend and PostgreSQL CI](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43170776018), including the exact TEMP-table probe. The PostgreSQL selection contains eleven cases. The protected Worker/object → Hyperdrive → Supabase pg8000 check returned the exact invented numeric `1.55000000000000000000001240` and timestamp `2026-01-02T12:34:56.123456Z`, one retained row, one rolled-back row, and TEMP removal after commit. Anonymous and invalid bearer requests were denied. `durable_commit_verified` remains **false**: this is transport/savepoint/cleanup evidence, not durable financial import acceptance.
+
+The first remote run stopped because the helper expected HTTP 200 for secret creation while Cloudflare returned successful 201; its resources were deleted. After correcting that observed status, the full check passed. Both runs' Worker owner, gateway and Hyperdrive resources were independently checked absent (HTTP 404) after cleanup. Temporary connection expiry was verified through the role catalog (299 seconds at acquisition). Credentials stayed in the trusted process; no request-header tail was opened. The supported CLI dry-run output was parsed as data and never executed. No persistent role, project password reset or application-table write was part of the diagnostic.
+
+**Current delivery in validation:** closed membership/session schema parity `0003`, the Supabase password-login/verified-user adapter, and an opaque-session service. Local full suite: **216 passed, 31 PostgreSQL cases skipped**; Ruff check/format passed. Separate provider/client tests use mocked HTTP, and session tests use synthetic SQLite data. A real PostgreSQL barrier test checks simultaneous rotation; it still needs validation-branch CI. No application login/financial HTTP route, runtime role/policy, provider refresh or real identity has been deployed. The existing hosted schema remains parity `0002` until the reviewed native migration reaches `main` and its outcome is observed.
+
+Next bounded outcome: review/integrate this foundation, pass service-backed validation-branch CI before promoting the native schema change, then qualify the dedicated runtime role and real two-member Auth/session boundary. Continue with the existing private-data and free-services constraints; no renewed routine project permission is needed.
 
 ## Historical pause - resume authorised from 04:00 London, 12 November 2026
 
@@ -89,8 +95,8 @@ Public docs distinguish observed CI/provider results from owner dashboard confir
 | Provider adapter | Stage 1B adapter portion verified | Seven typed GET methods, 39 mocked HTTP tests; no persisted sync or economic booking |
 | OpenAPI YAML | Verified directly | Parsed equality with official JSON; [field matrix and hashes](stage-0-source-verification.md) |
 | Application/database/tests | Local foundation + adapter/evidence slices verified | Locked Python backend, migrations, safe holdings preview/import and mocked broker adapter; full Stage 1 still open |
-| Frontend/auth/scheduler | Not started | No financial endpoint or portfolio UI; Stage 2 security remains a gate |
-| Secrets and Live access | Not configured | No credentials requested or used |
+| Frontend/auth/scheduler | Auth foundation in validation; frontend/scheduler not started | Closed member/session persistence, verified-user adapter and opaque-session service; no login/financial HTTP endpoint or portfolio UI; Stage 2 security remains a gate |
+| Broker secrets and Live access | Not configured | Provider administration is authorised; no broker credentials or Live broker request used |
 | Hosted target | Supabase evidence bootstrap and synthetic Cloudflare probe deployed | Probe responses/CPU observed; ordinary Free CPU fit remains open; no financial data or finished application deployed |
 | Commit/push | Explicitly authorised per verified stage | Owner has authorised implementation with subagents and stage commits/pushes |
 

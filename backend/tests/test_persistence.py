@@ -101,7 +101,7 @@ def test_migration_from_base_matches_models_and_repeated_upgrade_keeps_evidence(
         migrate(engine)
         with engine.connect() as connection:
             context = MigrationContext.configure(connection)
-            assert context.get_current_revision() == "0002"
+            assert context.get_current_revision() == "0003"
             assert compare_metadata(context, Base.metadata) == []
         with Session(engine) as session:
             assert session.get(SourceRecord, "source-1").payload_json == '{"quantity":"1.25"}'
@@ -138,6 +138,25 @@ def test_sqlite_upgrade_from_0001_to_0002_retains_evidence_and_partial_index(tmp
                 "SELECT sql FROM sqlite_master WHERE name = 'uq_import_accepted_hash'"
             ).scalar_one()
             assert "WHERE status = 'succeeded'" in index_sql
+    finally:
+        engine.dispose()
+
+
+def test_sqlite_upgrade_from_0002_adds_closed_auth_without_changing_evidence(tmp_path):
+    engine = create_db_engine(tmp_path / "auth-upgrade.db")
+    try:
+        migrate(engine, "0002")
+        with Session(engine) as session, session.begin():
+            add_account(session)
+            session.add(make_run())
+            session.flush()
+            session.add(make_source())
+        migrate(engine)
+        with engine.connect() as connection:
+            assert MigrationContext.configure(connection).get_current_revision() == "0003"
+            assert compare_metadata(MigrationContext.configure(connection), Base.metadata) == []
+        with Session(engine) as session:
+            assert session.get(SourceRecord, "source-1").payload_json == '{"quantity":"1.25"}'
     finally:
         engine.dispose()
 

@@ -40,6 +40,50 @@ class Account(Base):
     private_reference: Mapped[str | None] = mapped_column(Text)
 
 
+class AccountMember(Base):
+    __tablename__ = "account_members"
+    __table_args__ = (
+        CheckConstraint("slot IN (1, 2)", name="ck_member_slot"),
+        CheckConstraint("length(auth_subject) = 36", name="ck_member_subject_length"),
+        Index(
+            "uq_member_active_slot",
+            "account_id",
+            "slot",
+            unique=True,
+            sqlite_where=text("revoked_at IS NULL"),
+            postgresql_where=text("revoked_at IS NULL"),
+        ),
+    )
+
+    account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), primary_key=True)
+    auth_subject: Mapped[str] = mapped_column(String(36), primary_key=True)
+    slot: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+
+class AppSession(Base):
+    __tablename__ = "app_sessions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["account_id", "auth_subject"],
+            ["account_members.account_id", "account_members.auth_subject"],
+            name="fk_session_account_member",
+        ),
+        CheckConstraint("length(token_hash) = 64", name="ck_session_token_hash_length"),
+        CheckConstraint("length(csrf_hash) = 64", name="ck_session_csrf_hash_length"),
+        CheckConstraint("expires_at > created_at", name="ck_session_expiry"),
+    )
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    account_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    auth_subject: Mapped[str] = mapped_column(String(36), nullable=False)
+    csrf_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+
 class ImportRun(Base):
     __tablename__ = "import_log"
     __table_args__ = (

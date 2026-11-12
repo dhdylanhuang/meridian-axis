@@ -87,6 +87,30 @@ At the owner-requested pause: **15 Python tests and ten Node tests passed**, sco
 
 The templates contain no Hyperdrive ID or credential. A local helper for bounded temporary-role/Hyperdrive provisioning, protected checks and resource deletion is prepared in ignored tooling but **never executed**. Provider-issued temporary CLI credentials are an administrative diagnostic mechanism, not an application runtime role. Two native read-only direct pg8000 attempts failed TLS before proving any query; verification was not disabled. No Hyperdrive resource, protected database Worker or persistent schema change was made. Resume from the current handoff after the owner's authorised time.
 
+### Protected database result - 12 November 2026
+
+After the explicit resume, the helper was pinned to the intended Cloudflare account in both child environment and generated configs. Direct Keychain lookup was unavailable while the Supabase CLI session remained valid. The CLI's documented `db dump --remote=<intended-project> --dry-run` provides a supported temporary connection projection through its own credential stack. Both streams were captured in memory; only five fixed `PG*` assignments were parsed, never evaluated or executed. The target, temporary-role identity and expiry were validated before use. The dry-run ran no dump/container and copied no financial rows. [CLI implementation](https://github.com/supabase/cli/blob/v3.1.0/apps/cli/src/commands/db/dump/dump.handler.ts), [connection projection](https://github.com/supabase/cli/blob/v3.1.0/apps/cli/src/command-internal/pg-dump.env.ts)
+
+Source `11239adb8785b62e2ada92424b5887e10ad8c00f` passed [actual backend Windows/Linux and PostgreSQL CI](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43170776018). The eleven PostgreSQL cases include two fresh-connection executions of the unchanged TEMP probe, verifying its real SQL rather than only doubles.
+
+The bounded protected deployment then returned:
+
+| Check | Observed result |
+| --- | --- |
+| Anonymous / invalid bearer | Both denied before database invocation |
+| Protected transport | Python object → Hyperdrive → Supabase through pg8000 succeeded |
+| Exact NUMERIC text | `1.55000000000000000000001240` |
+| UTC timestamp text | `2026-01-02T12:34:56.123456Z` |
+| Savepoint failure | SQLSTATE 23505 required; staged second row rolled back; first row retained |
+| After commit | TEMP table absent; cursor/connection cleanup completed |
+| Durable financial commit | **Not verified**; temporary-table probe explicitly reports false |
+| Credential expiry at acquisition | Catalog-verified 299 seconds; credentials remained in memory |
+| Resource cleanup | Both diagnostic runs' two Workers and Hyperdrive config independently returned HTTP 404 afterward |
+
+Hyperdrive query caching was disabled; origin TLS used the documented `require` mode with WebPKI validation. The Worker-to-binding local hop used the provider's documented plaintext setting; no direct-origin certificate verification was disabled. The temporary credential was administrative, so this does not accept a persistent least-privilege login, member RLS, pooled identity isolation or production Auth. [Hyperdrive TLS boundary](https://developers.cloudflare.com/hyperdrive/configuration/tls-ssl-certificates-for-hyperdrive/), [Python binding example](https://developers.cloudflare.com/hyperdrive/examples/python-workers/)
+
+The first deployment attempt received successful HTTP **201** from secret creation where the helper expected 200; it stopped and cleaned up. Accepting the observed 201 response enabled the subsequent successful check. No authorization-bearing tail events were captured. No schema migration, application data or broker connection was part of either run.
+
 ## Original local result
 
 The [isolated prototype](../prototype/worker-feasibility/README.md) runs in local Wrangler/workerd using Python Workers' Pyodide runtime. `GET /health` and `GET /probe` returned HTTP 200; the smoke script verified exact Decimal values, canonical string output, Pydantic serialization, synchronous SQLAlchemy PostgreSQL dialect compilation, pg8000 import and HTTPX with an in-process mocked transport. `POST /probe` returned 405.

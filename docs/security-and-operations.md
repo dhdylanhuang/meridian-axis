@@ -26,6 +26,14 @@ Implementation references: [OWASP sessions](https://cheatsheetseries.owasp.org/c
 
 Bootstrap/reset remains an authenticated administrative operation with explicit identity and audit; no public password-reset email workflow is required initially. Q04 is resolved: both members can perform application editing operations. Broker trading remains excluded for everyone.
 
+### Membership/session foundation in validation
+
+The `0003` schema adds `account_members` and `app_sessions` with RLS enabled and PUBLIC/anon/authenticated grants revoked. It creates no identity, member, session or runtime policy. The application owns no password hashes; Supabase Auth remains the identity provider.
+
+The new HTTP adapter performs password grant followed by authenticated provider user verification, pins the project origin and requires matching canonical UUIDs. It returns identity/expiry only and discards provider tokens from its return contract. Mocked HTTP tests cover malformed/expired responses, redirects, injected client defaults/cookies, bounded streams and safe errors. Live identity and refresh qualification remain open.
+
+The session service issues 256-bit opaque tokens with hash-only persistence, separate CSRF nonces and a maximum one-hour fresh-login lifetime bounded by provider expiry. It rechecks session/account membership, enforces exact HTTPS Origin and CSRF for mutations, and commits session changes/audit within the caller's transaction. Rotation consumes the old row through a conditional update to prevent two simultaneous successors; revocation denies later authorization checks. It does not cancel work already authorized. Provider refresh material is not stored at this stage. Browser cookie wiring, public-route throttling, runtime role/RLS and hosted two-member verification remain required before a usable authenticated application is claimed.
+
 ## Secrets and private data
 
 Broker key/secret come from local environment variables or production secret bindings and remain server-only. Keep Supabase secret/service-role keys, database passwords, scheduled-job credentials and any archive encryption keys out of React, settings exports, URLs, logs, fixtures and API responses. Only Supabase publishable/legacy anon keys may enter a client bundle, and those confer no financial access without validated user identity, grants and RLS. Secret/service-role keys bypass RLS; use them only in narrow server/admin operations with explicit authorization. A scheduled endpoint needs a verified job credential; being absent from frontend navigation is not protection.
