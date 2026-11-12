@@ -52,7 +52,7 @@ The local Supabase image provides provider-owned schema/roles. Ordinary PostgreS
 
 After validation, the disposable restored container and its volumes were removed with the project-scoped CLI stop/no-backup operation; independent Docker inspection confirmed their absence. Only encrypted archives and separately protected keys remain.
 
-Local verification: `cd backend && uv run --locked pytest -q -rN` **377 passed, 63 PostgreSQL cases skipped**; Ruff check/format passed. **26 new recovery/capture cases** cover the changed boundaries. Actual PostgreSQL restore evidence above is separate from skipped integration fixtures.
+Source **`e2a4870`** passed [Windows/Linux and all 63 PostgreSQL cases](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43327541709) before promotion to `main`. Local verification: `cd backend && uv run --locked pytest -q -rN` **377 passed, 63 PostgreSQL cases skipped**; Ruff check/format passed. **26 new recovery/capture cases** cover the changed boundaries. Actual PostgreSQL restore evidence above is separate from skipped integration fixtures.
 
 Archive digests, private identifiers, SQL diagnostics and local resource manifests remain ignored and private. Public tests use invented data. No exact portfolio values or identity records appear in this document.
 

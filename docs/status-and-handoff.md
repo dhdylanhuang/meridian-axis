@@ -16,12 +16,14 @@ The owner reported **successful sign-in** after receiving the private setup link
 
 Continue in this order:
 
-1. Qualify private hosted backup/export and restore into an isolated target, preserving the working system. Record recovery evidence before importing real financial data.
-2. Connect Trading 212 with read-only credentials and establish actual holdings/history coverage.
+1. **Initial recovery slice verified:** encrypted hosted export and isolated local Supabase restore, preserving the working system. Complete scheduled retention, independent key custody and replacement hosted login recovery at their operational gates.
+2. **Current next action:** provision Trading 212 read-only credentials in the local capture process, run the encrypted observation capture and establish actual holdings/history coverage.
 3. Reconcile broker observations against the inspected exports/statements and build the source-backed ledger/valuation path.
 4. Populate AXIS with verified holdings and cash, explicit source/as-of timestamps and missing-data states. This is the next visible financial milestone; it is not implemented yet.
 
 ## Hosted logical recovery delivered — 12 November 2026
+
+Verified source **`e2a4870`** passed [validation CI](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43327541709): Windows/Linux and all **63 PostgreSQL cases** before promotion to `main`.
 
 O01's initial hosted recovery slice now has actual evidence: private encrypted Supabase export and restore into a **network-disconnected local Supabase PostgreSQL 17** target. The owner specifically approved exporting Auth records/password hashes and password-free database role definitions into an encrypted local archive, with a separate private key. No hosted target was overwritten and no financial data was imported. [Hosted recovery](hosted-recovery.md) owns the commands, measured evidence and limitations.
 
