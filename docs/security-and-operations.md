@@ -1,6 +1,6 @@
 # Security and operations
 
-Status: CONFIRMED access/privacy requirements and owner-approved **Cloudflare + Supabase** production target, 11 November 2026. [ADR 0001](decisions/0001-cloudflare-supabase.md) supersedes production SQLite and the resident scheduler. Stage 1A's implemented bootstrap/backup/restore is an **offline SQLite foundation**, not a verified hosted deployment. Auth, Postgres/RLS, scheduled backups and production access remain unimplemented.
+Status: CONFIRMED access/privacy requirements and owner-approved **Cloudflare + Supabase** production target, 11 November 2026. [ADR 0001](decisions/0001-cloudflare-supabase.md) supersedes production SQLite and the resident scheduler. Stage 1A's implemented backup/restore is an **offline SQLite foundation**. Hosted closed-schema RLS and backend identity/session foundations are verified; application authorization, scheduled backups and production financial access remain open.
 
 ## Trust boundary
 
@@ -26,9 +26,11 @@ Implementation references: [OWASP sessions](https://cheatsheetseries.owasp.org/c
 
 Bootstrap/reset remains an authenticated administrative operation with explicit identity and audit; no public password-reset email workflow is required initially. Q04 is resolved: both members can perform application editing operations. Broker trading remains excluded for everyone.
 
-### Membership/session foundation in validation
+### Closed membership/session foundation
 
 The `0003` schema adds `account_members` and `app_sessions` with RLS enabled and PUBLIC/anon/authenticated grants revoked. It creates no identity, member, session or runtime policy. The application owns no password hashes; Supabase Auth remains the identity provider.
+
+The exact validation-branch commit passed Windows/Linux and all 31 PostgreSQL cases before promotion. Read-only hosted inspection verified parity `0003`, zero rows/policies on both new tables and denied PUBLIC/anon/authenticated table privileges. This verifies a closed schema, not usable application access.
 
 The new HTTP adapter performs password grant followed by authenticated provider user verification, pins the project origin and requires matching canonical UUIDs. It returns identity/expiry only and discards provider tokens from its return contract. Mocked HTTP tests cover malformed/expired responses, redirects, injected client defaults/cookies, bounded streams and safe errors. Live identity and refresh qualification remain open.
 
