@@ -6,6 +6,8 @@ The hosted target is Cloudflare + Supabase PostgreSQL, with React, Vite, Tailwin
 
 ## Current status
 
+**Minimal private sign-in:** [Open Meridian](https://meridian-axis-session-gateway.meridian-worker-feasibility.workers.dev/). Both approved accounts pass hosted password setup/login/session/logout tests. First-use setup links are delivered privately. The signed-in workspace has no portfolio data yet.
+
 **Dashboard preview:** [Open Meridian AXIS](https://meridian-axis-preview.meridian-worker-feasibility.workers.dev). Explore AXIS, HOLDINGS and GROUPS with charts, search, sorting and group filters. All displayed values are invented demo fixtures; no account is connected. The static preview is separate from the private financial application.
 
 **Development resumed at the owner's request on 12 November 2026.** Continue from [status and handoff](docs/status-and-handoff.md). Stage 0H hosting qualification is the current gate; direct Cloudflare and Supabase management access is established.
@@ -16,7 +18,7 @@ Start with the tested [local development guide](docs/local-development.md). The 
 
 PostgreSQL foundation parity also passes disposable service-backed CI. This verifies migrations and evidence constraints, not a hosted Supabase login or deployment. The [status and handoff](docs/status-and-handoff.md) distinguishes completed slices from the remaining financial and hosting gates.
 
-The empty Supabase schema has deployed through native GitHub migrations at parity `0005`. A restricted runtime credential and uncached Hyperdrive origin are configured; an actual Worker login verified denied access and rollback behavior. Backend identity/session services and shared login limiting pass component tests. Hosted session transport now passes actual HTTPS rejection/CSRF/shared-limiter checks. Both user logins, sign-in UI, capacity and recovery remain open. Synthetic runtime controls remain qualification evidence; no real portfolio data or usable authenticated financial application has been deployed.
+The empty Supabase schema has deployed through native GitHub migrations at parity `0005`. A restricted runtime credential and uncached Hyperdrive origin are configured; an actual Worker login verified denied access and rollback behavior. Backend identity/session services and shared login limiting pass component tests. Hosted session transport now passes actual HTTPS rejection/CSRF/shared-limiter checks. Both approved user lifecycles and the minimal sign-in UI are now deployed; browser acceptance, capacity and recovery remain open. Synthetic runtime controls remain qualification evidence; no real portfolio data or usable authenticated financial application has been deployed.
 
 The planning baseline was established on **11 November 2026** from the owner's requirements, a read-only review of the Excel tracker, and official provider documentation. The workbook's latest recorded snapshot is **11 October 2026**, not a current account valuation.
 

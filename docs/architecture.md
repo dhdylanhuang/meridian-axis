@@ -2,7 +2,7 @@
 
 Status: **CONFIRMED production platform change, 11 November 2026**. The owner selected Cloudflare + Supabase, replacing production SQLite and a continuously running APScheduler process. Preserve Python/FastAPI where a measured runtime spike passes. [ADR 0001](decisions/0001-cloudflare-supabase.md) records the decision, superseded assumptions and outstanding gates.
 
-**Implemented state includes local evidence tooling, broker observation adapters and verified PostgreSQL schema parity.** The closed, empty evidence bootstrap is deployed to the dedicated Supabase project through native GitHub migrations. A synthetic static frontend and an empty hosted session API are deployed; approved-user login, financial routes, scheduled jobs and analytics remain open; see the [current handoff](status-and-handoff.md) for exact verified slices.
+**Implemented state includes local evidence tooling, broker observation adapters and verified PostgreSQL schema parity.** The closed, empty evidence bootstrap is deployed to the dedicated Supabase project through native GitHub migrations. A synthetic preview and minimal two-user sign-in are deployed; financial routes, scheduled jobs and analytics remain open; see the [current handoff](status-and-handoff.md) for exact verified slices.
 
 ## Choose the smallest system that can be checked
 

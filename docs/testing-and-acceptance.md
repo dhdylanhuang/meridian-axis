@@ -1,6 +1,6 @@
 # Testing and acceptance strategy
 
-Status: acceptance strategy plus verified local foundations and bounded hosted session transport. Latest local suite: **340 passed, 61 PostgreSQL cases skipped**; final Windows/Linux/PostgreSQL CI passes. Worker validation passes 19 Python and 19 Node cases. Actual HTTPS checks qualify prelogin cookie scope, anonymous/Origin/input denial, rejected credentials and shared durable limiting. Both approved identities, positive hosted session lifecycles, browser enforcement, hosted recovery, financial acceptance and broader capacity remain open. See [status/handoff](status-and-handoff.md) for exact source/CI evidence.
+Status: acceptance strategy plus verified local foundations and bounded hosted session transport. Latest local suite: **351 passed, 63 PostgreSQL cases skipped**; final Windows/Linux/PostgreSQL CI passes. Worker validation passes 19 Python and 21 Node cases. Actual HTTPS checks qualify prelogin cookie scope, anonymous/Origin/input denial, rejected credentials and shared durable limiting. Both approved identities now pass actual setup/password-login/rotation/logout checks. Browser enforcement, hosted recovery, financial acceptance and broader capacity remain open. See [status/handoff](status-and-handoff.md) for exact source/CI evidence.
 
 ## Test layers
 
