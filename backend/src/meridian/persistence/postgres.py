@@ -33,7 +33,10 @@ class PostgresOperationError(RuntimeError):
 
 
 def create_postgres_engine(
-    database_url: str | URL, *, allow_loopback_insecure: bool = False
+    database_url: str | URL,
+    *,
+    allow_loopback_insecure: bool = False,
+    ca_certificate: str | None = None,
 ) -> Engine:
     """Build a lazy engine with explicit TLS/driver settings and bounded timeout.
 
@@ -56,7 +59,18 @@ def create_postgres_engine(
         raise PostgresConfigurationError("postgres_tls_option_invalid")
     if allow_loopback_insecure and url.host.lower() not in _LOOPBACK_HOSTS:
         raise PostgresConfigurationError("postgres_insecure_host_forbidden")
+    if ca_certificate is not None and (
+        allow_loopback_insecure
+        or not isinstance(ca_certificate, str)
+        or len(ca_certificate) > 65536
+    ):
+        raise PostgresConfigurationError("postgres_ca_invalid")
     ssl_context = False if allow_loopback_insecure else ssl.create_default_context()
+    if ca_certificate is not None:
+        try:
+            ssl_context.load_verify_locations(cadata=ca_certificate)
+        except Exception:
+            raise PostgresConfigurationError("postgres_ca_invalid") from None
     try:
         return create_engine(
             url,

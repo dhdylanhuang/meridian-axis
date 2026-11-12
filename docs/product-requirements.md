@@ -82,3 +82,7 @@ No order placement, modification, cancellation, pie targets, pie RAG, pie projec
 Underlying ETF exposures, revenue-currency breakdowns, historical pre-opening basis, corporate actions and tax adjustments need evidence. They are requested capabilities, not permission to invent missing data. Complete implementation must either provide supported results or expose the specific unavailable state and limitation. A deferred feature is not silently dropped from the roadmap.
 
 The owner confirms one ISA and defers the tax engine from the initial release. T01/T02 remain documented as optional later work, not initial stage gates. Portfolio value passing £20,000 is not a tax-engine activation rule. Current cost/PnL use clearly labelled management methods. GitHub is public: actual portfolio amounts/source files/notes remain local; only synthetic examples are published.
+
+## Broker figures clarification — 12 November 2026
+
+For the first financial snapshot, use Trading 212 reported account total/cash and per-position value/cost/PnL as authoritative source figures. Do not substitute reconstructed totals. Full ledger reconciliation is not a gate for displaying that broker snapshot. Keep source/as-of labels, exact decimals, missing states, account identity checks, immutable evidence and duplicate/atomicity controls. Calculated performance, risk and other analytics retain separate method/input labels; broker PnL is management reporting and is not HMRC output. See DC21/DC22 and the imports contract.

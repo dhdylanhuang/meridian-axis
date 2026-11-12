@@ -116,3 +116,18 @@ def test_hidden_credentials_require_terminal(tmp_path, monkeypatch, capsys):
         broker_capture.main()
     assert "interactive_terminal_required" in capsys.readouterr().out
     prompt.assert_not_called()
+
+
+def test_capture_loader_authenticates_and_keeps_plaintext_in_memory(tmp_path):
+    from meridian.broker_capture import load_capture
+
+    key_file = tmp_path / "key"
+    create_key(key_file)
+    path = tmp_path / "capture"
+    asyncio.run(capture(reader(), path, key_file))
+    assert json.loads(load_capture(path, key_file))["environment"] == "demo"
+    corrupted = bytearray(path.read_bytes())
+    corrupted[-1] ^= 1
+    path.write_bytes(corrupted)
+    with pytest.raises(RecoveryError, match="authentication_failed"):
+        load_capture(path, key_file)

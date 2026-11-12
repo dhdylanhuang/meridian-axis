@@ -79,3 +79,7 @@ Use synthetic wealth samples. A group falls from 100 to 90: the >=10% default fi
 O01/S01/S02: [hosted recovery](hosted-recovery.md) records the actual encrypted hosted export, isolated PostgreSQL 17 restore, content/security controls and synthetic exact-decimal/session drill. Public offline recovery tests cover authentication/tampering/wrong keys, exclusive files, source changes, unsupported Storage/schema scope, explicit native-history export, isolated/empty targets and transaction/session ordering.
 
 D01/D02 and QA01/QA02: one-off broker-capture tests cover exact Decimal JSON, encrypted all-family output, empty complete families, no partial acceptance after a late failure, currency rejection and existing-output protection. The existing 39 adapter tests retain HTTP read-only/pagination/retry controls. No actual broker credential or live historical coverage is claimed.
+
+## Broker evidence acceptance boundary
+
+D01/D02, S02 and QA01/QA02: synthetic captures verify exact decimal retention, unchanged broker totals despite disagreeing position sums, absent-value states, complete families, malformed/duplicate JSON, account/environment binding, within-family event identity collisions, atomic source/audit/binding rollback and canonical replay rejection. Split/scrip/unknown action records remain source evidence with zero economic postings. Additional PostgreSQL cases run acceptance/replay and rollback/retry through both migration paths. No schema migration is required.

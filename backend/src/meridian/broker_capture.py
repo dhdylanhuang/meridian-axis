@@ -90,6 +90,21 @@ async def capture(api: Trading212Client, destination: Path, key_file: Path) -> d
     }
 
 
+def load_capture(path: Path, key_file: Path) -> bytes:
+    """Authenticated plaintext stays in memory; interpretation is separate."""
+    with path.open("rb") as source:
+        data = source.read(MAX_BYTES + 1)
+    if len(data) > MAX_BYTES or not data.startswith(MAGIC):
+        raise RecoveryError("broker_archive_invalid")
+    try:
+        offset = len(MAGIC)
+        return AESGCM(read_key(key_file)).decrypt(
+            data[offset : offset + 12], data[offset + 12 :], MAGIC
+        )
+    except Exception:
+        raise RecoveryError("broker_archive_authentication_failed") from None
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--environment", choices=("demo", "live"), default="demo")

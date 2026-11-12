@@ -462,3 +462,31 @@ def test_postgres_import_atomic_rollback_and_successful_retry(postgres_engine):
     with Session(postgres_engine) as session:
         assert len(session.scalars(select(SourceRecord)).all()) == 2
         assert len(session.scalars(select(AuditRecord)).all()) == 1
+
+
+@pytest.mark.parametrize("certificate", ["", "not-a-certificate", 123, "x" * 65537])
+def test_supplied_postgres_ca_is_validated_without_echo(certificate):
+    with pytest.raises(PostgresConfigurationError, match="^postgres_ca_invalid$"):
+        create_postgres_engine(SYNTHETIC_URL, ca_certificate=certificate)
+
+
+def test_supplied_ca_does_not_allow_insecure_mode():
+    with pytest.raises(PostgresConfigurationError, match="^postgres_ca_invalid$"):
+        create_postgres_engine(
+            "postgresql+pg8000://synthetic@localhost/test",
+            allow_loopback_insecure=True,
+            ca_certificate="synthetic-ca",
+        )
+
+
+def test_custom_ca_preserves_hostname_and_certificate_verification(monkeypatch):
+    captured = {}
+    context = MagicMock()
+    context.check_hostname = True
+    context.verify_mode = ssl.CERT_REQUIRED
+    monkeypatch.setattr(postgres.ssl, "create_default_context", lambda: context)
+    monkeypatch.setattr(postgres, "create_engine", lambda _url, **kwargs: captured.update(kwargs))
+    create_postgres_engine(SYNTHETIC_URL, ca_certificate="synthetic-ca")
+    context.load_verify_locations.assert_called_once_with(cadata="synthetic-ca")
+    assert captured["connect_args"]["ssl_context"] is context
+    assert context.check_hostname is True and context.verify_mode == ssl.CERT_REQUIRED

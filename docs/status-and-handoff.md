@@ -8,7 +8,7 @@ The latest owner instruction is to continue while **minimising sub-agents and un
 
 Critical path: (1) native restricted runtime permissions and private credential/Hyperdrive qualification, (2) hosted two-user authentication/session integration, (3) backup/restore before real imports, then (4) read-only broker ingestion, evidence/ledger reconciliation and trustworthy valuation. Remaining analytics, automation, screens and operational acceptance are substantial work. The current system is an early prototype with an invented-data preview and tested components, not a usable real-portfolio tracker. Keep all progress reporting at that level of precision.
 
-Current bounded delivery: minimal two-user sign-in completed; the owner has now confirmed successful browser sign-in. Partner browser confirmation remains pending. Hosted logical export and isolated local restore are now qualified; see the recovery checkpoint below. Live read-only capture is now verified locally. Next development task: durable evidence ingestion and corporate-action/cash/valuation reconciliation.
+Current bounded delivery: minimal two-user sign-in completed; the owner has now confirmed successful browser sign-in. Partner browser confirmation remains pending. Hosted logical export and isolated local restore are now qualified; see the recovery checkpoint below. Live read-only capture is now verified locally. Current delivery: durable evidence acceptance and a broker-reported snapshot projection. The owner clarified that Trading 212 figures are authoritative and full ledger reconciliation must not block the snapshot.
 
 ## Owner acceptance and next steps
 
@@ -18,7 +18,7 @@ Continue in this order:
 
 1. **Initial recovery slice verified:** encrypted hosted export and isolated local Supabase restore, preserving the working system. Complete scheduled retention, independent key custody and replacement hosted login recovery at their operational gates.
 2. **Local connection verified:** all seven Trading 212 read families captured successfully with owner-provisioned credentials. Lifetime history and account-wrapper verification remain distinct from complete API traversal.
-3. **Current next action:** preserve accepted broker evidence durably, reconcile corporate actions/cash/valuation against the inspected exports/statements, and build the source-backed ledger/valuation path.
+3. **Current next action:** preserve broker evidence durably and present Trading 212 reported totals/holdings with source timestamps; full ledger reconciliation is deferred from this snapshot delivery.
 4. Populate AXIS with verified holdings and cash, explicit source/as-of timestamps and missing-data states. This is the next visible financial milestone; it is not implemented yet.
 
 ## Hosted logical recovery delivered — 12 November 2026
@@ -40,6 +40,14 @@ Initial private controls found no duplicate/conflicting fill IDs. A trades-only 
 All captured position-wallet current values are labelled GBP, but their exact sum differs from the separately sampled account-summary investments current value. Retain this as an **open valuation discrepancy** with the separate retrieval timestamps; its cause has not been established and is not silently rounded away. Cash component additivity and the API-to-statement account/coverage link still require evidence. ISA wrapper remains owner-confirmed rather than established by a summary field the API does not supply.
 
 Exact record counts, dates, identifiers, values, source digests and inspection controls remain private. The capture and controls are ignored; no financial data entered Git or Supabase. Source remains the verified `e2a4870` one-off tool; no production Worker/schema changed. Current signed-in workspace is still empty. Next: durable evidence acceptance and source-backed corporate-action/cash/valuation reconciliation, followed by authenticated financial views. Broker credentials will need a separately verified hosted secret-binding/runtime path for ongoing hosted sync; this local capture does not establish that connection.
+
+## Broker evidence acceptance and source-of-truth clarification — 12 November 2026
+
+The owner confirmed a cash-funded account start with no earlier holdings/transferred positions, and clarified **always use Trading 212 reported figures**. The first financial snapshot therefore takes account total/cash components from account summary and position value/cost/PnL from positions. No reconstructed sum replaces those figures. Full ledger reconciliation is deferred from this snapshot delivery; historical calculations remain separately labelled and unavailable until supported. Prior comparison findings remain historical diagnostics, not snapshot-acceptance gates. See DC21/DC22.
+
+The captured account reference was privately matched to the supplied transaction statement's explicitly labelled ISA account section, using text comparison and a rendered-page check. Exact IDs, pages, source hashes and raw records remain private. This links the live API to the scoped statement account; it does not prove every historical cash flow.
+
+Implementation in progress: strict captured-evidence parsing, explicit account-reference binding, atomic immutable source/audit acceptance, canonical duplicate protection and a direct broker snapshot projection. Existing schema `0005` suffices; no new financial runtime grants or schema writer is introduced. New PostgreSQL fixture cases exercise both Alembic and native migration paths in disposable schemas. The private admin connection now verifies the provider CA, hostname, actual postgres role, database/schema and parity; initial default trust rejected the provider chain, and no verification bypass was adopted. Provider CA location was verified from Supabase's official source configuration. Actual hosted evidence acceptance and delivery evidence follow once validation passes.
 
 ## Minimal sign-in delivered — 12 November 2026
 

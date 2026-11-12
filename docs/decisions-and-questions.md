@@ -26,6 +26,8 @@ Baseline: 11 November 2026. This register distinguishes explicit owner requireme
 | DC18 | GitHub public; financial runtime/evidence stay private, public examples synthetic | Owner visibility statement and approved private hosted target |
 | DC19 | Cloudflare + Supabase, free services only; production PostgreSQL and bounded scheduled jobs; retain Python where feasibility passes | Explicit owner approval; [ADR 0001](decisions/0001-cloudflare-supabase.md) |
 | DC20 | Create dedicated free projects; owner handles account sign-in | Explicit owner setup instruction; do not reuse unrelated projects |
+| DC21 | Trading 212 reported figures are authoritative for the first financial snapshot: account total/cash from summary and holding value/cost/PnL from positions. Do not replace them with reconstructed sums. Full ledger reconciliation is deferred from this snapshot delivery; derived analytics remain separately labelled. | Explicit owner clarification, 12 November 2026 |
+| DC22 | The ISA began from cash with no earlier holdings or transferred positions before captured history. | Explicit owner answer, 12 November 2026; opening cash completeness still requires evidence before calculated historical returns |
 
 ## Adopted engineering decisions
 
@@ -62,7 +64,7 @@ Resolve when a task depends on them, not as a pretext to stop all work. Do not r
 | --- | --- | --- | --- |
 | Q01 | One ISA confirmed; GBP primary currency confirmed; connected identity and history still need source verification | Verify connected identity/coverage; three PDFs inspected read-only; see statement contract; do not re-ask account scope | Full replay/since-inception claims |
 | Q02 | Snapshot and three PDF structures verified; complete execution-history export/API aliases remain unverified | Slice=ticker, Total-row Name=group; see CSV contract | Transaction CSV parser and event dedupe |
-| Q03 | Opening cash/holdings and complete earlier acquisitions remain unestablished after three PDF inspections; account-boundary transfers/corporate actions still need reconciliation. | Show current observed positions with explicit historical limits | Complete NAV replay, cost basis and since-inception results |
+| Q03 | Owner confirms a cash-funded start with no earlier holdings/transfers. Captured account identity now matches the PDF ISA section; independently complete opening cash and historical calculated returns remain unestablished. | Show current observed positions with explicit historical limits | Complete NAV replay, cost basis and since-inception results |
 | Q05 | £100,000 goal settled; original 30 April date retained; timing/partial periods and scenario rates remain | Legacy model separate; actual contributions private | Final scenario output |
 | Q06 | How should date-only cash flows be timed; which actual valuations exist around intraday flows? | No exact TWR claim; use timed Dietz when supported | Return paths with unknown flow timing |
 | Q09 | What financial condition should holding RAG measure, with which thresholds? | No invented score or recommendation | RAG output |

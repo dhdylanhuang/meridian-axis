@@ -4,6 +4,8 @@ Status: ADOPTED processing contract, subject to real CSV field discovery. Suppor
 
 ## Source precedence is field-specific
 
+**Owner clarification, 12 November 2026:** the first financial screen must use Trading 212 reported figures directly. Account total/cash components come from account summary; holding value/cost/PnL come from positions. Preserve separate retrieval timestamps and missing fields. Do not replace the broker total with a sum of positions or a reconstructed ledger total. Full ledger reconciliation is deferred from this snapshot delivery; basic account identity, precision, duplicate prevention and atomic evidence acceptance remain required. Historical calculations remain separate and unavailable until their inputs support them. This clarification supersedes reconciliation-as-a-blocker for displaying the broker snapshot, not the requirement to label calculated analytics.
+
 | Fact | Authority | Reconciliation / fallback |
 | --- | --- | --- |
 | Executed economic event | Verified API history event, with CSV aliases | CSV event when absent; disagreeing economics requires review |
@@ -78,3 +80,11 @@ Before the first real import, test a database backup and restore. Provide a dry-
 ## Implemented boundary
 
 The local holdings-snapshot evidence slice now implements full-file preview, short durable attempt logging, accepted-hash deduplication, atomic source/audit commit and rollback-safe failure categories. No normalized ledger event or current group membership is booked. Account/currency validation rejects invalid administrative scope before creating a run. Parser failures create failed scoped attempts with no financial/source residue. Failed oversized input has a null content hash rather than a misleading digest of its bounded prefix. Other lifecycle, replay, corrections and group workflows above remain target contracts. Three private PDF statements have been [inspected structurally](statement-source-contract.md); their availability does not establish a production PDF parser or complete opening history.
+
+## Broker evidence acceptance slice
+
+`adapters/broker_evidence.py` validates the captured seven-family contract, timestamps, scope, exact numeric encoding and source identities. `application/broker_ingestion.py` accepts immutable evidence into existing `source_records`, with a capture manifest, financial source rows and one retained array per metadata family. It books **zero economic events**. Split/scrip/unknown action types are retained as facts without being relabelled as cash-funded trades.
+
+An independently verified expected broker reference is mandatory. First binding to `accounts.private_reference` is explicit and commits with accepted sources/audit; existing different references are refused. Complete parsing occurs outside the evidence write transaction. Successful canonical capture hashes are unique per account/kind, including re-encrypted or differently spaced JSON copies. Later captures can repeat old event observations without creating economics; cross-capture economic identity/revisions remain a future ledger concern. Scope/account locking and the database unique constraint protect competing acceptance. Failures roll back evidence/binding/audit and leave a safe failed attempt.
+
+`application/broker_snapshot.py` projects broker-reported figures directly. It preserves exact decimal strings, exposes separate account/positions retrieval windows and unknown quote age, leaves absent fields unavailable and never derives account total or cash by summing components. Its tests deliberately use different account/position totals and require the reported account total to survive unchanged. This is a service projection, not a deployed financial route or screen.

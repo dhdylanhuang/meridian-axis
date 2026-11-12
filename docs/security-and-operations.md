@@ -150,3 +150,7 @@ leave prior sessions signed out; a consumed link may require private regeneratio
 Provider access/refresh tokens never enter browser JSON or storage. No public
 signup, arbitrary admin operation or email-sending endpoint is added. These are
 setup/reset primitives, not full hosted backup/restore acceptance.
+
+### Broker evidence administration
+
+The first broker-evidence slice is trusted private administration into the existing closed evidence tables. It requires independently verified broker-reference scope, checks account/environment/wrapper/currency, and atomically binds an unset reference only when explicitly requested. The session runtime receives no new financial read/write grant. Captured observations remain private; no broker credential is stored with them. A supplied provider CA may be added to the bounded PostgreSQL maintenance connection without disabling certificate or hostname verification. Obtain the CA from a verified provider source, never from the unverified database handshake. Supabase's [official SSL configuration](https://github.com/supabase/supabase/blob/master/apps/studio/hooks/custom-content/custom-content.json) supplies the download template; [SSL guidance](https://supabase.com/docs/guides/platform/ssl-enforcement) explains the trust requirement.
