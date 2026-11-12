@@ -64,7 +64,7 @@ def test_factory_bootstrap_and_anonymous_denial_without_connecting(monkeypatch):
 
 @pytest.mark.parametrize(
     "overrides",
-    [{"user": "postgres"}, {"database": "other"}, {"port": 0}, {"password": ""}],
+    [{"user": ""}, {"database": ""}, {"port": 0}, {"password": ""}],
 )
 def test_bad_binding_fails_before_creating_engine(monkeypatch, overrides):
     create = Mock(side_effect=AssertionError("Engine must not be created"))
@@ -179,5 +179,48 @@ def test_wired_provider_limiter_session_lifecycle(tmp_path, monkeypatch):
             assert db.get(LoginRateLimit, "shared-login").attempts == 1
             assert all(row.revoked_at is not None for row in db.scalars(select(AppSession)))
         assert provider_calls == ["/auth/v1/token", "/auth/v1/user"]
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    "identity",
+    [
+        ("meridian_bff_public", "postgres", "public"),
+        ("postgres", "postgres", "public"),
+        ("meridian_bff_public", "other", "public"),
+        ("meridian_bff_public", "postgres", "other"),
+    ],
+)
+def test_connection_verifies_actual_identity_not_proxy_alias(monkeypatch, identity):
+    connection = Mock()
+    cursor = connection.cursor.return_value
+    cursor.fetchone.return_value = identity
+    monkeypatch.setattr(hosted.pg8000.dbapi, "connect", Mock(return_value=connection))
+    create = hosted.create_engine
+    captured = []
+
+    def track(*args, **kwargs):
+        captured.append(kwargs["creator"])
+        return create(*args, **kwargs)
+
+    monkeypatch.setattr(hosted, "create_engine", track)
+
+    async def run():
+        async with hosted.hosted_application(
+            binding(user="synthetic-proxy-alias", database="synthetic-proxy-database"),
+            **configuration(),
+        ):
+            if identity == ("meridian_bff_public", "postgres", "public"):
+                assert captured[0]() is connection
+                connection.rollback.assert_called_once_with()
+                connection.close.assert_not_called()
+            else:
+                with pytest.raises(RuntimeError, match="runtime_database_identity_invalid"):
+                    captured[0]()
+                connection.close.assert_called_once_with()
+            cursor.execute.assert_called_once_with(
+                "SELECT current_user, current_database(), current_schema()"
+            )
 
     asyncio.run(run())

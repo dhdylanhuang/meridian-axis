@@ -35,8 +35,8 @@ async def hosted_application(binding, *, origin, project_ref, publishable_key, l
         host, database = binding.host, binding.database
         port = int(binding.port)
         checks = (
-            (user == "meridian_bff_public", "binding_user_invalid"),
-            (database == "postgres", "binding_database_invalid"),
+            (isinstance(user, str) and bool(user), "binding_user_invalid"),
+            (isinstance(database, str) and bool(database), "binding_database_invalid"),
             (isinstance(password, str) and bool(password), "binding_password_invalid"),
             (
                 isinstance(host, str) and bool(host) and not any(c.isspace() for c in host),
@@ -55,7 +55,7 @@ async def hosted_application(binding, *, origin, project_ref, publishable_key, l
         def connect():
             # Only the provider's Worker-to-Hyperdrive local hop omits TLS.
             # The separately qualified Supabase origin requires TLS + WebPKI.
-            return pg8000.dbapi.connect(
+            connection = pg8000.dbapi.connect(
                 user=user,
                 password=password,
                 host=host,
@@ -64,6 +64,29 @@ async def hosted_application(binding, *, origin, project_ref, publishable_key, l
                 ssl_context=False,
                 timeout=10,
             )
+            # Hyperdrive's local credentials may be proxy aliases. Verify the
+            # authenticated origin identity before SQLAlchemy or any service
+            # can use the connection; never trust a local username as proof.
+            cursor = None
+            try:
+                cursor = connection.cursor()
+                cursor.execute("SELECT current_user, current_database(), current_schema()")
+                if tuple(cursor.fetchone()) != ("meridian_bff_public", "postgres", "public"):
+                    raise RuntimeError("runtime_database_identity_invalid")
+                connection.rollback()
+                cursor.close()
+                return connection
+            except Exception:
+                if cursor is not None:
+                    try:
+                        cursor.close()
+                    except Exception:
+                        pass
+                try:
+                    connection.close()
+                except Exception:
+                    pass
+                raise RuntimeError("runtime_database_identity_invalid") from None
 
         engine = create_engine(
             "postgresql+pg8000://",
