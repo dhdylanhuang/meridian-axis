@@ -24,7 +24,7 @@ SQLite's [type-affinity documentation](https://www.sqlite.org/datatype3.html) ex
 | Entity | Essential data / constraints |
 | --- | --- |
 | Supabase Auth, `account_members`, `app_sessions` | External canonical Auth UUIDs; two active equal member slots per account with revocation history; hashed opaque session/CSRF tokens, bounded expiry and revocation; no application passwords or broker credentials |
-| `login_rate_limits` (in validation) | Fixed nonpersonal deployment bucket, database epoch seconds and bounded attempt count; no email/IP/password; atomic shared admission, closed browser grants/RLS, no seeded bucket |
+| `login_rate_limits` | Fixed nonpersonal deployment bucket, database epoch seconds and bounded attempt count; no email/IP/password; atomic shared admission, closed browser grants/RLS, no seeded bucket; hosted parity `0004` |
 | `owners`, `accounts` | One owner and one live ISA; broker, private account reference, isolated demo/live, primary currency and history coverage |
 | `securities`, `instruments` | Security-class identity; listing ticker, name, ISIN when known, exchange, currency, unit multiplier, asset class and country evidence |
 | `ticker_map` | Instrument/provider symbol mapping, valid interval, reviewer and revision; editable and audited |
