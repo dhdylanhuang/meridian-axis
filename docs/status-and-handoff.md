@@ -2,6 +2,18 @@
 
 Last reviewed: **12 November 2026**, including the owner's explicit resume with continuing project authority.
 
+## Dashboard preview delivered - 12 November 2026
+
+The owner asked for a dashboard and a link to open from a phone. The immediate priority became a clearly labelled synthetic preview, preserving the security/recovery gates for real data. **[Open Meridian AXIS](https://meridian-axis-preview.meridian-worker-feasibility.workers.dev)**.
+
+Source `503e297` adds a standalone React/Vite/Tailwind/ECharts frontend with AXIS, HOLDINGS and GROUPS. Chart ranges, holding search/sort/group filters, holding detail drawers and group-to-holdings navigation are implemented. All fixture values and chart observations are invented; the sticky notice and source-quality panel disclose that no account/feed is connected. The preview has no sign-in form, API calls, broker/database connection or personal input. No real financial data may be added to its public source/assets.
+
+**Verification:** seven Node fixture/initial-React-render tests passed; production build succeeded with pinned dependencies. [Frontend validation CI](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43218100541) passed before source promotion to `main`. Exact decimal fixture totals/groups/weights reconcile; reviewed output contains neither approved email address nor provider-secret markers. Review fixed table remount/focus restoration and two precomputed daily percentages. Mobile media rules include larger text, 44 px controls and contained table scrolling. **Visual browser/mobile QA was unavailable**: the Mac is locked and the browser surface is not exposed. No browser success is claimed; the owner can now review the actual interface from the public demo link.
+
+**Deployment:** separate static-only Cloudflare Worker `meridian-axis-preview`, version `b9625e29-b88f-46b5-b809-86a627c5eb29`, deployed with source annotation `503e297`. Preflight verified the name absent (404) before first creation. Wrangler dry-run found no configured bindings. Actual HTTPS checks returned HTML/JS/CSS 200; served JS/CSS hashes matched the local production build. CSP restricts external connections/framing, and robots metadata discourages indexing. Only synthetic content is public. This preview does not activate the protected application, satisfy the nine-tab scope or complete Stage 2 financial acceptance.
+
+Continue with the native restricted runtime-role/credential gate below, while incorporating concrete interface feedback from the owner. A live portfolio dashboard still requires both intended logins, verified data ingestion/valuation and recovery acceptance. The frontend's local run/build/preview commands are in [its README](../frontend/README.md).
+
 ## Current resume - 12 November 2026
 
 The owner explicitly resumed at 06:34 London time, after the authorised restart window. Checkout `554386f` was clean. The protected diagnostic helper was reviewed, and its deployment account was pinned before execution. The first attempt stopped at credential acquisition; cleanup reported complete and no diagnostic Worker/Hyperdrive resource was created. Supabase CLI project inspection remains authenticated. The direct Keychain lookup used by the helper failed, so the supported CLI dump **dry-run** projection is being used for temporary connection details, captured only in memory and never executed as a shell script. Its parser preserves opaque values and rejects unexpected targets. Role expiry must be verified through a read-only catalog query rather than assumed.
@@ -113,7 +125,7 @@ Public docs distinguish observed CI/provider results from owner dashboard confir
 | Provider adapter | Stage 1B adapter portion verified | Seven typed GET methods, 39 mocked HTTP tests; no persisted sync or economic booking |
 | OpenAPI YAML | Verified directly | Parsed equality with official JSON; [field matrix and hashes](stage-0-source-verification.md) |
 | Application/database/tests | Local foundation + adapter/evidence slices verified | Locked Python backend, migrations, safe holdings preview/import and mocked broker adapter; full Stage 1 still open |
-| Frontend/auth/scheduler | Closed Auth and optional HTTP components verified; frontend/scheduler not started | Hosted parity 0003; local verified-user/session/cookie services; no deployed login/financial HTTP endpoint or portfolio UI; Stage 2 security remains a gate |
+| Frontend/auth/scheduler | Synthetic three-view preview deployed; Auth/HTTP/limiter components verified; scheduler not started | Hosted parity 0004; preview has invented data only; protected login/financial HTTP deployment and Stage 2 security remain gates |
 | Broker secrets and Live access | Not configured | Provider administration is authorised; no broker credentials or Live broker request used |
 | Hosted target | Supabase evidence bootstrap and synthetic Cloudflare probe deployed | Probe responses/CPU observed; ordinary Free CPU fit remains open; no financial data or finished application deployed |
 | Commit/push | Explicitly authorised per verified stage | Owner has authorised implementation with subagents and stage commits/pushes |

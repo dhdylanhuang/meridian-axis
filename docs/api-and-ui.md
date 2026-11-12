@@ -2,6 +2,8 @@
 
 Status: ADOPTED design proposal, with the explicitly configured session component below verified in offline/CI tests. Other route families remain planned, **not existing endpoints and not Trading 212 endpoint paths**. Provider routes belong only in the broker adapter.
 
+The [deployed dashboard preview](https://meridian-axis-preview.meridian-worker-feasibility.workers.dev) implements AXIS, HOLDINGS and GROUPS as a standalone static interface with invented fixtures. It has no financial API or account connection. Other nine-tab requirements and real financial behavior remain unimplemented; see [preview evidence and limits](status-and-handoff.md#dashboard-preview-delivered---12-november-2026).
+
 ## Interface principles
 
 Build a dense dark monitoring tool with legible numbers, compact sortable tables and chart labels that remain readable at normal desktop zoom. Use tabular numerals, consistent GBP/percentage formatting and accessible focus/contrast. Colour is secondary to text/symbols for gain, loss, quality and alerts. Avoid decorative hero panels, marketing copy and fabricated sample balances in a real account view.
