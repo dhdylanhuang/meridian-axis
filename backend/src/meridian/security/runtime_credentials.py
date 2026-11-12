@@ -85,6 +85,8 @@ def credential_maintenance_sql(verifier: SecretStr, *, reset: bool = False) -> S
     assignment = "NULL" if reset else f"'{value}'"
     # The strict canonical verifier alphabet above excludes quotes and SQL.
     return SecretStr(f"""
+SET LOCAL statement_timeout = '10s';
+SET LOCAL lock_timeout = '5s';
 DO $meridian_credential_maintenance$
 DECLARE current_verifier text;
 BEGIN
