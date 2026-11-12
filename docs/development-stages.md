@@ -61,6 +61,8 @@ Quantity and recorded snapshot allocation can be reconciled here. Do not claim f
 
 ## Stage 2 — secure daily valuation and minimal useful dashboard
 
+**12 November owner clarification:** the initial financial snapshot uses Trading 212 reported account and position figures directly. Full ledger reconciliation is not a gate for this sourced snapshot; derived valuations/performance/analytics retain separate input/method requirements. Hosted evidence acceptance is verified, while authenticated financial snapshot access/UI remains the next delivery.
+
 **Outcome:** both logins can inspect a trustworthy portfolio snapshot with clear source quality.
 
 **Entry:** evidence/import gate, supported quantities/cash and restored schema.

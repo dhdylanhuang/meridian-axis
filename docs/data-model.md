@@ -1,6 +1,6 @@
 # Data model and invariants
 
-Status: ADOPTED target logical model; Stage 1A implements accounts, import_log, source_records and audit_log with initial migration and precise storage types. Other tables below remain planned. Add tables when their delivery stage needs them; this model is not an instruction to build every table in Stage 1.
+Status: ADOPTED target logical model; Stage 1A implements accounts, import_log, source_records and audit_log with initial migration and precise storage types. Broker-capture evidence acceptance now uses those existing tables, including a capture manifest and per-row financial observations; source facts do not book economic events. Other tables below remain planned. Add tables when their delivery stage needs them; this model is not an instruction to build every table in Stage 1.
 
 ## Production platform amendment
 
