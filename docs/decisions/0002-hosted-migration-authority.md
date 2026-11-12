@@ -47,3 +47,9 @@ binding. An interrupted operation must be inspected using its private manifest
 and ownership fingerprint rather than blindly overwriting an existing
 credential. Credential recovery and actual application access remain separate
 acceptance evidence.
+
+The first-use operation was subsequently exercised and its restricted login
+verified through Hyperdrive at `dc41f7e`; details and cleanup evidence live in
+the handoff. The implemented helper requires empty application control tables.
+It does not implement production password rotation while application data is
+active, and must not be presented as a complete recovery runbook.

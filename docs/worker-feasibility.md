@@ -115,7 +115,13 @@ The first deployment attempt received successful HTTP **201** from secret creati
 
 The [isolated prototype](../prototype/worker-feasibility/README.md) runs in local Wrangler/workerd using Python Workers' Pyodide runtime. `GET /health` and `GET /probe` returned HTTP 200; the smoke script verified exact Decimal values, canonical string output, Pydantic serialization, synchronous SQLAlchemy PostgreSQL dialect compilation, pg8000 import and HTTPX with an in-process mocked transport. `POST /probe` returned 405.
 
-This supports continuing with Python/FastAPI as a reuse candidate. It does not establish that the current application can be hosted unchanged: SQLite persistence, resident jobs, local file imports and backups need explicit hosted equivalents. Full financial workload capacity and the actual Postgres/Auth path remain gates.
+This supports continuing with Python/FastAPI as a reuse candidate. It does not establish that the current application can be hosted unchanged: SQLite persistence, resident jobs, local file imports and backups need explicit hosted equivalents. Full financial workload capacity and the actual application Auth path remain gates.
+
+### Actual restricted-origin login - 12 November 2026
+
+Source `dc41f7e` subsequently authenticated a protected Python-object/pg8000 probe through an uncached Hyperdrive origin as the real `meridian_bff_public` database user. This used the newly provisioned restricted credential, not temporary administrative credentials or SET ROLE. Financial/control-table SELECT permissions (zero rows requested), escalation to `postgres`, foreign-counter inserts and counter deletion returned SQLSTATE 42501; an allowed counter insert was read and rolled back, then independently confirmed absent. Anonymous and invalid bearer access were denied.
+
+An initial gateway 404 caused full first-use rollback; its role password was restored to NULL and all owned resources were independently checked absent. Bounded readiness waiting was added before the successful retry. Both temporary Workers were then removed. One verified origin configuration is retained in the approved account, with TLS `require`/WebPKI and query caching disabled; its reference is held in the private manifest. No plaintext credential is in the repository, command arguments or local files. Application control tables remain empty. This verifies a restricted server connection, not two-user application login, financial imports or recovery. Current evidence and next steps are in the [handoff](status-and-handoff.md).
 
 ## Reproducible source and tooling
 
