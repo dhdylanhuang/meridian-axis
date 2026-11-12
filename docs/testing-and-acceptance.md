@@ -73,3 +73,9 @@ Each gate names evidence a reviewer can reproduce. A final local acceptance incl
 ## Confirmed alert regression cases
 
 Use synthetic wealth samples. A group falls from 100 to 90: the >=10% default fires. A portfolio path 100 → 97.5 → 100.5 within two trading days has a 2.5% peak-to-trough decline even though its endpoint return is positive, so the >=2% rolling maximum rule fires. A rebound alone does not erase a historical rolling maximum; re-arm once the measured statistic is inside threshold, including after the old decline ages out. Test deposits/withdrawals, exact boundaries, restart and repeat crossings. Preserve sampling/gap quality; never invent intraday extremes from daily closes.
+
+## Initial hosted recovery and broker capture checkpoint
+
+O01/S01/S02: [hosted recovery](hosted-recovery.md) records the actual encrypted hosted export, isolated PostgreSQL 17 restore, content/security controls and synthetic exact-decimal/session drill. Public offline recovery tests cover authentication/tampering/wrong keys, exclusive files, source changes, unsupported Storage/schema scope, explicit native-history export, isolated/empty targets and transaction/session ordering.
+
+D01/D02 and QA01/QA02: one-off broker-capture tests cover exact Decimal JSON, encrypted all-family output, empty complete families, no partial acceptance after a late failure, currency rejection and existing-output protection. The existing 39 adapter tests retain HTTP read-only/pagination/retry controls. No actual broker credential or live historical coverage is claimed.

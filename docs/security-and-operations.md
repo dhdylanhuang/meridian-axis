@@ -101,6 +101,8 @@ Validate ranges, currencies, time zones and chronology. Persist non-secret setti
 
 ## Backups and restore
 
+**12 November checkpoint:** encrypted hosted logical export and isolated local Supabase restore are verified. [Hosted recovery](hosted-recovery.md) owns the tested procedure and limitations. Scheduled retention, independent key custody, replacement hosted Auth/browser recovery and financial/object recovery remain open.
+
 **Current offline foundation:** SQLite online backup and separate-path restore are implemented/tested. Copying only a live WAL database file is not a dependable backup procedure. These checks do not verify Postgres recovery. [SQLite backup documentation](https://www.sqlite.org/backup.html)
 
 **Required hosted path:** Supabase Free has no included automatic database backups. Provide private off-host logical exports using a verified Supabase CLI/Postgres procedure, plus source/archive objects required for replay and operational identity/access metadata. Keep encryption keys and credentials protected and recoverable separately; do not bundle reusable secrets into ordinary financial exports. Storage objects require their own backup coverage. Include schema/migration version, scope, timestamp, digests and reconciliation controls. [Supabase backup guidance](https://supabase.com/docs/guides/platform/backups)

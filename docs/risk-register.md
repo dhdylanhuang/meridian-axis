@@ -18,7 +18,7 @@ Status: planning risks, not evidence that failures have occurred in an implement
 | RSK12 | Concurrent/stateless scheduled invocations repeat requests or economic effects | High | Durable leases/fencing, idempotency, shared rate state and short transactions | Stage 0H/2 takeover/manual-overlap tests |
 | RSK13 | Credentials/portfolio data leak through logs, fixtures or repository | Critical | Environment secrets, redaction, safe evidence, runtime ignore rules | Stage 1/2 redaction and repository review |
 | RSK14 | Login/CSRF/security deferred until financial UI is exposed | High | Security gate before usable financial endpoints | Stage 2 negative-path checks |
-| RSK15 | Backups cannot restore, or local SQLite evidence is mistaken for hosted recovery | High | SQLite online backup locally; independent Postgres/evidence export and separate-target restore for production | Stage 0H/1 then Stage 5 recovery |
+| RSK15 | Backups cannot restore, or local SQLite evidence is mistaken for hosted recovery | High | SQLite online backup locally; encrypted hosted logical export and isolated local restore now verified; independent key custody, scheduling and replacement hosted recovery remain open | Stage 0H/1 then Stage 5 recovery |
 | RSK16 | Multiple agents redefine contracts or overwrite shared files | High | Bounded write sets, single migration owner, integration review | Every task handoff |
 | RSK17 | Scope overwhelms a local-model implementation | High | Small cohesive modules and vertical slices; no extra infrastructure | Stage-sized verified deliveries |
 | RSK18 | Static look-through/currency evidence becomes stale or incomplete | Medium | Dated source/coverage, no inferred exposure claims | Stage 4/5 available/unavailable views |

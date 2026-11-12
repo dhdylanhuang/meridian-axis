@@ -8,7 +8,7 @@ The latest owner instruction is to continue while **minimising sub-agents and un
 
 Critical path: (1) native restricted runtime permissions and private credential/Hyperdrive qualification, (2) hosted two-user authentication/session integration, (3) backup/restore before real imports, then (4) read-only broker ingestion, evidence/ledger reconciliation and trustworthy valuation. Remaining analytics, automation, screens and operational acceptance are substantial work. The current system is an early prototype with an invented-data preview and tested components, not a usable real-portfolio tracker. Keep all progress reporting at that level of precision.
 
-Current bounded delivery: minimal two-user sign-in completed; the owner has now confirmed successful browser sign-in. Partner browser confirmation remains pending. Next development task: hosted backup/restore qualification before real financial imports.
+Current bounded delivery: minimal two-user sign-in completed; the owner has now confirmed successful browser sign-in. Partner browser confirmation remains pending. Hosted logical export and isolated local restore are now qualified; see the recovery checkpoint below. Next development task: provision read-only Trading 212 credentials and run the bounded observation capture.
 
 ## Owner acceptance and next steps
 
@@ -20,6 +20,16 @@ Continue in this order:
 2. Connect Trading 212 with read-only credentials and establish actual holdings/history coverage.
 3. Reconcile broker observations against the inspected exports/statements and build the source-backed ledger/valuation path.
 4. Populate AXIS with verified holdings and cash, explicit source/as-of timestamps and missing-data states. This is the next visible financial milestone; it is not implemented yet.
+
+## Hosted logical recovery delivered — 12 November 2026
+
+O01's initial hosted recovery slice now has actual evidence: private encrypted Supabase export and restore into a **network-disconnected local Supabase PostgreSQL 17** target. The owner specifically approved exporting Auth records/password hashes and password-free database role definitions into an encrypted local archive, with a separate private key. No hosted target was overwritten and no financial data was imported. [Hosted recovery](hosted-recovery.md) owns the commands, measured evidence and limitations.
+
+Corrected export/encryption/read-back verification took **17.72 seconds**; isolated SQL restore/content comparison/session invalidation took **0.16 seconds**, excluding setup and independent checks. Application tables, Auth users/identities and native migration history matched source controls. Independent checks passed all eight public-table RLS flags, eight runtime policies, browser-role denial, restricted runtime role flags/parents, absent runtime password, financial-table denial, membership/Auth links and invalidated application/provider sessions. Hosted source inspection afterwards confirmed both active memberships, unchanged `0005` parity and zero financial source rows. This does not prove replacement hosted Auth/browser recovery or an operational RTO/RPO.
+
+The first drill correctly stopped on a native migration-history mismatch: the CLI excludes its own history from its default data dump. An explicit schema/data history export fixed it; failed restores rolled back. A separate synthetic drill preserved exact-decimal source evidence and revoked a previously active session. Reusable modules are `recovery.py`, `hosted_backup.py` and `local_restore.py`; no hosted schema or Worker bundle changed. The disposable restored container and its volumes were removed after inspection; only encrypted archives and separately protected keys remain. Local verification: `pytest -q -rN` **377 passed, 63 PostgreSQL cases skipped**, Ruff check/format passed; **26 new recovery/capture cases** passed. Scheduled retention, independent key custody, hosted replacement-project logins, active-data credential rotation and future object/financial controls remain open.
+
+**Trading 212 readiness:** `broker_capture.py` now offers a bounded one-off read-only capture of all seven existing adapter families, encrypted private output, per-family retrieval timestamps and explicit unverified lifetime coverage. A late failure writes no partial accepted capture. It is not a ledger import, persisted scheduler/checkpoint, reconciliation or a financial UI. The public YAML was fetched again and exactly matches the reviewed 11 November digest. No broker key/secret is present in this process, so no authenticated broker call has occurred; the owner selected local process environment variables, with provisioning/capture still pending. Partner browser confirmation remains separate.
 
 ## Minimal sign-in delivered — 12 November 2026
 

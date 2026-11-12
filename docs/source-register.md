@@ -64,3 +64,9 @@ ISA clarification: [GOV.UK ISA rules](https://www.gov.uk/individual-savings-acco
 ## Reverification record
 
 For an implementation task, record source URL/date, spec or fixture digest when relevant, scope inspected, observed changes and tests affected. Do not claim authenticated field coverage from a schema alone. Do not silently change a financial contract when an upstream library changes its default.
+
+### 12 November 2026 recovery and broker recheck
+
+The direct public Trading 212 YAML was downloaded again: **61,831 bytes**, SHA-256 `f2cda2ad99b9a22663c78a7b9187099c829df2fec655ea7f017236e11105c433`, unchanged from the 11 November contract. Official API documentation still specifies key/secret Basic authentication, per-account limits and whole-path/null-terminated pagination. No authenticated broker response has been inspected.
+
+Official Supabase CLI recovery/Free backup guidance and PostgreSQL 17 dump/password-free-role references were rechecked for the [hosted recovery qualification](hosted-recovery.md). Actual testing found that native migration history needs an explicit data export beyond the CLI's default; the corrected archive restored with matching controls. This observation is independent of generic provider documentation.

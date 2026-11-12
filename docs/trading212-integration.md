@@ -1,6 +1,6 @@
 # Trading 212 integration contract
 
-Status: CONFIRMED API-first requirement; VERIFIED documentation observations dated 11 November 2026; ADOPTED normalisation design. No authenticated account requests have been made.
+Status: CONFIRMED API-first requirement; VERIFIED documentation observations dated 11 November 2026, public YAML hash rechecked unchanged on 12 November; ADOPTED normalisation design. No authenticated account requests have been made.
 
 ## Verify before implementing
 
@@ -81,3 +81,24 @@ Mocked contract tests pass; credentials are redacted; Demo/Live isolation is ver
 `backend/src/meridian/adapters/trading212.py` implements the seven typed read methods using the verified YAML. Offline fixtures cover exact Decimal decoding/string IDs, distinct fills under one order, complete pagination, same-family/origin restrictions, redirects, bounded retries/pacing, terminal authentication failures, and strict duplicate-key/nonfinite JSON rejection. **39 contract tests pass**. DTOs are observations with private raw payloads, not a ledger or browser response schema. One client must be shared per account to share endpoint budgets; separate client instances do not coordinate account-wide pacing yet.
 
 This accepts the adapter portion of Stage 1B only. No authenticated Demo/Live call, scheduled/manual persisted sync, event normalization, alias mapping, checkpoint or cash replay is implemented. The observations retain position opening time without claiming quote freshness. Source envelopes must add retrieval/run context when sync integration is built.
+
+## One-off connection and coverage capture
+
+`python -m meridian.broker_capture` is now implemented for the next bounded step after the initial [recovery drill](hosted-recovery.md). The owner selected **local process environment variables** for credential provisioning. It uses one existing read-only client for account summary, positions, all three histories, instruments and exchanges; a 300-second total deadline and 100-page/180-second per-family bounds fail safely rather than accepting partial history. Do not run another reader for the same account concurrently: this one-off command does not implement cross-process/account-wide durable rate coordination.
+
+Create an API key on the intended ISA with the required read permissions and no order/trading mutation permissions. Inspect the actual broker permission labels in its current UI; do not infer a role from a successful summary call. There is no API method here that can certify all permissions granted to the key. Keep the pair out of chat, source files and shell history. The command reads `MERIDIAN_BROKER_API_KEY` and `MERIDIAN_BROKER_API_SECRET` from **its own process environment**. Variables exported in a separate terminal do not update an already running agent's environment. `.env` files are not loaded.
+
+Run from the repository root in the same shell where those variables are securely configured (the example requires the already-created private recovery key):
+
+```sh
+backend/.venv/bin/python -m meridian.broker_capture \
+  --environment live \
+  --key-file private/recovery-keys/recovery-v1.key \
+  private/runtime/trading212-live-observations.meridian
+```
+
+Alternatively append `--prompt-credentials` in an interactive terminal; both key and secret are entered with hidden prompts and kept in process memory. A terminal is required, so `getpass` cannot fall back to echoing input through a pipe. Demo is the default; Live requires the explicit flag above. No credential values belong in command arguments.
+
+All seven families must succeed before a new encrypted file is created. The output records environment, raw parsed payloads with exact Decimal strings, per-family start/end retrieval timestamps and completed traversals. A complete API traversal is **not proof of lifetime account history**. The summary schema cannot verify ISA wrapper; that remains owner-confirmed until evidence establishes the connected account. Non-GBP summary is rejected. Separate requests are not an atomic broker snapshot, and current position quote age remains unknown.
+
+Only safe status/environment/family-completeness output reaches the terminal; it contains no balances, holdings, identifiers or credentials. Output is exclusive AES-GCM encrypted evidence using the separately protected key. This is not a hosted database import, alias reconciliation, derived cash/quantity ledger, scheduler, checkpoint or financial screen. After capture, privately compare identity/history/position evidence with inspected statements before admitting economic events. Credentials are still unprovisioned in this agent process; no actual connection is claimed.
