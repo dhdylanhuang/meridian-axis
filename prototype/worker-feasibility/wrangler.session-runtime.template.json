@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "meridian-axis-session-runtime",
+  "account_id": "68ac1463154f7f19317ce755e84b3c08",
+  "main": "src/session_worker.py",
+  "compatibility_date": "2026-11-11",
+  "compatibility_flags": ["python_workers"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "send_metrics": false,
+  "durable_objects": {
+    "bindings": [{ "name": "APP", "class_name": "SessionApplicationDO" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SessionApplicationDO"] }],
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "HYPERDRIVE_CONFIG_ID" }],
+  "vars": {
+    "PUBLIC_ORIGIN": "PUBLIC_APPLICATION_ORIGIN",
+    "SUPABASE_PROJECT_REF": "ssqqjyrgrsjubxysobwy"
+  }
+}

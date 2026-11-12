@@ -16,3 +16,31 @@ For Workers Builds, select root `prototype/worker-feasibility`, build command `n
 Validate the actual returned URL with `python3 smoke_test.py --origin https://meridian-axis-probe.ACCOUNT.workers.dev --timeout 20`, replacing the placeholder with the provider's URL. The default remains `http://127.0.0.1:8791`. This script uses only the Python standard library and never claims hosted CPU or database qualification. Run its offline regression checks with `python3 -m unittest discover -s tests -v`; these use an ephemeral loopback server. Local Worker tooling requires Node >=22.12.0 and Python >=3.13.
 
 Additional experimental configs isolate the observed CPU limitation: `wrangler.native-probe.jsonc` serves the same workload through native Python fetch; `wrangler.do.jsonc` wraps the existing FastAPI app in a private Python Durable Object; `wrangler.gateway.jsonc` exposes fixed synthetic routes to that object. The namespace has no storage calls and is not application persistence. Run gateway tests with `node --test tests/test_probe_gateway.mjs`. Read the evidence document before deploying; none of these controls is the financial application or an accepted production runtime.
+
+
+## Session runtime candidate
+
+This is separate from the synthetic preview. Before building the private session
+owner, run `python prepare_application.py` from this directory. It copies a fixed
+allowlist from `backend/src/meridian` to ignored `src/meridian`; changes must be
+prepared again before every build. Existing unmanaged destinations and symlinks
+are rejected. The locked `pyproject.toml`/`pylock.toml` remain beside the Wrangler
+configuration so Pywrangler vendors the qualified dependencies.
+
+`wrangler.session-runtime.template.json` defines the private `SessionApplicationDO`
+owner and a separately verified, uncached Hyperdrive origin. Never substitute an
+administrator connection. Its `SUPABASE_PUBLISHABLE_KEY` and `LOGIN_CSRF_KEY` are
+secret bindings; runtime configuration has no service-role key or schema writer.
+`PUBLIC_ORIGIN` must equal the canonical HTTPS origin in both owner and gateway.
+`wrangler.session-gateway.template.json` exposes only health/session routes and
+forwards a fresh request with a narrow header allowlist. No frontend assets or
+financial routes are attached. Render provider IDs/configuration privately;
+never commit credentials or deploy literal template placeholders.
+
+The finite JSON ASGI adapter uses the pinned SDK's scope conversion and awaits the
+complete application/middleware/lifespan call, with an 8 KiB request and 64 KiB
+response cap. The 25-second async deadline cannot preempt synchronous DBAPI calls;
+connection and per-statement bounds remain separate. A module lock serializes
+requests, while request-owned HTTPX clients and NullPool engines are closed before
+release. Runtime qualification and actual two-user login are separate gates; see
+[status](../../docs/status-and-handoff.md) for observed evidence and limitations.

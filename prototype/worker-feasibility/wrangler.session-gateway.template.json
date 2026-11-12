@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "meridian-axis-session-gateway",
+  "account_id": "68ac1463154f7f19317ce755e84b3c08",
+  "main": "src/session_gateway.mjs",
+  "compatibility_date": "2026-11-11",
+  "workers_dev": true,
+  "preview_urls": false,
+  "send_metrics": false,
+  "vars": { "PUBLIC_ORIGIN": "https://SESSION_PUBLIC_ORIGIN" },
+  "durable_objects": {
+    "bindings": [{
+      "name": "APP",
+      "class_name": "SessionApplicationDO",
+      "script_name": "SESSION_APPLICATION_WORKER_NAME"
+    }]
+  }
+}

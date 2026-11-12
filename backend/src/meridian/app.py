@@ -28,7 +28,7 @@ def create_app(*, session_http: SessionHttp | None = None) -> FastAPI:
         return response
 
     @app.get("/health", include_in_schema=False)
-    def health() -> dict[str, str]:
+    async def health() -> dict[str, str]:
         # Liveness only: no financial data, secrets or database paths.
         return {"status": "ok"}
 
