@@ -125,7 +125,7 @@ def test_limiter_upgrade_preserves_existing_evidence_membership_and_sessions(pri
     if path == "native":
         _execute_native_asset(database, paths=(LIMIT_SQL_PATH,))
     else:
-        migrate(database)
+        migrate(database, "0004")
     assert _previous_rows(database) == before
     with database.connect() as connection:
         context = MigrationContext.configure(connection)

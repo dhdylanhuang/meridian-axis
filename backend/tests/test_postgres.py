@@ -197,6 +197,11 @@ def postgres_schema():
             assert _OWN_SCHEMA.fullmatch(schema)
             with admin.begin() as connection:
                 connection.execute(DropSchema(schema, cascade=True))
+                # 0005 derives exactly this role from the generated schema.
+                # Schema removal first clears its policy/grant dependencies.
+                runtime_role = "meridian_bff_" + schema
+                assert len(runtime_role) <= 63
+                connection.exec_driver_sql(f'DROP ROLE IF EXISTS "{runtime_role}"')
         admin.dispose()
 
 
@@ -290,9 +295,11 @@ def test_postgres_upgrade_preserves_0001_evidence_and_fixes_retry_index(postgres
 def test_postgres_fresh_migration_matches_models(postgres_engine):
     with postgres_engine.connect() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_revision() == "0004"
+        assert context.get_current_revision() == "0005"
         assert compare_metadata(context, Base.metadata) == []
-    _assert_private_tables(postgres_engine, include_auth=True, include_limiter=True)
+    _assert_private_tables(
+        postgres_engine, include_auth=True, include_limiter=True, include_runtime=True
+    )
 
 
 @pytest.mark.postgres
@@ -310,7 +317,9 @@ def test_postgres_0002_to_0003_preserves_evidence_and_closes_new_auth_tables(pos
     _assert_private_tables(engine, include_auth=True)
 
 
-def _assert_private_tables(engine, *, include_auth=False, include_limiter=False):
+def _assert_private_tables(
+    engine, *, include_auth=False, include_limiter=False, include_runtime=False
+):
     with engine.connect() as connection:
         states = dict(
             connection.execute(
@@ -338,15 +347,12 @@ def _assert_private_tables(engine, *, include_auth=False, include_limiter=False)
             )
         ).all()
         assert forbidden_grants == []
-        assert (
-            connection.scalar(
-                text(
-                    "SELECT count(*) FROM pg_policies WHERE schemaname=current_schema() "
-                    "AND tablename IN ('accounts','import_log','source_records','audit_log')"
-                )
+        assert connection.scalar(
+            text(
+                "SELECT count(*) FROM pg_policies WHERE schemaname=current_schema() "
+                "AND tablename IN ('accounts','import_log','source_records','audit_log')"
             )
-            == 0
-        )
+        ) == (1 if include_runtime else 0)
 
 
 @pytest.mark.postgres

@@ -23,7 +23,11 @@ SQL_PATH = (
 )
 AUTH_SQL_PATH = SQL_PATH.with_name("20261112000100_membership_sessions.sql")
 LIMIT_SQL_PATH = SQL_PATH.with_name("20261112000200_login_rate_limits.sql")
-SQL_PATHS = (SQL_PATH, AUTH_SQL_PATH, LIMIT_SQL_PATH)
+RUNTIME_SQL_PATH = SQL_PATH.with_name("20261112000300_runtime_permissions.sql")
+RUNTIME_DCL_PATH = (
+    Path(__file__).resolve().parents[1] / "migrations/sql/0005_runtime_permissions.sql"
+)
+SQL_PATHS = (SQL_PATH, AUTH_SQL_PATH, LIMIT_SQL_PATH, RUNTIME_SQL_PATH)
 NOW = datetime(2026, 1, 2, 12, tzinfo=UTC)
 _TABLES = (
     "accounts",
@@ -53,6 +57,15 @@ def test_checked_in_supabase_table_and_index_ddl_matches_authoritative_models():
             assert _space_normalized(str(CreateIndex(index).compile(dialect=pg))) in actual
 
 
+def test_native_runtime_dcl_is_the_exact_immutable_alembic_asset():
+    body = RUNTIME_DCL_PATH.read_text(encoding="utf-8")
+    native = RUNTIME_SQL_PATH.read_text(encoding="utf-8")
+    assert native.count(body) == 1
+    assert "alembic_version" not in body
+    assert native.index("version_num = '0004'") < native.index(body)
+    assert native.index("UPDATE alembic_version SET version_num = '0005'") > native.index(body)
+
+
 def _execute_native_asset(engine, paths=SQL_PATHS):
     with engine.begin() as connection:
         schema = connection.scalar(text("SELECT current_schema()"))
@@ -75,13 +88,13 @@ def test_native_supabase_bootstrap_has_exact_schema_head_and_no_seeded_finances(
     assert set(inspect(native_engine).get_table_names()) == set(_TABLES)
     with native_engine.connect() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_revision() == "0004"
+        assert context.get_current_revision() == "0005"
         assert compare_metadata(context, Base.metadata) == []
         for table in _TABLES[:-1]:
             assert connection.scalar(text(f'SELECT count(*) FROM "{table}"')) == 0
         assert connection.execute(
             text("SELECT version_num FROM alembic_version")
-        ).scalars().all() == ["0004"]
+        ).scalars().all() == ["0005"]
 
 
 @pytest.mark.postgres
@@ -123,11 +136,29 @@ def test_native_supabase_asset_removes_default_public_and_existing_api_role_gran
             )
         ).all()
         assert forbidden_grants == []
+        policies = connection.execute(
+            text("SELECT tablename, policyname FROM pg_policies WHERE schemaname=current_schema()")
+        ).all()
+        assert set(policies) == {
+            ("account_members", "meridian_member_read"),
+            ("app_sessions", "meridian_session_read"),
+            ("app_sessions", "meridian_session_insert"),
+            ("app_sessions", "meridian_session_revoke"),
+            ("audit_log", "meridian_session_audit"),
+            ("login_rate_limits", "meridian_login_read"),
+            ("login_rate_limits", "meridian_login_insert"),
+            ("login_rate_limits", "meridian_login_update"),
+        }
         assert (
             connection.scalar(
-                text("SELECT count(*) FROM pg_policies WHERE schemaname=current_schema()")
+                text(
+                    "SELECT bool_and(p.polroles = ARRAY[(SELECT oid FROM pg_roles "
+                    "WHERE rolname = 'meridian_bff_' || current_schema())]::oid[]) "
+                    "FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid "
+                    "JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=current_schema()"
+                )
             )
-            == 0
+            is True
         )
 
 

@@ -12,6 +12,8 @@ Current repository status: local evidence/import foundations verified; Cloudflar
 
 The owner reaffirmed full project implementation, verification, commit/push and deployment authority for this conversation, asking not to repeat project permission questions. Continue within the agreed private-data and free-services scope. Platform sandbox approvals remain separate execution constraints.
 
+**Usage constraint (owner instruction): 50% of weekly usage has been consumed.** Prioritise the critical path to secure two-user access, verified broker ingestion/reconciliation and recovery. Keep each delivery bounded, reuse existing work and checks, and use delegation only where it saves total work. Defer cosmetic preview changes, extra screens and secondary analytics. Report individual components and remaining gaps accurately; the synthetic preview and passing tests do not constitute a working portfolio application.
+
 ## Authority and scope
 
 - The user's latest explicit instruction takes precedence. Documentation does not grant permission to deploy, trade, commit, contact others or change the user's workbook.

@@ -2,6 +2,16 @@
 
 Last reviewed: **12 November 2026**, including the owner's explicit resume with continuing project authority.
 
+## Active priority and weekly usage constraint
+
+The owner reports **50% of weekly usage consumed** and requests continued development focused on key items. This is a scope/efficiency constraint, not a request to pause. Avoid broad parallel work, repeated reviews of unchanged code, cosmetic demo refinement and secondary features. Use one bounded implementation stream plus focused integration/review; run the checks needed for changed behavior once, broadening only for failures or new risks.
+
+Critical path: (1) native restricted runtime permissions and private credential/Hyperdrive qualification, (2) hosted two-user authentication/session integration, (3) backup/restore before real imports, then (4) read-only broker ingestion, evidence/ledger reconciliation and trustworthy valuation. Remaining analytics, automation, screens and operational acceptance are substantial work. The current system is an early prototype with an invented-data preview and tested components, not a usable real-portfolio tracker. Keep all progress reporting at that level of precision.
+
+Current bounded task: deliver the native restricted runtime permission profile with migration parity and real PostgreSQL role tests. Do not combine account provisioning, login UI, financial imports or preview polish into this delivery.
+
+Implementation is prepared at parity `0005`: a passwordless restricted role, eight scoped RLS policies and immutable DCL parity. Local full verification: **300 passed, 61 PostgreSQL cases skipped**, Ruff check/format passed. The new role tests exercise both migration paths, exact role/table/column restrictions, real session/limiter service calls and rejected operations; native collision tests require rollback without adopting an existing role. These server-backed cases still require validation CI. Hosted parity remains `0004` until the reviewed commit is validated, promoted and independently inspected. The 50% usage constraint is also recorded in AGENTS so later resumes preserve prioritisation.
+
 ## Dashboard preview delivered - 12 November 2026
 
 The owner asked for a dashboard and a link to open from a phone. The immediate priority became a clearly labelled synthetic preview, preserving the security/recovery gates for real data. **[Open Meridian AXIS](https://meridian-axis-preview.meridian-worker-feasibility.workers.dev)**.

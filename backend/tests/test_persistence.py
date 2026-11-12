@@ -101,7 +101,7 @@ def test_migration_from_base_matches_models_and_repeated_upgrade_keeps_evidence(
         migrate(engine)
         with engine.connect() as connection:
             context = MigrationContext.configure(connection)
-            assert context.get_current_revision() == "0004"
+            assert context.get_current_revision() == "0005"
             assert compare_metadata(context, Base.metadata) == []
         with Session(engine) as session:
             assert session.get(SourceRecord, "source-1").payload_json == '{"quantity":"1.25"}'
