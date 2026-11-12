@@ -2,9 +2,7 @@
 
 import asyncio
 
-from meridian.security.hosted import hosted_application
-from pydantic import SecretStr
-from workers import DurableObject, Response, WorkerEntrypoint, asgi
+from workers import DurableObject, Response, WorkerEntrypoint
 
 _REQUEST_LOCK = asyncio.Lock()
 
@@ -13,6 +11,8 @@ async def buffered_fetch(app, request, env, ctx):
     # Finite JSON-only ASGI exchange. Unlike SDK streaming fetch(), this awaits
     # the entire application call (including middleware cleanup) under the lock.
     # ASGI scope construction remains the installed SDK's implementation.
+    from workers import asgi
+
     scope = asgi.request_to_scope(request, env)
     payload, body, headers = bytearray(), bytearray(), []
     status = None
@@ -69,6 +69,12 @@ class SessionApplicationDO(DurableObject):
         # on the object's event loop. No transaction spans provider HTTP calls.
         async with _REQUEST_LOCK:
             try:
+                # Heavy ORM/FastAPI imports exceeded the provider's startup
+                # snapshot memory bound. Initialise only in the object request;
+                # this must still pass actual request resource qualification.
+                from meridian.security.hosted import hosted_application
+                from pydantic import SecretStr
+
                 async with hosted_application(
                     self.env.HYPERDRIVE,
                     origin=self.env.PUBLIC_ORIGIN,

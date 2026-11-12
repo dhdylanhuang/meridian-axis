@@ -35,6 +35,7 @@ def load_worker():
         },
     ):
         spec.loader.exec_module(module)
+    module._test_workers = workers
     return module
 
 
@@ -58,6 +59,11 @@ class Application:
 
 
 class SessionWorkerTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        patcher = patch.dict(sys.modules, {"workers": WORKER._test_workers})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     async def test_complete_stream_and_cookie_pairs_before_return(self):
         completed = False
 
@@ -103,7 +109,7 @@ class SessionWorkerTests(unittest.IsolatedAsyncioTestCase):
         task = asyncio.create_task(
             WORKER.buffered_fetch(app, SimpleNamespace(body=None), None, None)
         )
-        await started.wait()
+        await asyncio.wait_for(started.wait(), timeout=1)
         task.cancel()
         with self.assertRaises(asyncio.CancelledError):
             await task
