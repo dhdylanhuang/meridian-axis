@@ -8,7 +8,18 @@ The latest owner instruction is to continue while **minimising sub-agents and un
 
 Critical path: (1) native restricted runtime permissions and private credential/Hyperdrive qualification, (2) hosted two-user authentication/session integration, (3) backup/restore before real imports, then (4) read-only broker ingestion, evidence/ledger reconciliation and trustworthy valuation. Remaining analytics, automation, screens and operational acceptance are substantial work. The current system is an early prototype with an invented-data preview and tested components, not a usable real-portfolio tracker. Keep all progress reporting at that level of precision.
 
-Current bounded delivery: minimal two-user sign-in completed below. Next: owner browser/password setup acceptance, then hosted backup/restore qualification before real financial imports.
+Current bounded delivery: minimal two-user sign-in completed; the owner has now confirmed successful browser sign-in. Partner browser confirmation remains pending. Next development task: hosted backup/restore qualification before real financial imports.
+
+## Owner acceptance and next steps
+
+The owner reported **successful sign-in** after receiving the private setup link. This records owner browser acceptance; it does not claim an automated visual review, a full browser cookie-policy audit or partner browser acceptance. Both identities already passed the separate hosted API lifecycle checks below. Partner first-use confirmation remains pending; regenerate that user's private setup link if it expires, without publishing it or sending an unsolicited invitation.
+
+Continue in this order:
+
+1. Qualify private hosted backup/export and restore into an isolated target, preserving the working system. Record recovery evidence before importing real financial data.
+2. Connect Trading 212 with read-only credentials and establish actual holdings/history coverage.
+3. Reconcile broker observations against the inspected exports/statements and build the source-backed ledger/valuation path.
+4. Populate AXIS with verified holdings and cash, explicit source/as-of timestamps and missing-data states. This is the next visible financial milestone; it is not implemented yet.
 
 ## Minimal sign-in delivered — 12 November 2026
 
@@ -22,7 +33,7 @@ Actual hosted tests passed for **both users**: one-use signup/password setup, or
 
 The existing owner and gateway were upgraded without changing either managed secret or the restricted Hyperdrive origin; previous deployment versions were captured privately for rollback. Independent HTTPS checks found served JS/CSS hashes equal the source, CSP/frame denial and no-store, anonymous session 401 and a private runtime path 404. Independent SQL found one account, two active memberships, **zero active application sessions after test logout and zero financial source rows**. The shared admission window had expired before handoff, so the test budget does not block initial setup.
 
-**Verification limit:** the browser host was unavailable and native Chrome access timed out. No visual/browser cookie-policy walkthrough is claimed; complete that with the owner choosing their own password. The page and real API flow are deployed and checked over HTTPS. Financial ingestion, reconciliation, valuations, analytics, automation and remaining screens are not complete. Hosted backup/restore, active-data credential rotation, broader capacity and operational recovery remain required before real financial data is introduced.
+**Verification limit:** the agent browser host was unavailable and native Chrome access timed out. The owner subsequently confirmed successful browser sign-in. No automated visual review or full browser cookie-policy walkthrough is claimed; partner browser acceptance remains pending. The page and real API flow are deployed and checked over HTTPS. Financial ingestion, reconciliation, valuations, analytics, automation and remaining screens are not complete. Hosted backup/restore, active-data credential rotation, broader capacity and operational recovery remain required before real financial data is introduced.
 
 ## Hosted session transport qualified — 12 November 2026
 
@@ -40,7 +51,7 @@ Qualification exposed and corrected three distinct problems: eager ORM/FastAPI i
 
 The native [Supabase integration check](https://github.com/dhdylanhuang/meridian-axis/runs/131346358328) passed after promotion. Independent read-only hosted inspection verified parity **`0005`**, role `meridian_bff_public`, eight role-scoped policies, no elevated flags/parent roles/schema CREATE, six intended table grants and only three UPDATE column grants. PUBLIC/anon/authenticated table grants remain zero. Account, member, session and counter row counts remain zero. The migration specifies PASSWORD NULL; no credential, Hyperdrive binding or login activation was provisioned in this task. This establishes database permissions, not working application authentication.
 
-**Next bounded task:** complete owner browser acceptance of minimal sign-in, then qualify hosted recovery before real financial imports. Most product work remains: source-backed ledger/reconciliation, valuations, analytics, remaining screens, automation and recovery acceptance. The latest usage constraint is recorded in AGENTS and continues across resumes; retain this narrow priority order.
+**Next bounded task:** qualify hosted recovery before real financial imports; partner browser confirmation can proceed separately. Most product work remains: source-backed ledger/reconciliation, valuations, analytics, remaining screens, automation and recovery acceptance. The latest usage constraint is recorded in AGENTS and continues across resumes; retain this narrow priority order.
 
 **Actual restricted-login qualification passed at `dc41f7e`.** [Final source CI](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43269609908) passed Windows/Linux and all 61 PostgreSQL cases; the preceding unchanged Worker source also passed Linux/macOS validator checks. Full local suite: **328 passed, 61 PostgreSQL cases skipped**, Ruff passed; 28 focused cases cover the new credential/probe code. The locked Worker bundle dry-run passed. The existing Supabase CLI accepted administrative SQL through captured stdin, allowing a narrow SCRAM password operation without an administrative Worker or credentials in arguments/files/output.
 
