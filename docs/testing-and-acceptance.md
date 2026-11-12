@@ -1,6 +1,6 @@
 # Testing and acceptance strategy
 
-Status: acceptance strategy plus verified local foundation, broker-observation, snapshot-evidence and closed identity/session slices. Restricted session-permission checkpoint `ade9abf` passes Windows/Linux and **34 service-backed PostgreSQL cases**, including actual service execution as a non-owner NOBYPASSRLS role. The new HTTP slice in validation passes **262 local offline cases** (46 new HTTP tests), with 34 PostgreSQL cases skipped locally. It uses offline ASGI/SQLite fixtures, not browser cookie-policy enforcement or live Supabase identities. Later financial/UI rows remain planned. Actual hosted application security and capacity remain separate gates; see status/handoff. Workbook inspection alone is not an application-test pass.
+Status: acceptance strategy plus verified local foundation, broker-observation, snapshot-evidence and closed identity/session slices. HTTP checkpoint `4a4099b` passes Windows/Linux checks and **34 service-backed PostgreSQL cases**, including actual session-service execution as a non-owner NOBYPASSRLS role. The full local suite passes **262 offline cases** (46 HTTP tests), with 34 PostgreSQL cases skipped locally. HTTP tests use offline ASGI/SQLite fixtures, not browser cookie-policy enforcement or live Supabase identities. Later financial/UI rows remain planned. Actual hosted application security and capacity remain separate gates; see status/handoff. Workbook inspection alone is not an application-test pass.
 
 ## Test layers
 

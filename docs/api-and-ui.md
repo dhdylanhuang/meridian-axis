@@ -1,6 +1,6 @@
 # Application API and user interface
 
-Status: ADOPTED design proposal, with the explicitly configured session transport below in validation. Other route families remain planned, **not existing endpoints and not Trading 212 endpoint paths**. Provider routes belong only in the broker adapter.
+Status: ADOPTED design proposal, with the explicitly configured session component below verified in offline/CI tests. Other route families remain planned, **not existing endpoints and not Trading 212 endpoint paths**. Provider routes belong only in the broker adapter.
 
 ## Interface principles
 
@@ -36,7 +36,7 @@ Long operations create job IDs and return promptly. Job state includes queued/ru
 
 Final methods/schemas are established in the implementation task and FastAPI OpenAPI. Do not implement a public arbitrary SQL, filesystem-path or provider-request proxy endpoint. File uploads are size/type validated and stored privately; server paths are not client-controlled migration credentials.
 
-### Session transport in validation
+### Verified session component
 
 `create_app()` still exposes liveness only by default. Supplying an explicit `SessionHttp` enables the following routes; it requires a verified provider adapter, request-owned database factory, session service, shared atomic login-limiter callback and secret signing key of at least 32 bytes. A deployment must generate a random key, configure the shared limiter and qualify proxy/runtime access before activation. There is no local-memory production limiter fallback.
 
