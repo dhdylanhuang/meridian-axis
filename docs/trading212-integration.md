@@ -1,6 +1,6 @@
 # Trading 212 integration contract
 
-Status: CONFIRMED API-first requirement; VERIFIED documentation observations dated 11 November 2026, public YAML hash rechecked unchanged on 12 November; ADOPTED normalisation design. No authenticated account requests have been made.
+Status: CONFIRMED API-first requirement; VERIFIED documentation observations dated 11 November 2026, public YAML hash rechecked unchanged on 12 November; ADOPTED normalisation design. A live seven-family capture was independently verified locally on 12 November; ongoing hosted sync, normalized ledger and financial UI remain unimplemented.
 
 ## Verify before implementing
 
@@ -80,7 +80,7 @@ Mocked contract tests pass; credentials are redacted; Demo/Live isolation is ver
 
 `backend/src/meridian/adapters/trading212.py` implements the seven typed read methods using the verified YAML. Offline fixtures cover exact Decimal decoding/string IDs, distinct fills under one order, complete pagination, same-family/origin restrictions, redirects, bounded retries/pacing, terminal authentication failures, and strict duplicate-key/nonfinite JSON rejection. **39 contract tests pass**. DTOs are observations with private raw payloads, not a ledger or browser response schema. One client must be shared per account to share endpoint budgets; separate client instances do not coordinate account-wide pacing yet.
 
-This accepts the adapter portion of Stage 1B only. No authenticated Demo/Live call, scheduled/manual persisted sync, event normalization, alias mapping, checkpoint or cash replay is implemented. The observations retain position opening time without claiming quote freshness. Source envelopes must add retrieval/run context when sync integration is built.
+This accepts the adapter portion of Stage 1B only. A live one-off capture is now verified below. Scheduled/manual persisted sync, event normalization, alias mapping, checkpoint and cash replay remain unimplemented. The observations retain position opening time without claiming quote freshness. Source envelopes must add retrieval/run context when sync integration is built.
 
 ## One-off connection and coverage capture
 
@@ -101,4 +101,4 @@ Alternatively append `--prompt-credentials` in an interactive terminal; both key
 
 All seven families must succeed before a new encrypted file is created. The output records environment, raw parsed payloads with exact Decimal strings, per-family start/end retrieval timestamps and completed traversals. A complete API traversal is **not proof of lifetime account history**. The summary schema cannot verify ISA wrapper; that remains owner-confirmed until evidence establishes the connected account. Non-GBP summary is rejected. Separate requests are not an atomic broker snapshot, and current position quote age remains unknown.
 
-Only safe status/environment/family-completeness output reaches the terminal; it contains no balances, holdings, identifiers or credentials. Output is exclusive AES-GCM encrypted evidence using the separately protected key. This is not a hosted database import, alias reconciliation, derived cash/quantity ledger, scheduler, checkpoint or financial screen. After capture, privately compare identity/history/position evidence with inspected statements before admitting economic events. Credentials are still unprovisioned in this agent process; no actual connection is claimed.
+Only safe status/environment/family-completeness output reaches the terminal; it contains no balances, holdings, identifiers or credentials. Output is exclusive AES-GCM encrypted evidence using the separately protected key. This is not a hosted database import, alias reconciliation, derived cash/quantity ledger, scheduler, checkpoint or financial screen. After capture, privately compare identity/history/position evidence with inspected statements before admitting economic events. The owner subsequently ran the hidden-prompt command successfully; the encrypted live capture was independently authenticated and inspected locally. All seven families are present and the summary currency is GBP. Initial signed-fill quantity controls match positions when split/scrip changes are retained, while position-wallet value versus account-summary investments reconciliation remains open. This verifies the local connection, not ongoing hosted sync or a populated financial application. Exact data and diagnostic controls remain private.

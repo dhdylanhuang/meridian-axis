@@ -12,7 +12,7 @@ The hosted target is Cloudflare + Supabase PostgreSQL, with React, Vite, Tailwin
 
 **Development resumed at the owner's request on 12 November 2026.** Continue from [status and handoff](docs/status-and-handoff.md). Stage 0H hosting qualification is the current gate; direct Cloudflare and Supabase management access is established.
 
-**Local foundation, broker adapter and snapshot-evidence slices are verified.** Exact-decimal persistence, migrations, evidence/audit records, isolated configuration, backup/restore and holdings CSV preview/atomic import are available. The broker adapter is tested with mocked HTTP. The default backend exposes liveness only; an explicitly configured secure session component also passes offline/CI tests. The synthetic dashboard preview is deployed; authenticated portfolio data and full Stage 1 financial replay/reconciliation remain open.
+**Local foundation, broker adapter and snapshot-evidence slices are verified.** Exact-decimal persistence, migrations, evidence/audit records, isolated configuration, backup/restore and holdings CSV preview/atomic import are available. The broker adapter passes mocked HTTP tests, and an encrypted seven-family Live capture is now locally verified; ongoing hosted sync and source-backed financial views remain open. The default backend exposes liveness only; an explicitly configured secure session component also passes offline/CI tests. The synthetic dashboard preview is deployed; authenticated portfolio data and full Stage 1 financial replay/reconciliation remain open.
 
 Start with the tested [local development guide](docs/local-development.md). The required provider YAML is verified; see [source contracts](docs/stage-0-source-verification.md) for account-history limitations.
 

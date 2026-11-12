@@ -8,7 +8,7 @@ The latest owner instruction is to continue while **minimising sub-agents and un
 
 Critical path: (1) native restricted runtime permissions and private credential/Hyperdrive qualification, (2) hosted two-user authentication/session integration, (3) backup/restore before real imports, then (4) read-only broker ingestion, evidence/ledger reconciliation and trustworthy valuation. Remaining analytics, automation, screens and operational acceptance are substantial work. The current system is an early prototype with an invented-data preview and tested components, not a usable real-portfolio tracker. Keep all progress reporting at that level of precision.
 
-Current bounded delivery: minimal two-user sign-in completed; the owner has now confirmed successful browser sign-in. Partner browser confirmation remains pending. Hosted logical export and isolated local restore are now qualified; see the recovery checkpoint below. Next development task: provision read-only Trading 212 credentials and run the bounded observation capture.
+Current bounded delivery: minimal two-user sign-in completed; the owner has now confirmed successful browser sign-in. Partner browser confirmation remains pending. Hosted logical export and isolated local restore are now qualified; see the recovery checkpoint below. Live read-only capture is now verified locally. Next development task: durable evidence ingestion and corporate-action/cash/valuation reconciliation.
 
 ## Owner acceptance and next steps
 
@@ -17,8 +17,8 @@ The owner reported **successful sign-in** after receiving the private setup link
 Continue in this order:
 
 1. **Initial recovery slice verified:** encrypted hosted export and isolated local Supabase restore, preserving the working system. Complete scheduled retention, independent key custody and replacement hosted login recovery at their operational gates.
-2. **Current next action:** provision Trading 212 read-only credentials in the local capture process, run the encrypted observation capture and establish actual holdings/history coverage.
-3. Reconcile broker observations against the inspected exports/statements and build the source-backed ledger/valuation path.
+2. **Local connection verified:** all seven Trading 212 read families captured successfully with owner-provisioned credentials. Lifetime history and account-wrapper verification remain distinct from complete API traversal.
+3. **Current next action:** preserve accepted broker evidence durably, reconcile corporate actions/cash/valuation against the inspected exports/statements, and build the source-backed ledger/valuation path.
 4. Populate AXIS with verified holdings and cash, explicit source/as-of timestamps and missing-data states. This is the next visible financial milestone; it is not implemented yet.
 
 ## Hosted logical recovery delivered — 12 November 2026
@@ -31,7 +31,15 @@ Corrected export/encryption/read-back verification took **17.72 seconds**; isola
 
 The first drill correctly stopped on a native migration-history mismatch: the CLI excludes its own history from its default data dump. An explicit schema/data history export fixed it; failed restores rolled back. A separate synthetic drill preserved exact-decimal source evidence and revoked a previously active session. Reusable modules are `recovery.py`, `hosted_backup.py` and `local_restore.py`; no hosted schema or Worker bundle changed. The disposable restored container and its volumes were removed after inspection; only encrypted archives and separately protected keys remain. Local verification: `pytest -q -rN` **377 passed, 63 PostgreSQL cases skipped**, Ruff check/format passed; **26 new recovery/capture cases** passed. Scheduled retention, independent key custody, hosted replacement-project logins, active-data credential rotation and future object/financial controls remain open.
 
-**Trading 212 readiness:** `broker_capture.py` now offers a bounded one-off read-only capture of all seven existing adapter families, encrypted private output, per-family retrieval timestamps and explicit unverified lifetime coverage. A late failure writes no partial accepted capture. It is not a ledger import, persisted scheduler/checkpoint, reconciliation or a financial UI. The public YAML was fetched again and exactly matches the reviewed 11 November digest. No broker key/secret is present in this process, so no authenticated broker call has occurred; the owner selected local process environment variables, with provisioning/capture still pending. Partner browser confirmation remains separate.
+## Live Trading 212 capture verified — 12 November 2026
+
+The owner ran the capture locally with credentials entered through hidden prompts. Reported result: `observations_captured`, `live`, all seven families complete, lifetime coverage unverified and ledger not imported. Independent local AES-GCM authentication/decryption confirmed the encrypted capture exists with owner-only permissions and contains account summary, positions, all three history families, instruments and exchanges. Account summary currency is GBP. No credentials were placed in chat, source, fixtures or public logs; the application does not persist the key pair. No additional broker requests were needed for inspection.
+
+Initial private controls found no duplicate/conflicting fill IDs. A trades-only quantity comparison differed because the actual history also contains `STOCK_SPLIT` and `SCRIP_STOCK_DIVIDENDS` records. Summing signed executed quantities **including those corporate-action changes** exactly matches all captured current position quantities, including closed listings at zero. This is a successful candidate quantity control, not accepted normalization, cost/cash reconstruction, cross-source alias verification or proof of full lifetime history. Preserve these event kinds separately; never book a split or scrip distribution as a cash-funded trade merely to make quantities match.
+
+All captured position-wallet current values are labelled GBP, but their exact sum differs from the separately sampled account-summary investments current value. Retain this as an **open valuation discrepancy** with the separate retrieval timestamps; its cause has not been established and is not silently rounded away. Cash component additivity and the API-to-statement account/coverage link still require evidence. ISA wrapper remains owner-confirmed rather than established by a summary field the API does not supply.
+
+Exact record counts, dates, identifiers, values, source digests and inspection controls remain private. The capture and controls are ignored; no financial data entered Git or Supabase. Source remains the verified `e2a4870` one-off tool; no production Worker/schema changed. Current signed-in workspace is still empty. Next: durable evidence acceptance and source-backed corporate-action/cash/valuation reconciliation, followed by authenticated financial views. Broker credentials will need a separately verified hosted secret-binding/runtime path for ongoing hosted sync; this local capture does not establish that connection.
 
 ## Minimal sign-in delivered — 12 November 2026
 

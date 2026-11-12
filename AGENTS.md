@@ -6,7 +6,7 @@
 2. Read [product requirements](docs/product-requirements.md), [architecture](docs/architecture.md) and the current stage in [development stages](docs/development-stages.md).
 3. Read the domain contract for your task. Read [agent workflow](docs/agent-workflow.md) before coordinating parallel work.
 
-Current repository status: local evidence/import foundations and initial encrypted hosted export/isolated local restore verified; Cloudflare + Supabase is the approved hosted target and is undergoing qualification. The next bounded action is read-only Trading 212 observation capture using locally provisioned process credentials; no authenticated broker connection or financial ledger is claimed. Check the actual tree and status document before claiming any feature exists.
+Current repository status: local evidence/import foundations and initial encrypted hosted export/isolated local restore verified; Cloudflare + Supabase is the approved hosted target and is undergoing qualification. Live read-only Trading 212 capture is now locally verified. The next bounded action is durable evidence ingestion and corporate-action/cash/valuation reconciliation; no hosted broker connection, normalized financial ledger or populated financial UI is claimed. Check the actual tree and status document before claiming any feature exists.
 
 **Development resumed at the owner's explicit request on 12 November 2026**, after the authorised 04:00 London restart time. Full project implementation, verification, commit/push and deployment permission continues. Preserve the historical pause checkpoint. Cloudflare OAuth and Supabase CLI management access are established on the personal laptop; Supabase hosted migrations retain their native GitHub delivery path.
 
