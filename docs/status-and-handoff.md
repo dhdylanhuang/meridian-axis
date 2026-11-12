@@ -18,6 +18,8 @@ The exact validated commit was fast-forwarded to `main`. [Main CI](https://githu
 
 Next bounded outcome: qualify the dedicated runtime role and the HTTP cookie/CSRF/throttling boundary, then verify two approved Auth identities. Do not use the temporary administrative diagnostic role as an application credential. Continue with the existing private-data and free-services constraints; no renewed routine project permission is needed.
 
+The owner subsequently supplied the two approved sign-in addresses. They are stored only in an ignored, owner-readable local configuration; do not copy them into public docs, fixtures or CI. Identity provisioning is pending, with no invitation, password or member row created. After a brief phone handoff pause, the owner resumed and requested a short run near the conversation usage limit. The bounded task is disposable PostgreSQL qualification of restricted session permissions; production schema and grants remain unchanged during this task.
+
 ## Historical pause - resume authorised from 04:00 London, 12 November 2026
 
 The owner requested a pause near the conversation usage limit. **Stop implementation and remote changes until 04:00 Europe/London on 12 November 2026.** Full project authority continues from that time; do not ask again for routine project permission. No automatic session wakeup is configured. All delegated agents have finished or been stopped; no local development process is left running. The checkpoint push may trigger the existing provider CI. Saving this reviewed checkpoint is the only work performed after the pause request.
