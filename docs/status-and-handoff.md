@@ -1,8 +1,16 @@
 # Status and handoff
 
-Last reviewed: **11 November 2026**, including implementation/delegation authorisation, direct provider verification and the free-hosting constraint.
+Last reviewed: **12 November 2026**, including the owner's explicit resume with continuing project authority.
 
-## Current pause - resume authorised from 04:00 London, 12 November 2026
+## Current resume - 12 November 2026
+
+The owner explicitly resumed at 06:34 London time, after the authorised restart window. Checkout `554386f` was clean. The protected diagnostic helper was reviewed, and its deployment account was pinned before execution. The first attempt stopped at credential acquisition; cleanup reported complete and no diagnostic Worker/Hyperdrive resource was created. Supabase CLI project inspection remains authenticated. The direct Keychain lookup used by the helper failed, so the supported CLI dump **dry-run** projection is being used for temporary connection details, captured only in memory and never executed as a shell script. Its parser preserves opaque values and rejects unexpected targets. Role expiry must be verified through a read-only catalog query rather than assumed.
+
+A new disposable PostgreSQL integration test runs the unchanged TEMP-table probe twice through fresh DBAPI connections and checks exact values and cleanup. Local execution skipped without a test server; real execution awaits service-backed CI. The backend workflow now watches the shared SQL probe source. This does not add a hosted schema writer or prove durable imports.
+
+Next bounded outcome: complete the protected synthetic Hyperdrive transport check, record actual denial/value/rollback/cleanup outcomes and remove its temporary resources. Continue with the existing private-data and free-services constraints; no renewed routine project permission is needed.
+
+## Historical pause - resume authorised from 04:00 London, 12 November 2026
 
 The owner requested a pause near the conversation usage limit. **Stop implementation and remote changes until 04:00 Europe/London on 12 November 2026.** Full project authority continues from that time; do not ask again for routine project permission. No automatic session wakeup is configured. All delegated agents have finished or been stopped; no local development process is left running. The checkpoint push may trigger the existing provider CI. Saving this reviewed checkpoint is the only work performed after the pause request.
 
