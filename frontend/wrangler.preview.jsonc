@@ -1,0 +1,12 @@
+{
+  "name": "meridian-axis-preview",
+  "account_id": "68ac1463154f7f19317ce755e84b3c08",
+  "compatibility_date": "2026-11-11",
+  "workers_dev": true,
+  "preview_urls": false,
+  "send_metrics": false,
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
