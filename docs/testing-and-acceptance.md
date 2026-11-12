@@ -1,6 +1,6 @@
 # Testing and acceptance strategy
 
-Status: acceptance strategy plus verified local foundation, broker-observation, snapshot-evidence and closed identity/session slices. Shared-limiter checkpoint `de5269a` passes Windows/Linux checks and **53 service-backed PostgreSQL cases**, including real database time, concurrent admission, blocked-row timeout and restricted session-service permissions. The full local suite passes **299 offline cases** (including 46 HTTP tests), with 53 PostgreSQL cases skipped locally. HTTP tests use offline ASGI/SQLite fixtures, not browser cookie-policy enforcement or live Supabase identities. Later financial/UI rows remain planned. Actual hosted application security and capacity remain separate gates; see status/handoff. Workbook inspection alone is not an application-test pass.
+Status: acceptance strategy plus verified local foundations and bounded hosted session transport. Latest local suite: **340 passed, 61 PostgreSQL cases skipped**; final Windows/Linux/PostgreSQL CI passes. Worker validation passes 19 Python and 19 Node cases. Actual HTTPS checks qualify prelogin cookie scope, anonymous/Origin/input denial, rejected credentials and shared durable limiting. Both approved identities, positive hosted session lifecycles, browser enforcement, hosted recovery, financial acceptance and broader capacity remain open. See [status/handoff](status-and-handoff.md) for exact source/CI evidence.
 
 ## Test layers
 

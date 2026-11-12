@@ -12,7 +12,7 @@ Current repository status: local evidence/import foundations verified; Cloudflar
 
 The owner reaffirmed full project implementation, verification, commit/push and deployment authority for this conversation, asking not to repeat project permission questions. Continue within the agreed private-data and free-services scope. Platform sandbox approvals remain separate execution constraints.
 
-**Usage constraint (latest owner report, 12 November): 34% usage remains until 22:00 London.** This is an owner-reported budget, not a measured quota. Prioritise the critical path to secure two-user access, verified broker ingestion/reconciliation and recovery. Keep each delivery bounded, reuse existing work and checks, and use delegation only where it saves total work. Defer cosmetic preview changes, extra screens and secondary analytics. Report individual components and remaining gaps accurately; the synthetic preview and passing tests do not constitute a working portfolio application.
+**Usage constraint (latest owner instruction): minimise sub-agents and unnecessary rate-limit consumption.** The earlier owner-reported 34% remaining applied until 22:00 London on 12 November; that window has elapsed, and no new quota has been measured or reported. Continue one bounded critical-path stream, reusing existing work and targeted checks. Prioritise secure two-user access, verified broker ingestion/reconciliation and recovery. Defer cosmetic preview changes, extra screens and secondary analytics. Report components and remaining gaps accurately; the synthetic preview and passing tests do not constitute a working portfolio application.
 
 ## Authority and scope
 

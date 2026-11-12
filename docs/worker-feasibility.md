@@ -2,6 +2,24 @@
 
 Reviewed **11 November 2026**. The owner selected Cloudflare + Supabase, with free services only. The original local experiment below used no account, hosted deployment, credentials or database. The resumed hosted experiment now verifies synthetic response compatibility but **does not qualify ordinary Free CPU fit**. Neither experiment establishes production readiness.
 
+## Session runtime qualification — 12 November 2026
+
+The assembled session runtime now passes actual HTTPS health, prelogin-cookie,
+Origin/anonymous denial, rejected-password and database-backed admission checks.
+This is a private Python Durable Object plus a narrow public gateway, separate
+from the invented-data preview. Startup imports had to be deferred after an actual
+Python startup-memory rejection. Hyperdrive local credentials were observed to
+use a proxy username, so actual origin role/database/schema are checked on each
+new driver connection. A custom ASGI bridge was replaced by the pinned SDK and
+direct privacy-header middleware; finite JSON response checks and cancellation
+cleanup protect request-owned resources. No request-header tail was used.
+
+Source `8184b74` is retained remotely; final lint/test-only follow-up `2625982`
+passes backend CI. No actual user login, financial workload, load/capacity or
+recovery acceptance is claimed. Exact checks, failed-attempt cleanup and remaining
+gates are in [status/handoff](status-and-handoff.md). Cloudflare describes its
+[Python deployment snapshot lifecycle](https://developers.cloudflare.com/workers/languages/python/how-python-workers-work/).
+
 ## Hosted result after resume
 
 The owner completed Wrangler OAuth device authorization with credentials held in macOS Keychain. Direct CLI deployment of source commit `53cd2ab40aaa18d6c11bca51f907520ad96f7fac` succeeded:
