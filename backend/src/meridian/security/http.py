@@ -121,7 +121,7 @@ class SessionHttp:
         except (ValueError, SessionError):
             raise SessionError("csrf_invalid") from None
 
-    async def _credentials(self, request):
+    async def _credentials(self, request, *, setup=False):
         if self._header(request, "content-type") != "application/json":
             raise ValueError("request_invalid")
         body = bytearray()
@@ -134,14 +134,22 @@ class SessionHttp:
             value = json.loads(body, object_pairs_hook=_unique_fields)
         except (ValueError, UnicodeError):
             raise ValueError("request_invalid") from None
+        fields = {"token_hash", "type", "password"} if setup else {"email", "password"}
         if (
             not isinstance(value, dict)
-            or set(value) != {"email", "password"}
-            or not isinstance(value["email"], str)
-            or not 1 <= len(value["email"]) <= 1024
-            or not isinstance(value["password"], str)
-            or not 1 <= len(value["password"]) <= 4096
+            or set(value) != fields
+            or not all(isinstance(item, str) for item in value.values())
         ):
+            raise ValueError("request_invalid")
+        if setup:
+            if (
+                value["type"] not in {"signup", "recovery"}
+                or not re.fullmatch(r"[A-Za-z0-9_-]{32,256}", value["token_hash"])
+                or not 12 <= len(value["password"]) <= 128
+            ):
+                raise ValueError("request_invalid")
+            return SecretStr(value["token_hash"]), value["type"], SecretStr(value["password"])
+        if not 1 <= len(value["email"]) <= 1024 or not 1 <= len(value["password"]) <= 4096:
             raise ValueError("request_invalid")
         return value["email"], SecretStr(value["password"])
 
@@ -199,15 +207,23 @@ class SessionHttp:
                     samesite="strict",
                 )
                 return response
-            if operation == "login":
+            if operation in {"login", "setup"}:
                 self._origin(request)
                 self._login_csrf(request, now)
                 async with asyncio.timeout(5):
                     permitted = await self.login_limiter()
                 if permitted is not True:
                     return private_response({"error": "login_rate_limited"}, 429)
-                email, password = await self._credentials(request)
-                identity = await self.provider.sign_in(email, password)
+                if operation == "setup":
+                    token_hash, kind, password = await self._credentials(request, setup=True)
+                    setup = await self.provider.verify_setup(token_hash, kind)
+                    with self.database() as db, db.begin():
+                        self.service.require_member(db, setup.identity, now=self._now())
+                        self.service.revoke_subject(db, setup.identity.subject, now=self._now())
+                    identity = await self.provider.set_password(setup, password)
+                else:
+                    email, password = await self._credentials(request)
+                    identity = await self.provider.sign_in(email, password)
                 with self.database() as db, db.begin():
                     issued = self.service.issue(db, identity, now=self._now())
                 return self._issued(issued)
@@ -260,6 +276,10 @@ class SessionHttp:
         @router.post("/login")
         async def login(request: Request):
             return await self.handle(request, "login")
+
+        @router.post("/setup")
+        async def setup(request: Request):
+            return await self.handle(request, "setup")
 
         @router.get("/current")
         async def current(request: Request):

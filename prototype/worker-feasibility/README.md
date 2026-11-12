@@ -49,3 +49,9 @@ connection checks the actual PostgreSQL role, database and schema and rolls back
 that check before use. The separately qualified origin must enforce verified TLS
 and disable caching. Actual runtime qualification and two-user login remain
 separate gates; see [status](../../docs/status-and-handoff.md).
+
+`signin/` contains the buildless minimal sign-in/password-setup page. The gateway
+serves only its three fixed asset paths through `ASSETS`, with Worker-first
+routing, no-store, same-origin CSP and frame denial. Setup uses the same bounded
+CSRF-protected transport and limiter as password login. Private provider/admin
+bootstrap material and approved identities never enter this asset directory.

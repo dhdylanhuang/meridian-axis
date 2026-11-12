@@ -88,3 +88,11 @@ Support first-run empty, no credentials, Demo with no positions, source-down, in
 ## Frontend verification
 
 Use representative invented data including 100 holdings and a dense matrix, not copied source position sizes. Test sorting, filters, missing/zero distinctions, decimal/ID precision, accessible keyboard paths, source/basis labels, two-session changes, stale updates, reconnect recovery and error diagnostics. Verify layout at normal desktop zoom plus a narrow viewport; do not trade readability for a one-screen screenshot. Financial formula correctness belongs to backend tests; UI tests verify presentation and interaction contracts.
+
+The minimal onboarding page adds `POST /api/v1/session/setup` under the same
+transport protections as login. Exact JSON fields are `token_hash`, `type`
+(`signup` or `recovery`) and `password` (12–128 characters). Only active members
+may change their password or receive an application session. The three fixed
+same-origin assets `/`, `/signin.js` and `/signin.css` contain no provider key,
+user identity or private data; CSP permits only this origin. Signed-in content
+currently confirms access and explicitly states that portfolio data is absent.

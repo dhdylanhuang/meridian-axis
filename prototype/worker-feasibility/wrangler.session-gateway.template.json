@@ -7,12 +7,21 @@
   "workers_dev": true,
   "preview_urls": false,
   "send_metrics": false,
-  "vars": { "PUBLIC_ORIGIN": "https://SESSION_PUBLIC_ORIGIN" },
+  "vars": {
+    "PUBLIC_ORIGIN": "https://SESSION_PUBLIC_ORIGIN"
+  },
   "durable_objects": {
-    "bindings": [{
-      "name": "APP",
-      "class_name": "SessionApplicationDO",
-      "script_name": "SESSION_APPLICATION_WORKER_NAME"
-    }]
+    "bindings": [
+      {
+        "name": "APP",
+        "class_name": "SessionApplicationDO",
+        "script_name": "SESSION_APPLICATION_WORKER_NAME"
+      }
+    ]
+  },
+  "assets": {
+    "directory": "./signin",
+    "binding": "ASSETS",
+    "run_worker_first": true
   }
 }

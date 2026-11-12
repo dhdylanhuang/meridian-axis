@@ -248,3 +248,42 @@ def test_oversized_stream_is_closed_on_rejection():
             )
         )
     assert stream.closed
+
+
+def test_setup_verifies_subject_and_updates_password_without_exposing_access():
+    async def scenario():
+        calls = []
+
+        def handler(request):
+            calls.append(request)
+            if request.url.path == "/auth/v1/verify":
+                assert json.loads(request.content) == {"token_hash": "f" * 64, "type": "recovery"}
+                return httpx.Response(200, json=token())
+            if request.method == "PUT":
+                assert json.loads(request.content) == {"password": PASSWORD}
+            assert request.headers["authorization"] == "Bearer " + ACCESS
+            return httpx.Response(200, json={"id": SUBJECT})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+            api = SupabaseAuthClient(http, PROJECT, SecretStr(KEY), clock=lambda: NOW)
+            setup = await api.verify_setup(SecretStr("f" * 64), "recovery")
+            assert ACCESS not in repr(setup)
+            identity = await api.set_password(setup, SecretStr(PASSWORD))
+            assert identity.subject == SUBJECT and ACCESS not in repr(identity)
+        assert [x.method for x in calls] == ["POST", "GET", "PUT"]
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("kind", ["signup", "recovery"])
+def test_setup_rejects_different_authenticated_subject(kind):
+    async def scenario():
+        def handler(request):
+            return httpx.Response(200, json=token() if request.method == "POST" else {"id": OTHER})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+            api = SupabaseAuthClient(http, PROJECT, SecretStr(KEY), clock=lambda: NOW)
+            with pytest.raises(AuthError, match="auth_subject_mismatch"):
+                await api.verify_setup(SecretStr("f" * 64), kind)
+
+    asyncio.run(scenario())

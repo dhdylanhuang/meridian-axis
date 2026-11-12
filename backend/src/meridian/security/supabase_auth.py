@@ -32,6 +32,12 @@ class VerifiedIdentity:
     expires_at: datetime
 
 
+@dataclass(frozen=True)
+class PasswordSetup:
+    identity: VerifiedIdentity
+    access: SecretStr
+
+
 def _subject(value) -> str:
     try:
         if not isinstance(value, str) or str(UUID(value)) != value:
@@ -140,6 +146,9 @@ class SupabaseAuthClient:
             "/auth/v1/token?grant_type=password",
             body={"email": email, "password": password.get_secret_value()},
         )
+        return (await self._verify_session(payload, started)).identity
+
+    async def _verify_session(self, payload, started) -> PasswordSetup:
         try:
             access = payload["access_token"]
             lifetime, expiry = payload["expires_in"], payload["expires_at"]
@@ -165,4 +174,39 @@ class SupabaseAuthClient:
             raise AuthError("auth_subject_mismatch")
         if expires_at <= self._now():
             raise AuthError("auth_expired")
-        return VerifiedIdentity(subject, expires_at)
+        return PasswordSetup(VerifiedIdentity(subject, expires_at), SecretStr(access))
+
+    async def verify_setup(self, token_hash: SecretStr, kind: str) -> PasswordSetup:
+        if (
+            kind not in {"signup", "recovery"}
+            or not isinstance(token_hash, SecretStr)
+            or not re.fullmatch(r"[A-Za-z0-9_-]{32,256}", token_hash.get_secret_value())
+        ):
+            raise AuthError("auth_input_invalid")
+        started = self._now()
+        payload = await self._request(
+            "POST",
+            "/auth/v1/verify",
+            body={"token_hash": token_hash.get_secret_value(), "type": kind},
+        )
+        return await self._verify_session(payload, started)
+
+    async def set_password(self, setup: PasswordSetup, password: SecretStr) -> VerifiedIdentity:
+        if (
+            not isinstance(setup, PasswordSetup)
+            or not isinstance(password, SecretStr)
+            or not 12 <= len(password.get_secret_value()) <= 128
+            or setup.identity.expires_at <= self._now()
+        ):
+            raise AuthError("auth_input_invalid")
+        payload = await self._request(
+            "PUT",
+            "/auth/v1/user",
+            body={"password": password.get_secret_value()},
+            bearer=setup.access.get_secret_value(),
+        )
+        if _subject(payload.get("id")) != setup.identity.subject:
+            raise AuthError("auth_subject_mismatch")
+        if setup.identity.expires_at <= self._now():
+            raise AuthError("auth_expired")
+        return setup.identity

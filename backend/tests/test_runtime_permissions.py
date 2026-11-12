@@ -313,3 +313,38 @@ def test_native_rejects_preexisting_role_without_adopting_or_altering_it(postgre
             )
             == 0
         )
+
+
+def test_password_setup_can_revoke_only_selected_subject_with_migrated_role(runtime):
+    engine, role, _schema = runtime
+    now = datetime.now(UTC)
+    with Session(engine) as db, db.begin():
+        db.add(Account(id=ACCOUNT, environment="demo"))
+        db.flush()
+        for slot, subject in enumerate(SUBJECTS[:2], 1):
+            db.add(
+                AccountMember(
+                    account_id=ACCOUNT,
+                    auth_subject=subject,
+                    slot=slot,
+                    created_at=now - timedelta(seconds=2),
+                )
+            )
+    factory = database(engine, role)
+    service = SessionService(ACCOUNT, "https://synthetic.example")
+    issued = []
+    for subject in SUBJECTS[:2]:
+        with factory() as db, db.begin():
+            issued.append(
+                service.issue(db, VerifiedIdentity(subject, now + timedelta(minutes=5)), now=now)
+            )
+    with factory() as db, db.begin():
+        identity = VerifiedIdentity(SUBJECTS[0], now + timedelta(minutes=5))
+        service.require_member(db, identity, now=now)
+        service.revoke_subject(db, identity.subject, now=now)
+    with factory() as db, db.begin():
+        with pytest.raises(SessionError):
+            service.authenticate(db, issued[0].token, now=now)
+        assert service.authenticate(db, issued[1].token, now=now).subject == SUBJECTS[1]
+    with Session(engine) as db:
+        assert len(db.scalars(select(AuditRecord)).all()) == 3

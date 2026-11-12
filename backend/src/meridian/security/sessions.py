@@ -87,6 +87,23 @@ class SessionService:
             raise SessionError("membership_unavailable")
         return member
 
+    def require_member(self, db: Session, identity: VerifiedIdentity, *, now: datetime) -> None:
+        """Check membership before an external password operation; caller owns transaction."""
+        self._member(db, identity.subject, _utc(now))
+
+    def revoke_subject(self, db: Session, subject: str, *, now: datetime) -> None:
+        """Before changing a password, durably expire prior sessions and audit."""
+        db.execute(
+            update(AppSession)
+            .where(
+                AppSession.account_id == self.account_id,
+                AppSession.auth_subject == subject,
+                AppSession.revoked_at.is_(None),
+            )
+            .values(revoked_at=_utc(now))
+        )
+        self._audit(db, subject, _utc(now), "session_logout")
+
     def _audit(self, db: Session, subject: str, now: datetime, action: str) -> None:
         # Audit the account and subject, never a raw token or token/CSRF hash.
         db.add(

@@ -492,3 +492,70 @@ def test_current_denies_expired_session_or_revoked_membership(engine, state):
         assert "subject" not in response.json()
 
     scenario(app, check)
+
+
+def test_setup_revokes_prior_sessions_and_issues_cookie_after_password_update(engine):
+    from meridian.security.supabase_auth import PasswordSetup
+
+    class SetupProvider(Provider):
+        async def verify_setup(self, token_hash, kind):
+            assert token_hash.get_secret_value() == "f" * 64 and kind == "signup"
+            return PasswordSetup(
+                VerifiedIdentity(SUBJECTS[0], NOW + timedelta(minutes=5)),
+                SecretStr("invented-access"),
+            )
+
+        async def set_password(self, setup, password):
+            # No transaction/connection remains open across this provider await.
+            with Session(engine) as db:
+                assert all(row.revoked_at is not None for row in db.scalars(select(AppSession)))
+            assert password.get_secret_value() == PASSWORD
+            return setup.identity
+
+    app, _provider = configured(engine, provider=SetupProvider())
+
+    async def operation(client):
+        assert (await login(client)).status_code == 200
+        old = client.cookies[SESSION_COOKIE]
+        nonce = await bootstrap(client)
+        response = await client.post(
+            PREFIX + "/setup",
+            headers={"origin": ORIGIN, "x-csrf-token": nonce},
+            json={"token_hash": "f" * 64, "type": "signup", "password": PASSWORD},
+        )
+        assert response.status_code == 200
+        assert client.cookies[SESSION_COOKIE] != old
+        assert_private(response)
+        client.cookies.set(SESSION_COOKIE, old, domain="synthetic.example", path="/")
+        assert (await client.get(PREFIX + "/current")).status_code == 401
+
+    scenario(app, operation)
+
+
+def test_setup_denies_nonmember_before_password_change(engine):
+    from meridian.security.supabase_auth import PasswordSetup
+
+    class NonmemberProvider(Provider):
+        async def verify_setup(self, token_hash, kind):
+            return PasswordSetup(
+                VerifiedIdentity(
+                    "33333333-3333-4333-8333-333333333333", NOW + timedelta(minutes=5)
+                ),
+                SecretStr("invented-access"),
+            )
+
+        async def set_password(self, *_args):
+            pytest.fail("Nonmember must not change password")
+
+    app, _ = configured(engine, provider=NonmemberProvider())
+
+    async def operation(client):
+        nonce = await bootstrap(client)
+        response = await client.post(
+            PREFIX + "/setup",
+            headers={"origin": ORIGIN, "x-csrf-token": nonce},
+            json={"token_hash": "f" * 64, "type": "recovery", "password": PASSWORD},
+        )
+        assert response.status_code == 401 and not response.headers.get_list("set-cookie")
+
+    scenario(app, operation)

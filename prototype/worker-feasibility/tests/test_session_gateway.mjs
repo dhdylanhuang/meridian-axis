@@ -162,3 +162,32 @@ test("upstream exceptions produce fixed safe noncacheable errors", async () => {
   assert.deepEqual(await response.json(), { error: "session_unavailable" });
   privateResponse(response);
 });
+
+test("password setup has the same bounded, stripped transport as login", async () => {
+  const state = setup();
+  const response = await gateway.fetch(request('/api/v1/session/setup', {
+    body: JSON.stringify({ token_hash: 'f'.repeat(64), type: 'signup', password: 'invented-password' }),
+    headers: { authorization: 'invented-secret', 'x-forwarded-host': 'other.invalid' },
+  }), state.env);
+  assert.equal(response.status, 200);
+  assert.equal(state.requests[0].headers.get('authorization'), null);
+  assert.equal(state.requests[0].headers.get('x-forwarded-host'), null);
+});
+
+test("only fixed same-origin sign-in assets are served and carry CSP", async () => {
+  const state = setup();
+  let accessed = 0;
+  state.env.ASSETS = { async fetch(req) {
+    accessed++;
+    assert.equal(new URL(req.url).origin, ORIGIN);
+    assert.equal(req.headers.get('cookie'), null);
+    return new Response('<html>synthetic</html>', { headers: { 'content-type': 'text/html' } });
+  } };
+  const response = await gateway.fetch(new Request(ORIGIN + '/', { headers: { cookie: 'invented-private' } }), state.env);
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+  privateResponse(response);
+  assert.equal((await gateway.fetch(new Request(ORIGIN + '/private.txt'), state.env)).status, 404);
+  assert.equal((await gateway.fetch(new Request(ORIGIN + '/?token=secret'), state.env)).status, 400);
+  assert.equal(accessed, 1);
+});

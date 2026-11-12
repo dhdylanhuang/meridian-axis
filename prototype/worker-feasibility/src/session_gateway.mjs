@@ -4,6 +4,7 @@ const ROUTES = new Map([
   ["/api/v1/session/bootstrap", "GET"],
   ["/api/v1/session/current", "GET"],
   ["/api/v1/session/login", "POST"],
+  ["/api/v1/session/setup", "POST"],
   ["/api/v1/session/rotate", "POST"],
   ["/api/v1/session/logout", "POST"],
 ]);
@@ -88,6 +89,17 @@ export default {
       if (request.url.includes("?") || request.url.includes("#")) {
         return failure("request_invalid", 400);
       }
+      if (["/", "/signin.js", "/signin.css"].includes(url.pathname) && env.ASSETS) {
+        if (request.method !== "GET") return failure("method_not_allowed", 405, { Allow: "GET" });
+        const supplied = request.headers.get("origin");
+        if (supplied !== null && supplied !== origin.origin) return failure("origin_invalid", 403);
+        await boundedBody(request, 0);
+        const asset = await env.ASSETS.fetch(new Request(origin.origin + url.pathname));
+        const headers = privateHeaders(asset.headers);
+        headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+        headers.set("X-Frame-Options", "DENY");
+        return new Response(asset.body, { status: asset.status, headers });
+      }
       const method = ROUTES.get(url.pathname);
       if (!method) return failure("not_found", 404);
       if (request.method !== method) return failure("method_not_allowed", 405, { Allow: method });
@@ -102,7 +114,7 @@ export default {
       if ((csrf !== null && !NONCE.test(csrf)) || (method === "POST" && csrf === null)) {
         return failure("csrf_invalid", 403);
       }
-      const login = url.pathname === "/api/v1/session/login";
+      const login = ["/api/v1/session/login", "/api/v1/session/setup"].includes(url.pathname);
       if (login && request.headers.get("content-type") !== "application/json") {
         return failure("request_invalid", 400);
       }

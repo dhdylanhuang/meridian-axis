@@ -122,3 +122,29 @@ Upgrade procedure: inspect release/schema notes → backup → suspend writes/sc
 The owner has selected Cloudflare + Supabase with free services only. Platform feasibility/security qualification is now an **early gate**, rather than leaving every hosting decision to Stage 6. Use synthetic accounts/data to establish private Postgres access, session/membership denial, atomicity, job recovery, streaming and resource budgets before real financial migration. Preserve final operational acceptance and actual release activation as explicit stage evidence.
 
 An origin reachable over the Internet must still disclose no financial data to anonymous/nonmember visitors. A custom domain, public Storage bucket or tunnel is not required by this target. Tailscale/Tunnel comparisons remain historical alternatives in the [hosting review](hosting-options.md); they are not the selected architecture. No production access has been configured merely by updating this document.
+
+### Minimal password onboarding
+
+Owner-authorised first-use administration generates provider signup links without
+sending email, then seeds only the fixed application account and its two approved
+UUID memberships. `security/membership_admin.py` produces SecretStr SQL for a
+pinned administrator CLI stdin operation: canonical distinct UUIDs, parity `0005`,
+actual Auth identities, empty account/member/session/evidence controls and an
+advisory lock are required. Account, both memberships and an administration audit
+are inserted atomically. This is private data administration, not a second schema
+writer; it changes no DDL, roles, grants or policies. The password-maintenance
+helper in ADR 0002 retains its separate narrow scope.
+
+An administrator-generated one-use setup secret is delivered in the application's
+URL fragment, never a query string. The browser immediately clears the fragment
+and keeps it only in memory. `POST /api/v1/session/setup` uses the login bootstrap
+CSRF/Origin checks, 8 KiB JSON cap and shared five-admission budget. It accepts only
+signup/recovery token hashes and a 12–128 character password. The backend verifies
+the provider token and fresh user identity, checks active membership, durably
+revokes/audits that subject's old application sessions, and then updates the
+provider password outside a database transaction. It issues fresh cookies only
+after a new membership-checked session commits. A failed password operation can
+leave prior sessions signed out; a consumed link may require private regeneration.
+Provider access/refresh tokens never enter browser JSON or storage. No public
+signup, arbitrary admin operation or email-sending endpoint is added. These are
+setup/reset primitives, not full hosted backup/restore acceptance.
