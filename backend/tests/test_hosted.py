@@ -241,8 +241,8 @@ def test_hosted_routes_remain_finite_json_for_sdk_lifecycle():
                 async def receive():
                     return {"type": "http.request", "body": b"", "more_body": False}
 
-                async def send(message):
-                    messages.append(message)
+                async def send(message, output=messages):
+                    output.append(message)
 
                 await app(
                     {
