@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "meridian-axis-runtime-access-probe",
+  "main": "src/runtime_access_worker.py",
+  "compatibility_date": "2026-11-11",
+  "compatibility_flags": ["python_workers"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "send_metrics": false,
+  "durable_objects": {
+    "bindings": [{ "name": "PROBE", "class_name": "RuntimeAccessProbeDO" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RuntimeAccessProbeDO"] }],
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "HYPERDRIVE_CONFIG_ID" }]
+}

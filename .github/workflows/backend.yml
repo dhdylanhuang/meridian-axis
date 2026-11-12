@@ -6,12 +6,16 @@ on:
       - 'backend/**'
       - 'supabase/**'
       - 'prototype/worker-feasibility/src/database_probe.py'
+      - 'prototype/worker-feasibility/src/runtime_access_probe.py'
+      - 'prototype/worker-feasibility/src/runtime_access_worker.py'
       - '.github/workflows/backend.yml'
   pull_request:
     paths:
       - 'backend/**'
       - 'supabase/**'
       - 'prototype/worker-feasibility/src/database_probe.py'
+      - 'prototype/worker-feasibility/src/runtime_access_probe.py'
+      - 'prototype/worker-feasibility/src/runtime_access_worker.py'
       - '.github/workflows/backend.yml'
 
 permissions:
