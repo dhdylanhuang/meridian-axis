@@ -1,6 +1,6 @@
 # Application API and user interface
 
-Status: ADOPTED design proposal. These are application routes to implement later, **not existing endpoints and not Trading 212 endpoint paths**. Provider routes belong only in the broker adapter.
+Status: ADOPTED design proposal, with the explicitly configured session transport below in validation. Other route families remain planned, **not existing endpoints and not Trading 212 endpoint paths**. Provider routes belong only in the broker adapter.
 
 ## Interface principles
 
@@ -35,6 +35,20 @@ Long operations create job IDs and return promptly. Job state includes queued/ru
 | `/health` | Minimal service liveness without portfolio/private configuration |
 
 Final methods/schemas are established in the implementation task and FastAPI OpenAPI. Do not implement a public arbitrary SQL, filesystem-path or provider-request proxy endpoint. File uploads are size/type validated and stored privately; server paths are not client-controlled migration credentials.
+
+### Session transport in validation
+
+`create_app()` still exposes liveness only by default. Supplying an explicit `SessionHttp` enables the following routes; it requires a verified provider adapter, request-owned database factory, session service, shared atomic login-limiter callback and secret signing key of at least 32 bytes. A deployment must generate a random key, configure the shared limiter and qualify proxy/runtime access before activation. There is no local-memory production limiter fallback.
+
+| Route | Contract |
+| --- | --- |
+| `GET /api/v1/session/bootstrap` | Return a prelogin CSRF nonce and set its signed, HttpOnly, five-minute cookie |
+| `POST /api/v1/session/login` | Exact Origin, signed prelogin cookie/nonce header, shared limiter, bounded credentials JSON, verified provider identity and atomic membership-checked session/audit |
+| `GET /api/v1/session/current` | Return authenticated subject and expiry only; browser reads its independent CSRF cookie |
+| `POST /api/v1/session/rotate` | Exact Origin and bound CSRF header; consume old session, issue new token/nonce and preserve original expiry |
+| `POST /api/v1/session/logout` | Exact Origin and bound CSRF header; atomically revoke/audit, then expire cookies |
+
+All session routes require the configured HTTPS authority; foreign Origin headers are rejected on reads, and mutations require Origin. No forwarded header can choose the accepted authority. Cookies use `__Host-` names, Secure, SameSite=Strict, Path=/ and no Domain; the authentication cookie is HttpOnly, while the independent CSRF cookie is browser-readable. Authentication/provider tokens never enter response JSON. Responses are non-cacheable, including route/method failures; automatic slash redirects are disabled. Login accepts at most 8 KiB streamed JSON with exactly string `email`/`password` fields and rejects duplicate keys; fixed errors never echo credentials. Cookie issuance follows commit. These routes do not perform provider refresh or extend a session beyond its original expiry, and are not yet a hosted application.
 
 ## Nine-tab contract
 

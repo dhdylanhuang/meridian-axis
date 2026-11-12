@@ -1,6 +1,6 @@
 # Testing and acceptance strategy
 
-Status: acceptance strategy plus verified local foundation, broker-observation, snapshot-evidence and closed identity/session slices. The authentication checkpoint `a505d5b` includes **216 passing offline tests** and **31 passing service-backed PostgreSQL integration tests**, with Windows/Linux checks. The macOS run independently passed the 216 offline tests and skipped the 31 server-dependent cases. Restricted runtime permissions require their own qualification; administrator-backed schema tests do not prove them. Later financial/UI rows remain planned. Actual hosted application security and capacity remain separate gates; see status/handoff. Workbook inspection alone is not an application-test pass.
+Status: acceptance strategy plus verified local foundation, broker-observation, snapshot-evidence and closed identity/session slices. Restricted session-permission checkpoint `ade9abf` passes Windows/Linux and **34 service-backed PostgreSQL cases**, including actual service execution as a non-owner NOBYPASSRLS role. The new HTTP slice in validation passes **262 local offline cases** (46 new HTTP tests), with 34 PostgreSQL cases skipped locally. It uses offline ASGI/SQLite fixtures, not browser cookie-policy enforcement or live Supabase identities. Later financial/UI rows remain planned. Actual hosted application security and capacity remain separate gates; see status/handoff. Workbook inspection alone is not an application-test pass.
 
 ## Test layers
 
