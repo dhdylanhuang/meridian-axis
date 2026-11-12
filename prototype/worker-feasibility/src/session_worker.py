@@ -101,9 +101,21 @@ class SessionApplicationDO(DurableObject):
                     "TypeError",
                 }:
                     category = "Unavailable"
+                code = error.args[0] if error.args else None
+                if not isinstance(code, str) or code not in {
+                    "binding_user_invalid",
+                    "binding_database_invalid",
+                    "binding_password_invalid",
+                    "binding_host_invalid",
+                    "binding_port_invalid",
+                    "binding_secret_type_invalid",
+                    "session_http_configuration_invalid",
+                }:
+                    code = "configuration_unavailable"
                 return Response.json(
                     {
                         "error": "session_unavailable",
+                        "code": code,
                         "component": stage,
                         "category": category,
                     },
