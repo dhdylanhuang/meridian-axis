@@ -34,19 +34,23 @@ async def hosted_application(binding, *, origin, project_ref, publishable_key, l
         user, password = binding.user, binding.password
         host, database = binding.host, binding.database
         port = int(binding.port)
-        if (
-            user != "meridian_bff_public"
-            or database != "postgres"
-            or not isinstance(password, str)
-            or not password
-            or not isinstance(host, str)
-            or not host
-            or any(char.isspace() for char in host)
-            or not 1 <= port <= 65535
-            or not isinstance(publishable_key, SecretStr)
-            or not isinstance(login_csrf_key, SecretStr)
-        ):
-            raise ValueError
+        checks = (
+            (user == "meridian_bff_public", "binding_user_invalid"),
+            (database == "postgres", "binding_database_invalid"),
+            (isinstance(password, str) and bool(password), "binding_password_invalid"),
+            (
+                isinstance(host, str) and bool(host) and not any(c.isspace() for c in host),
+                "binding_host_invalid",
+            ),
+            (1 <= port <= 65535, "binding_port_invalid"),
+            (
+                isinstance(publishable_key, SecretStr) and isinstance(login_csrf_key, SecretStr),
+                "binding_secret_type_invalid",
+            ),
+        )
+        for valid, code in checks:
+            if not valid:
+                raise ValueError(code)
 
         def connect():
             # Only the provider's Worker-to-Hyperdrive local hop omits TLS.
