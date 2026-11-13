@@ -201,3 +201,13 @@ test('snapshot GET uses fixed object; no authorization header or query-selected 
   assert.equal((await gateway.fetch(request('/api/v1/portfolio/snapshot?account=foreign',{method:'GET'}),forbidden.env)).status,400);
   assert.equal(forbidden.requests.length,0);
 });
+test('Cron dispatches through the fixed sync object with a clean bounded request',async()=>{
+ const requests=[];
+ const env={SYNC:{idFromName(name){assert.equal(name,'shared-isa');return 'sync-id';},get(id){assert.equal(id,'sync-id');return {async fetch(request){requests.push(request);return new Response('{}');}};}}};
+ await gateway.scheduled({cron:'* * * * *'},env,{});
+ assert.equal(requests.length,1);assert.equal(requests[0].url,'https://sync.internal/scheduled');assert.equal(requests[0].method,'POST');assert.equal([...requests[0].headers].length,0);assert.equal(await requests[0].text(),'');
+});
+test('Cron failure exposes only a fixed category',async()=>{
+ const env={SYNC:{idFromName(){return 'sync-id';},get(){return {async fetch(){return new Response('{}',{status:503});}};}}};
+ await assert.rejects(gateway.scheduled({},env,{}),/broker_sync_unavailable/);
+});

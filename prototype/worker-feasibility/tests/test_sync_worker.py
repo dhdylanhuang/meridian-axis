@@ -1,4 +1,4 @@
-"""Cron uses the provider's four-argument Python handler and private namespace."""
+"""Manual refresh uses a durable signal outside the broker execution lock."""
 
 import importlib.util
 import unittest
@@ -29,38 +29,6 @@ class SyncWorkerTests(unittest.IsolatedAsyncioTestCase):
         self.addCleanup(patcher.stop)
         spec.loader.exec_module(module)
         return module
-
-    async def test_cron_dispatches_to_same_named_object_with_no_caller_data(self):
-        module = self.load_worker()
-        stub = SimpleNamespace(fetch=AsyncMock())
-        binding = SimpleNamespace(
-            idFromName=Mock(return_value="synthetic-id"), get=Mock(return_value=stub)
-        )
-        env = SimpleNamespace(SYNC=binding)
-        worker = module.Default()
-        worker.env = env
-        await worker.scheduled(SimpleNamespace(cron="* * * * *"), env, object())
-        binding.idFromName.assert_called_once_with("shared-isa")
-        stub.fetch.assert_awaited_once_with(
-            ("https://sync.internal/scheduled", {"method": "POST"})
-        )
-
-    async def test_service_manual_dispatch_uses_same_object(self):
-        module = self.load_worker()
-        stub = SimpleNamespace(fetch=AsyncMock(return_value="synthetic-response"))
-        binding = SimpleNamespace(
-            idFromName=Mock(return_value="synthetic-id"), get=Mock(return_value=stub)
-        )
-        worker = module.Default()
-        worker.env = SimpleNamespace(SYNC=binding)
-        result = await worker.fetch(
-            SimpleNamespace(method="POST", url="https://sync.internal/refresh")
-        )
-        self.assertEqual(result, "synthetic-response")
-        binding.idFromName.assert_called_once_with("shared-isa")
-        stub.fetch.assert_awaited_once_with(
-            ("https://sync.internal/refresh", {"method": "POST"})
-        )
 
     async def test_manual_signal_is_durable_and_does_not_wait_for_running_broker_work(
         self,

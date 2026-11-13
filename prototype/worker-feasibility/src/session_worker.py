@@ -54,7 +54,8 @@ class SessionApplicationDO(DurableObject):
 
                     options = Object.new()
                     options.method = "POST"
-                    response = await self.env.SYNC.fetch(
+                    sync_id = self.env.SYNC.idFromName("shared-isa")
+                    response = await self.env.SYNC.get(sync_id).fetch(
                         Request.new("https://sync.internal/refresh", options)
                     )
                     if response.status not in {200, 202}:

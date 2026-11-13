@@ -80,6 +80,11 @@ async function boundedBody(request, maximum) {
 }
 
 export default {
+  async scheduled(controller, env, ctx) {
+    const id = env.SYNC.idFromName("shared-isa");
+    const response = await env.SYNC.get(id).fetch(new Request("https://sync.internal/scheduled", {method:"POST"}));
+    if (!response.ok) throw new Error("broker_sync_unavailable");
+  },
   async fetch(request, env) {
     const origin = configuredOrigin(env.PUBLIC_ORIGIN);
     if (!origin) return failure("session_configuration_unavailable", 503);

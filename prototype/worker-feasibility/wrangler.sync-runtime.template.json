@@ -11,6 +11,5 @@
   "durable_objects": {"bindings": [{"name": "SYNC", "class_name": "BrokerSyncDO"}]},
   "migrations": [{"tag": "v1", "new_sqlite_classes": ["BrokerSyncDO"]}],
   "hyperdrive": [{"binding": "HYPERDRIVE", "id": "SYNC_HYPERDRIVE_CONFIG_ID"}],
-  "triggers": {"crons": ["* * * * *"]},
   "vars": {"BROKER_ENVIRONMENT": "live"}
 }

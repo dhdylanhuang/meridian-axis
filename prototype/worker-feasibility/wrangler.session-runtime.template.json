@@ -9,11 +9,13 @@
   "preview_urls": false,
   "send_metrics": false,
   "durable_objects": {
-    "bindings": [{ "name": "APP", "class_name": "SessionApplicationDO" }]
+    "bindings": [
+      { "name": "APP", "class_name": "SessionApplicationDO" },
+      { "name": "SYNC", "class_name": "BrokerSyncDO", "script_name": "meridian-axis-sync-runtime" }
+    ]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SessionApplicationDO"] }],
   "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "HYPERDRIVE_CONFIG_ID" }],
-  "services": [{ "binding": "SYNC", "service": "meridian-axis-sync-runtime" }],
   "vars": {
     "PUBLIC_ORIGIN": "PUBLIC_APPLICATION_ORIGIN",
     "SUPABASE_PROJECT_REF": "ssqqjyrgrsjubxysobwy"

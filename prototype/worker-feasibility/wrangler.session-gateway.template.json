@@ -16,9 +16,15 @@
         "name": "APP",
         "class_name": "SessionApplicationDO",
         "script_name": "SESSION_APPLICATION_WORKER_NAME"
+      },
+      {
+        "name": "SYNC",
+        "class_name": "BrokerSyncDO",
+        "script_name": "meridian-axis-sync-runtime"
       }
     ]
   },
+  "triggers": { "crons": ["* * * * *"] },
   "assets": {
     "directory": "./signin",
     "binding": "ASSETS",
