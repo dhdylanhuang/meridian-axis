@@ -92,6 +92,7 @@
       const result = await response.json();
       if (version !== generation) return;
       await load();
+      if (result.status === 'queued') el('refresh-status').textContent = 'Broker refresh queued. This view updates automatically.';
       if (result.status === 'deferred') el('refresh-status').textContent = 'Refresh is already running or waiting for the shared rate limit.';
       if (result.status === 'failed' || result.status === 'unavailable') el('refresh-status').textContent = 'Broker refresh failed. Last successful snapshot remains displayed.';
     } catch { if (version === generation) el('refresh-status').textContent = 'Broker refresh is unavailable. Last successful snapshot remains displayed.'; }

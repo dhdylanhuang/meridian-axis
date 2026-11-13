@@ -43,3 +43,24 @@ def test_lunch_breaks_and_dst_are_explicit_instants():
     assert state("2026-03-30T10:30:00", events) == "closed"
     assert state("2026-03-30T11:30:00", events) == "open"
     assert relevant_session(datetime.now(UTC), ["unmapped"], [], []) == "unknown"
+
+
+def test_metadata_selection_keeps_exact_held_facts_without_full_catalogue_storage():
+    from meridian.adapters.broker_evidence import canonical
+    from meridian.application.broker_sessions import select_session_metadata
+
+    held = {"ticker": "HELD", "workingScheduleId": 1, "currencyCode": "GBP", "name": "Synthetic"}
+    unheld = {"ticker": "UNHELD", "workingScheduleId": 2, "padding": "x" * (5 * 1024 * 1024)}
+    schedule = {"id": 1, "timeEvents": [{"date": "2026-11-13T08:00:00Z", "type": "OPEN"}]}
+    exchange = {
+        "id": 1,
+        "name": "Synthetic exchange",
+        "workingSchedules": [schedule, {"id": 2, "timeEvents": []}],
+    }
+    result = select_session_metadata(["HELD", "MISSING"], [held, unheld], [exchange])
+    assert result["scope"] == "held_listing_schedules"
+    assert result["missing_tickers"] == ["MISSING"]
+    assert result["instruments"] == [held]
+    assert result["exchanges"][0]["workingSchedules"] == [schedule]
+    assert len(exchange["workingSchedules"]) == 2
+    assert len(canonical(result).encode()) < 4096

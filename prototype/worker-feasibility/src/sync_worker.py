@@ -21,24 +21,44 @@ class BrokerSyncDO(DurableObject):
         path = urlsplit(request.url).path
         if request.method != "POST" or path not in {"/refresh", "/scheduled"}:
             return Response("Not found", status=404)
+        if path == "/refresh":
+            import time
+
+            # A durable signal acknowledges immediately while broker work runs
+            # independently of the session object's serialised request lock.
+            await self.ctx.storage.setAlarm(int(time.time() * 1000) + 1)
+            return Response.json(
+                {"status": "queued"}, status=202, headers={"Cache-Control": "no-store"}
+            )
+        result = await self.execute(scheduled=True)
+        return Response.json(
+            result,
+            status=503 if result["status"] == "unavailable" else 200,
+            headers={"Cache-Control": "no-store"},
+        )
+
+    async def alarm(self, alarm_info=None):
+        from datetime import datetime
+
+        result = await self.execute(scheduled=False)
+        if result.get("retry_at"):
+            retry = datetime.fromisoformat(result["retry_at"])
+            await self.ctx.storage.setAlarm(int(retry.timestamp() * 1000))
+
+    async def execute(self, *, scheduled):
         async with _LOCK:
             try:
                 from meridian.security.hosted_sync import run_sync
 
-                result = await run_sync(
+                return await run_sync(
                     self.env.HYPERDRIVE,
                     api_key=self.env.BROKER_API_KEY,
                     api_secret=self.env.BROKER_API_SECRET,
                     environment=self.env.BROKER_ENVIRONMENT,
-                    scheduled=path == "/scheduled",
+                    scheduled=scheduled,
                 )
-                return Response.json(result, headers={"Cache-Control": "no-store"})
             except Exception:
-                return Response.json(
-                    {"status": "unavailable"},
-                    status=503,
-                    headers={"Cache-Control": "no-store"},
-                )
+                return {"status": "unavailable"}
 
 
 class Default(WorkerEntrypoint):
@@ -53,6 +73,5 @@ class Default(WorkerEntrypoint):
         return await stub.fetch(post_request("https://sync.internal/refresh"))
 
     async def scheduled(self, controller, env, ctx):
-
         stub = self.env.SYNC.get(self.env.SYNC.idFromName("shared-isa"))
         await stub.fetch(post_request("https://sync.internal/scheduled"))

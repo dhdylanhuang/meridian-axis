@@ -57,10 +57,15 @@ class SessionApplicationDO(DurableObject):
                     response = await self.env.SYNC.fetch(
                         Request.new("https://sync.internal/refresh", options)
                     )
-                    if response.status != 200:
+                    if response.status not in {200, 202}:
                         return {"status": "unavailable"}
                     result = json.loads(await response.text())
-                    if result.get("status") not in {"succeeded", "deferred", "failed"}:
+                    if result.get("status") not in {
+                        "succeeded",
+                        "deferred",
+                        "failed",
+                        "queued",
+                    }:
                         return {"status": "unavailable"}
                     return {"status": result["status"]}
 

@@ -66,6 +66,12 @@ class API:
         self.fail_positions = False
         self.pages = []
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        pass
+
     async def account_summary(self):
         return SimpleNamespace(raw_payload=self.rows["account_summary"]["records"][0])
 
@@ -310,6 +316,30 @@ def test_sync_writer_can_publish_but_cannot_edit_sources_or_other_accounts(reque
     with Session(engine) as db, db.begin():
         db.add(Account(id="shared-isa", environment="live", private_reference="synthetic-broker"))
         db.add(Account(id="foreign", environment="demo"))
+        db.flush()
+        db.add(
+            ImportRun(
+                id="private-baseline-run",
+                account_id="shared-isa",
+                kind="excel_migration",
+                status="succeeded",
+                started_at=NOW,
+                finished_at=NOW,
+            )
+        )
+        db.flush()
+        db.add(
+            SourceRecord(
+                id="private-baseline-source",
+                run_id="private-baseline-run",
+                account_id="shared-isa",
+                kind="excel_migration",
+                row_number=1,
+                schema_version="synthetic",
+                payload_json='{"notes":"synthetic private note"}',
+                digest="a" * 64,
+            )
+        )
     with engine.connect() as connection:
         schema = connection.scalar(text("SELECT current_schema()"))
     role = "meridian_sync_" + schema
@@ -352,6 +382,8 @@ def test_sync_writer_can_publish_but_cannot_edit_sources_or_other_accounts(reque
                 connection.exec_driver_sql(statement)
         with Session(engine) as db:
             assert db.get(Account, "foreign") is None
+            assert db.get(ImportRun, "private-baseline-run") is None
+            assert db.get(SourceRecord, "private-baseline-source") is None
     finally:
         event.remove(engine, "begin", restrict)
         event.remove(engine, "handle_error", capture_error)
@@ -413,3 +445,22 @@ def test_hosted_history_stops_when_current_credentials_return_another_account(se
     assert result["status"] == "failed"
     assert calls == []
     assert count(engine, BrokerEventRevision) == 0
+
+
+def test_manual_transport_failure_returns_durable_retry_deadline(setup, monkeypatch):
+    from meridian.security import hosted_sync
+
+    engine, clock, jobs = setup
+    api = API()
+    api.fail_positions = True
+    monkeypatch.setattr(hosted_sync, "create_binding_engine", lambda *args, **kwargs: engine)
+    monkeypatch.setattr(hosted_sync, "Trading212Client", lambda **kwargs: api)
+    result = asyncio.run(
+        hosted_sync.run_sync(
+            None, api_key="synthetic", api_secret="synthetic", environment="live", scheduled=False
+        )
+    )
+    assert result["status"] == "failed"
+    with Session(engine) as db:
+        job = db.get(BrokerSyncJob, ("shared-isa", "snapshot"))
+        assert result["retry_at"] == job.next_attempt_at.isoformat()

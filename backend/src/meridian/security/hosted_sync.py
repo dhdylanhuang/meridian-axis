@@ -1,15 +1,16 @@
 """Private job authority wiring. Each invocation owns its connections and secrets."""
 
 import json
+from datetime import timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from meridian.adapters.trading212 import Trading212Client
 from meridian.application.broker_jobs import BrokerJobs
-from meridian.application.broker_sessions import relevant_session
+from meridian.application.broker_sessions import relevant_session, select_session_metadata
 from meridian.application.broker_sync import BrokerSync, decimal_strings, source_record
-from meridian.persistence.models import Account, BrokerSnapshot, SourceRecord
+from meridian.persistence.models import Account, BrokerSnapshot, BrokerSyncJob, SourceRecord
 from meridian.security.hosted import create_binding_engine
 
 
@@ -60,13 +61,24 @@ async def refresh_metadata(service):
     if token is None:
         return
     try:
+        with Session(service.engine) as db:
+            snapshot = db.scalar(
+                select(BrokerSnapshot)
+                .where(BrokerSnapshot.account_id == service.account_id)
+                .order_by(BrokerSnapshot.observed_at.desc())
+                .limit(1)
+            )
+            if snapshot is None:
+                raise ValueError("snapshot_unavailable")
+            tickers = [row["ticker"] for row in json.loads(snapshot.snapshot_json)["positions"]]
+        started = jobs.clock().isoformat()
         instruments = await service.api.instruments()
         exchanges = await service.api.exchanges()
-        payload = dict(
-            retrieved_at=jobs.clock().isoformat(),
-            instruments=[decimal_strings(r.raw_payload) for r in instruments],
-            exchanges=[decimal_strings(r.raw_payload) for r in exchanges],
-        )
+        payload = select_session_metadata(
+            tickers,
+            [decimal_strings(r.raw_payload) for r in instruments],
+            [decimal_strings(r.raw_payload) for r in exchanges],
+        ) | dict(retrieval_started_at=started, retrieved_at=jobs.clock().isoformat())
         with Session(service.engine) as db, db.begin():
             job = jobs.owned(db, "metadata", token)
             service.scope(db)
@@ -122,6 +134,14 @@ async def run_sync(binding, *, api_key, api_secret, environment, scheduled=False
                 ]
                 await service.history_page(family)
                 await refresh_metadata(service)
+            if not scheduled and result["status"] in {"failed", "deferred"}:
+                with Session(engine) as db:
+                    job = db.get(BrokerSyncJob, ("shared-isa", "snapshot"))
+                    if job and job.error_code not in {None, "action_required"} and job.failures < 4:
+                        due = max(job.next_attempt_at, jobs.clock() + timedelta(seconds=1))
+                        if job.lease_until is not None:
+                            due = max(due, job.lease_until)
+                        result["retry_at"] = due.isoformat()
             return result | {"session": state}
     finally:
         engine.dispose()

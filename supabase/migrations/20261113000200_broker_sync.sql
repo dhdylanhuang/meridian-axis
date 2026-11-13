@@ -55,7 +55,7 @@ CREATE TABLE broker_event_revisions (
 
 -- Fixed-account sync writer. Password maintenance is a separate private operation.
 DO $sync_permissions$
-DECLARE target_schema text := current_schema(); writer text; reader text; tab text;
+DECLARE target_schema text := current_schema(); writer text; reader text; tab text; scope_condition text;
 BEGIN
   IF NOT (target_schema='public' OR target_schema ~ '^meridian_test_[0-9a-f]{32}$')
   THEN RAISE EXCEPTION 'Sync requires reviewed schema'; END IF;
@@ -77,13 +77,25 @@ BEGIN
   END LOOP;
   FOREACH tab IN ARRAY ARRAY['import_log','source_records','broker_snapshots','broker_sync_jobs','broker_rate_limits','broker_event_revisions'] LOOP
     EXECUTE format('GRANT SELECT ON %I.%I TO %I', target_schema, tab, writer);
-    EXECUTE format('CREATE POLICY meridian_sync_read ON %I.%I FOR SELECT TO %I USING (account_id = %L)', target_schema, tab, writer, 'shared-isa');
+    scope_condition := 'account_id = ''shared-isa''';
+    IF tab = 'source_records' THEN
+      scope_condition := scope_condition || ' AND kind IN (''trading212_refresh'',''trading212_history_page'',''trading212_metadata'')';
+    ELSIF tab = 'import_log' THEN
+      scope_condition := scope_condition || ' AND kind IN (''trading212_refresh'',''trading212_history_orders'',''trading212_history_dividends'',''trading212_history_transactions'',''trading212_metadata'')';
+    END IF;
+    EXECUTE format('CREATE POLICY meridian_sync_read ON %I.%I FOR SELECT TO %I USING (%s)', target_schema, tab, writer, scope_condition);
   END LOOP;
   EXECUTE format('GRANT SELECT ON %I.accounts TO %I', target_schema, writer);
   EXECUTE format('CREATE POLICY meridian_sync_account_read ON %I.accounts FOR SELECT TO %I USING (id = %L)', target_schema, writer, 'shared-isa');
   FOREACH tab IN ARRAY ARRAY['import_log','source_records','broker_snapshots','broker_sync_jobs','broker_rate_limits','broker_event_revisions'] LOOP
     EXECUTE format('GRANT INSERT ON %I.%I TO %I', target_schema, tab, writer);
-    EXECUTE format('CREATE POLICY meridian_sync_insert ON %I.%I FOR INSERT TO %I WITH CHECK (account_id = %L)', target_schema, tab, writer, 'shared-isa');
+    scope_condition := 'account_id = ''shared-isa''';
+    IF tab = 'source_records' THEN
+      scope_condition := scope_condition || ' AND kind IN (''trading212_refresh'',''trading212_history_page'',''trading212_metadata'')';
+    ELSIF tab = 'import_log' THEN
+      scope_condition := scope_condition || ' AND kind IN (''trading212_refresh'',''trading212_history_orders'',''trading212_history_dividends'',''trading212_history_transactions'',''trading212_metadata'')';
+    END IF;
+    EXECUTE format('CREATE POLICY meridian_sync_insert ON %I.%I FOR INSERT TO %I WITH CHECK (%s)', target_schema, tab, writer, scope_condition);
   END LOOP;
   FOREACH tab IN ARRAY ARRAY['broker_sync_jobs','broker_rate_limits'] LOOP
     EXECUTE format('GRANT UPDATE ON %I.%I TO %I', target_schema, tab, writer);

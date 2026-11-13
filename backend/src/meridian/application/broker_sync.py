@@ -262,6 +262,7 @@ class BrokerSync:
                 else:
                     # Page progress is durable. It is never a completed history watermark.
                     job.checkpoint_json = canonical(checkpoint)
+                    job.failures, job.error_code = 0, None
                     job.next_attempt_at = self.jobs.clock()
                     job.lease_token, job.lease_until = None, None
             return {"status": "succeeded" if continuation is None else "in_progress"}
