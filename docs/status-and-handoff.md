@@ -2,6 +2,18 @@
 
 Last reviewed: **13 November 2026**, following deployed authenticated broker snapshot verification.
 
+## Live minute refresh verified — 13 November 2026
+
+The owner resumed the polling task and requested stopping after its completion. The minute Cron was already deployed, but the sync Worker had no broker credential bindings and no refresh jobs had run. The owner provisioned the read-only pair through the private hidden-prompt helper. Both managed secret bindings are now present.
+
+Deployed source **`0410a8e`**, native parity **`0007`**, now publishes live broker-reported snapshots. Consecutive scheduled observations at **14:53, 14:54 and 14:55 London** demonstrate minute cadence. The observed intervals were **51.353 seconds** during initial startup and **59.688 seconds** on the next cycle. Snapshot health reported zero consecutive failures. Held-listing metadata refresh also completed successfully.
+
+Independent HTTPS checks passed for both approved identities. Snapshot responses matched stored broker projections, manual refresh queued promptly, health access exposed the approved columns, and anonymous/nonmember/Origin/CSRF/query/duplicate-cookie/logout denials passed. A further authenticated read returned a snapshot retrieved **50.07 seconds** earlier with no-store headers. Broker market quote age remains unknown. Password login was not repeated and passwords were preserved. Browser visual verification was unavailable because the browser/computer host could not be reached. Users with an already-open older client should reload once to load the automatic view refresh.
+
+The additive native migration and restricted sync role were independently verified. Existing financial evidence, memberships and the BFF password were preserved, and all 12 public tables retain RLS. Encrypted pre/post-migration backups were verified privately. The earlier isolated restore acceptance remains separate from these new backup checks. Private deployment, HTTPS and cadence receipts record the exact evidence without publishing financial values or credentials.
+
+**Development is stopped at the owner’s request. Await the next instruction. Scheduled broker refresh remains enabled.** Long-term free-tier retention/archive qualification, normalized economic replay and transaction CSV evidence remain open.
+
 ## Refresh and import implementation in validation — 13 November 2026
 
 The owner requested the next two milestones. A single implementation stream and one bounded Excel contributor produced the changes below. Hosted refresh is awaiting release validation and private broker-secret provisioning. The deployed saved-snapshot application remains the current runtime baseline until that verification is recorded.

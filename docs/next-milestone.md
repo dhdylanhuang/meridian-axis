@@ -2,6 +2,10 @@
 
 Prepared **13 November 2026** at the owner's request for a fresh agent. Read `AGENTS.md` and the first section of [status and handoff](status-and-handoff.md) first. This brief does not authorise unrelated work or changes outside the owner's next instruction.
 
+## Completion checkpoint — 13 November 2026
+
+Read the latest status before the original brief below. Hosted read-only refresh is now deployed at native parity `0007`, with consecutive minute cycles and authenticated delivery verified. The owner provisioned the private credential bindings. Development is stopped at the owner’s request pending the next instruction. Scheduled service remains enabled. Long-term storage/retention and normalized economics remain open.
+
 ## Working baseline
 
 - Deployed source **`e79fedc`**; native schema parity **`0006`**. Main contains that verified implementation plus documentation updates.
