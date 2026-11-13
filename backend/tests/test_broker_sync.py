@@ -331,6 +331,16 @@ def test_sync_writer_can_publish_but_cannot_edit_sources_or_other_accounts(reque
         assert asyncio.run(service.refresh())["status"] == "succeeded", errors
         service.api.pages = [(service.api.rows["orders"]["records"], None)]
         assert asyncio.run(service.history_page("orders"))["status"] == "succeeded"
+        from meridian.security.hosted_sync import refresh_metadata
+
+        async def empty_metadata():
+            return []
+
+        service.api.instruments = empty_metadata
+        service.api.exchanges = empty_metadata
+        asyncio.run(refresh_metadata(service))
+        with Session(engine) as db:
+            assert db.get(BrokerSyncJob, ("shared-isa", "metadata")).last_success_at is not None
         for statement in [
             "UPDATE source_records SET payload_json='{}'",
             "DELETE FROM broker_event_revisions",

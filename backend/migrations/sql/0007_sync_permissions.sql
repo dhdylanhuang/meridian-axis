@@ -35,7 +35,7 @@ BEGIN
     EXECUTE format('CREATE POLICY meridian_sync_update ON %I.%I FOR UPDATE TO %I USING (account_id = %L) WITH CHECK (account_id = %L)', target_schema, tab, writer, 'shared-isa', 'shared-isa');
   END LOOP;
   EXECUTE format('GRANT UPDATE (status, content_hash, finished_at, error_code, counts_json) ON %I.import_log TO %I', target_schema, writer);
-  EXECUTE format('CREATE POLICY meridian_sync_import_update ON %I.import_log FOR UPDATE TO %I USING (account_id = %L AND kind IN (%L,%L,%L,%L)) WITH CHECK (account_id = %L)', target_schema, writer, 'shared-isa', 'trading212_refresh','trading212_history_orders','trading212_history_dividends','trading212_history_transactions', 'shared-isa');
+  EXECUTE format('CREATE POLICY meridian_sync_import_update ON %I.import_log FOR UPDATE TO %I USING (account_id = %L AND kind IN (%L,%L,%L,%L,%L)) WITH CHECK (account_id = %L)', target_schema, writer, 'shared-isa', 'trading212_refresh','trading212_history_orders','trading212_history_dividends','trading212_history_transactions','trading212_metadata', 'shared-isa');
   EXECUTE format('GRANT INSERT ON %I.audit_log TO %I', target_schema, writer);
   EXECUTE format('CREATE POLICY meridian_sync_audit ON %I.audit_log FOR INSERT TO %I WITH CHECK (actor = %L AND run_id IN (SELECT id FROM %I.import_log WHERE account_id = %L))', target_schema, writer, 'broker-sync', target_schema, 'shared-isa');
   EXECUTE format('GRANT SELECT (account_id,task,next_attempt_at,last_attempt_at,last_success_at,failures,error_code) ON %I.broker_sync_jobs TO %I', target_schema, reader);
