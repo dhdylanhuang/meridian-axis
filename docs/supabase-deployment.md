@@ -120,3 +120,7 @@ The exact reviewed commit `caa0ccd36ce70a605459a71915cabba9a1f73899` passed [val
 The owner separately confirmed the four empty application tables and `alembic_version` containing `0002` in Table Editor. This establishes the initial empty-schema deployment through provider status and owner inspection. It does not establish an authenticated Management API connection, application Auth, runtime database access, source import or financial reconciliation. Preserve that distinction in future handoffs; do not keep asking for this same table check after it is confirmed.
 
 Hosted Auth, API routes, scheduled sync, market-provider access, streaming and backup/restore remain separate gates after this bootstrap.
+
+## Snapshot read model — 13 November 2026
+
+Validated source `e79fedc` was promoted only after Windows/Linux, all 71 PostgreSQL cases and Worker validation passed. Native GitHub applied `20261113000100_broker_snapshots.sql`; its emitted Supabase check succeeded, and independent SQL confirmed parity `0006`. Shared immutable DCL adds fixed-account SELECT on the approved snapshot table only. Raw evidence/import privileges, existing identity/session grants, role password and origin binding were preserved. Actual HTTPS snapshot reads subsequently passed for both approved identities through the deployed restricted driver. No Alembic upgrade or administrative DDL was run against the hosted database.

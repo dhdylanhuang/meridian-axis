@@ -83,3 +83,7 @@ D01/D02 and QA01/QA02: one-off broker-capture tests cover exact Decimal JSON, en
 ## Broker evidence acceptance boundary
 
 D01/D02, S02 and QA01/QA02: synthetic captures verify exact decimal retention, unchanged broker totals despite disagreeing position sums, absent-value states, complete families, malformed/duplicate JSON, account/environment binding, within-family event identity collisions, atomic source/audit/binding rollback and canonical replay rejection. Split/scrip/unknown action records remain source evidence with zero economic postings. Additional PostgreSQL cases run acceptance/replay and rollback/retry through both migration paths. No schema migration is required.
+
+## Protected snapshot acceptance — 13 November 2026
+
+Source `e79fedc`: local 406 passed/71 PostgreSQL cases skipped; validation CI passed Windows/Linux and all 71 PostgreSQL cases; Worker 19 Python and 25 Node cases passed. Actual native parity `0006`, approved projection publication, both identities' HTTPS snapshot responses, denial/revocation checks and served asset hashes were independently verified. Two short-lived application test sessions used provider-admin-verified identities; no fresh password login/reset was performed. Desktop native Chrome visibly rendered the deployed signed-in holdings. Full mobile/second-user browser walkthrough remains unclaimed. The post-migration actual financial snapshot also passed an isolated local restore drill. Current [status](status-and-handoff.md) owns exact evidence and remaining gates.

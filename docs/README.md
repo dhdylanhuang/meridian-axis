@@ -16,6 +16,8 @@ This is the working specification for Great Dyke Meridian. Its purpose is to let
 
 **Frontend agent:** API and UI → product requirements → calculation availability states → alerts → security and operations. The browser must not create a parallel financial calculation engine.
 
+For the next implementation session, read [the current milestone brief](next-milestone.md) after the latest status.
+
 ## Authoritative homes
 
 | Document | Owns |

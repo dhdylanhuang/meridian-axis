@@ -1,6 +1,6 @@
 # Data model and invariants
 
-Status: ADOPTED target logical model; Stage 1A implements accounts, import_log, source_records and audit_log with initial migration and precise storage types. Broker-capture evidence acceptance now uses those existing tables, including a capture manifest and per-row financial observations; source facts do not book economic events. Other tables below remain planned. Add tables when their delivery stage needs them; this model is not an instruction to build every table in Stage 1.
+Status: ADOPTED target logical model; Stage 1A implements accounts, import_log, source_records and audit_log with initial migration and precise storage types. Broker-capture evidence acceptance now uses those existing tables, including a capture manifest and per-row financial observations; source facts do not book economic events. Parity `0006` also implements the closed immutable `broker_snapshots` browser projection with a fixed-account SELECT policy. Other tables below remain planned. Add tables when their delivery stage needs them; this model is not an instruction to build every table in Stage 1.
 
 ## Production platform amendment
 
@@ -37,7 +37,7 @@ SQLite's [type-affinity documentation](https://www.sqlite.org/datatype3.html) ex
 | `transaction_sources` | Multiple source records linked to one economic event; prevents a CSV and API observation from creating duplicate economic entries |
 | `ledger_entries` | Balanced cash/security movements per transaction; per-currency cash amounts, fees and taxes are explicit components |
 | `opening_positions`, `opening_cash` | Explicit source-supported opening records, provenance and limitations; never fabricate acquisition history |
-| `broker_snapshots`, `position_snapshots` | Sync generation, broker as-of/fetched time, observed quantities, value/cost/PnL and currency; reconciliation evidence only |
+| `broker_snapshots`, `position_snapshots` | `broker_snapshots` is implemented at `0006` as the immutable approved browser projection with source-run/account FK, observed/created time and digest; runtime fixed-account SELECT only. Detailed `position_snapshots`/normalized observation models remain planned. |
 | `holdings` | Rebuildable quantity/cost read model keyed by account/listing/revision, not hand-entered positions |
 | `prices` | Instrument, session date, price basis, value, source, quote/fetch times, quality, revision and supersedes link; retain competing observations |
 | `fx_rates` | Currency pair, explicit direction, effective date/time, rate, source and quality/revision |
