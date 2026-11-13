@@ -94,3 +94,15 @@ The Postgres CI job selects Python 3.13 through `UV_PYTHON`, while the local fou
 ### Provider CA for private maintenance
 
 `create_postgres_engine(..., ca_certificate=<verified PEM>)` can add a provider CA to the default trust context while retaining required certificate and hostname verification. The hosted direct connection required Supabase's provider CA during broker evidence qualification. Obtain it from the [official SSL configuration](https://github.com/supabase/supabase/blob/master/apps/studio/hooks/custom-content/custom-content.json); never trust the unverified peer certificate as a workaround. CA input is bounded/validated, cannot be combined with the disposable plaintext exception, and does not change the runtime Hyperdrive origin. Administrative credentials remain ephemeral/in memory; the application must keep using its restricted runtime connection.
+
+## Excel baseline and broker secret provisioning
+
+`python -m meridian.workbook_import_cli SOURCE --layout PRIVATE_LAYOUT_JSON` performs a read-only baseline preview. Add `--import` to accept into the already initialized configured local account. The layout explicitly maps six observations, group value/cost cells, date precision, notes and cumulative dividend cells. Keep source, layout and receipts private. `observed_month` records supported month precision and never supplies an invented day.
+
+After the dedicated private sync Worker has been deployed and its restricted database origin verified, run the following from the repository root in a private interactive terminal. Confirm actual broker key permissions before using the flag.
+
+```sh
+backend/.venv/bin/python -m meridian.broker_secrets --confirm-read-only
+```
+
+Both key and secret use hidden prompts. The helper verifies the Cloudflare account and existing deployment before prompting, then passes the pair to Wrangler secret bindings through stdin. It suppresses provider output and disables Wrangler file logs. The pair stays outside command arguments, source files and the browser. Node/Wrangler authentication must already be available. The existing capture command remains a separate diagnostic reader and must not run concurrently with the production authority.

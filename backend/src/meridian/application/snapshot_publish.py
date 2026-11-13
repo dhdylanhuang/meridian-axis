@@ -13,15 +13,16 @@ from meridian.application.snapshot_access import MAX_SNAPSHOT_BYTES
 from meridian.persistence.models import Account, AuditRecord, BrokerSnapshot, ImportRun
 
 
-def publish_snapshot(db, *, account_id, run_id, evidence, now=None):
+def publish_snapshot(db, *, account_id, run_id, evidence, now=None, actor="administration"):
     now = now or datetime.now(UTC)
     account = db.get(Account, account_id)
     run = db.get(ImportRun, run_id)
     if (
         account is None
         or run is None
-        or (run.account_id, run.kind, run.status, run.content_hash)
-        != (account_id, KIND, "succeeded", evidence.content_hash)
+        or (run.account_id, run.status, run.content_hash)
+        != (account_id, "succeeded", evidence.content_hash)
+        or run.kind != (KIND if evidence.document["version"] == 1 else "trading212_refresh")
         or (account.environment, account.private_reference)
         != (evidence.environment, evidence.broker_reference)
     ):
@@ -54,7 +55,7 @@ def publish_snapshot(db, *, account_id, run_id, evidence, now=None):
         AuditRecord(
             id=uuid4().hex,
             occurred_at=now,
-            actor="administration",
+            actor=actor,
             action="broker_snapshot_published",
             entity_type="import_run",
             entity_id=run_id,

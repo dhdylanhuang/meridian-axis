@@ -90,7 +90,14 @@ def _previous_rows(database):
         return {
             table.name: connection.execute(select(table).order_by(*table.primary_key.columns)).all()
             for table in Base.metadata.sorted_tables
-            if table.name not in {"login_rate_limits", "broker_snapshots"}
+            if table.name
+            not in {
+                "login_rate_limits",
+                "broker_snapshots",
+                "broker_sync_jobs",
+                "broker_rate_limits",
+                "broker_event_revisions",
+            }
         }
 
 
@@ -132,7 +139,16 @@ def test_limiter_upgrade_preserves_existing_evidence_membership_and_sessions(pri
         assert context.get_current_revision() == "0004"
         baseline = MetaData()
         for table in Base.metadata.sorted_tables:
-            if table.name != "broker_snapshots":
+            if table.name not in {
+                "broker_snapshots",
+                "broker_sync_jobs",
+                "broker_rate_limits",
+                "broker_event_revisions",
+            }:
                 table.to_metadata(baseline)
+        source = baseline.tables["source_records"]
+        source.indexes.remove(
+            next(index for index in source.indexes if index.name == "uq_source_id_account")
+        )
         assert compare_metadata(context, baseline) == []
         assert connection.execute(select(LoginRateLimit)).all() == []

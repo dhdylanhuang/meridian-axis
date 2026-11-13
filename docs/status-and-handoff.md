@@ -2,6 +2,20 @@
 
 Last reviewed: **13 November 2026**, following deployed authenticated broker snapshot verification.
 
+## Refresh and import implementation in validation — 13 November 2026
+
+The owner requested the next two milestones. A single implementation stream and one bounded Excel contributor produced the changes below. Hosted refresh is awaiting release validation and private broker-secret provisioning. The deployed saved-snapshot application remains the current runtime baseline until that verification is recorded.
+
+- D01–D03, L01/L02/L04 and S01/S02 have an implemented bounded refresh path. Summary/positions use a distinct two-family evidence contract. Source acceptance, approved snapshot publication and success health commit atomically. Shared durable endpoint budgets, fenced task leases, persisted provider resets/Retry-After, bounded exponential retry, terminal failure stops and administrative resume preserve the last successful generation. Cron eligibility is minute-aligned to tolerate delivery jitter. Manual refresh uses the existing member/session/Origin/CSRF boundary and the same private authority.
+- Orders, dividends and transactions advance one page per scheduled invocation, rotating families. Accepted full traversals run hourly. Immutable staging and checkpoints survive retries. A family publishes revisions only when its traversal terminates. Stable fill/reference identities deduplicate repeated observations and append changed revisions. Corporate-action fills carry a review state and their original facts. Economic replay and calculated historical performance remain open.
+- Provider working-schedule instants cover held listings, breaks, holidays and half-days where the metadata brackets the current instant. Unknown or expired coverage permits conservative polling. Metadata has its own daily cadence. Retrieval time remains distinct from unknown market quote time.
+- D05 Excel baseline import has passed a private original-source rehearsal and explicitly approved hosted acceptance. All six observations match exact read-back. Group-value controls reconcile within £0.01. Duplicate reimport added no sources. Three observations retain month precision, two explicit days, and July remains undated. Historical group-cost controls are absent. Recorded invested costs round-trip exactly without being relabelled external contributions. Source bytes are preserved. Private receipts remain ignored.
+- D04 retains the verified holdings CSV fallback. The owner confirms transaction history is available only as PDF. The previously inspected statement is cash-only. Transaction-export header/ID alias verification remains open, so transaction CSV economics are unavailable.
+
+Local verification before release includes **549 backend cases with PostgreSQL**, **19 Worker Python validator cases**, **26 Worker Node cases**, Ruff check/format and a successful locked Python Worker dry-run. Later targeted changes add cron-jitter/credential-identity regressions. Native schema `0007` and its restricted sync writer still require validation-branch CI, native hosted delivery, role/password/Hyperdrive qualification and actual refresh observation. Live 60-second freshness is unverified. Supabase remains the sole hosted schema writer.
+
+The owner approved uploading the six workbook observations after automatic approval review required payload-specific consent. A separate pre-migration encrypted backup request also required explicit consent. Keep these execution-review decisions distinct from general project authority.
+
 ## Active priority and weekly usage constraint
 
 The latest owner instruction is to continue while **minimising sub-agents and unnecessary rate-limit consumption**. The earlier 34% remaining report applied until 22:00 London on 12 November; that window has elapsed. No new quota is known, and no reset is assumed. Use one bounded implementation stream with targeted review; avoid broad parallel work, cosmetic demo refinement, secondary features and repeated checks of unchanged code. The owner is now working from the main PC; committed source is pushed, while ignored credentials/runtime manifests do not travel with Git.

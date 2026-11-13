@@ -34,9 +34,15 @@ TABLES = (
 # Content hashes remain inside the encrypted archive. No real identifiers/amounts
 # are ever printed. C ordering makes source/restore comparison locale independent.
 def controls_sql(revision):
-    if revision not in ("0005", "0006"):
+    if revision not in ("0005", "0006", "0007"):
         raise RecoveryError("recovery_controls_invalid")
-    tables = TABLES + (("public.broker_snapshots",) if revision == "0006" else ())
+    tables = TABLES + (("public.broker_snapshots",) if revision in ("0006", "0007") else ())
+    if revision == "0007":
+        tables += (
+            "public.broker_sync_jobs",
+            "public.broker_rate_limits",
+            "public.broker_event_revisions",
+        )
     return (
         "SELECT jsonb_build_object("
         + ",".join(
@@ -96,7 +102,12 @@ def controls(cli: Path, project: str) -> dict:
         result = json.loads(output)["rows"][0]["controls"]
         expected = sorted(
             [t.split(".")[1] for t in TABLES if t.startswith("public.")]
-            + (["broker_snapshots"] if revision == "0006" else [])
+            + (["broker_snapshots"] if revision in ("0006", "0007") else [])
+            + (
+                ["broker_sync_jobs", "broker_rate_limits", "broker_event_revisions"]
+                if revision == "0007"
+                else []
+            )
         )
         if result["revision"] != revision or result["public_tables"] != expected:
             raise ValueError

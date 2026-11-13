@@ -60,6 +60,7 @@ class SessionHttp:
         login_csrf_key: SecretStr,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        refresh: Callable[[], Awaitable[dict]] | None = None,
     ):
         if (
             not isinstance(login_csrf_key, SecretStr)
@@ -71,6 +72,7 @@ class SessionHttp:
         self.service, self.provider = service, provider
         self.database, self.login_limiter = database, login_limiter
         self._key, self._clock = login_csrf_key, clock
+        self.refresh = refresh
 
     def _now(self):
         now = self._clock()
@@ -228,9 +230,28 @@ class SessionHttp:
                     issued = self.service.issue(db, identity, now=self._now())
                 return self._issued(issued)
             token = self._cookie(request, SESSION_COOKIE)
+            if operation == "refresh":
+                self._origin(request)
+                with self.database() as db, db.begin():
+                    self.service.authorize_mutation(
+                        db,
+                        token,
+                        csrf_token=self._header(request, "x-csrf-token"),
+                        origin=self.service.origin,
+                        now=now,
+                    )
+                if self.refresh is None:
+                    return private_response({"error": "refresh_unavailable"}, 503)
+                # Authorisation commits before the separate sync authority makes upstream calls.
+                result = await self.refresh()
+                return private_response(result, 200 if result.get("status") == "succeeded" else 202)
             with self.database() as db, db.begin():
-                if operation in {"current", "snapshot"}:
+                if operation in {"current", "snapshot", "refresh_status"}:
                     principal = self.service.authenticate(db, token, now=now)
+                    if operation == "refresh_status":
+                        from meridian.application.refresh_status import refresh_status
+
+                        return private_response(refresh_status(db, principal.account_id, now))
                     if operation == "snapshot":
                         from meridian.application.snapshot_access import read_snapshot
 

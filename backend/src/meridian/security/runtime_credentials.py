@@ -119,3 +119,38 @@ END;
 $meridian_credential_maintenance$;
 SELECT true AS credential_operation_completed;
 """)
+
+
+def sync_credential_maintenance_sql(verifier: SecretStr, *, reset: bool = False) -> SecretStr:
+    """Only the migrated 0007 sync role's first-use password or matching rollback."""
+    value = _validated_verifier(verifier)
+    if type(reset) is not bool:
+        raise RuntimeCredentialError("runtime_credential_input_invalid")
+    check = (
+        f"current_verifier IS DISTINCT FROM '{value}'" if reset else "current_verifier IS NOT NULL"
+    )
+    assignment = "NULL" if reset else f"'{value}'"
+    return SecretStr(f"""
+SET LOCAL statement_timeout = '10s';
+SET LOCAL lock_timeout = '5s';
+DO $sync_credential$
+DECLARE current_verifier text;
+BEGIN
+ PERFORM pg_catalog.pg_advisory_xact_lock(87730113);
+ IF current_user <> 'postgres' OR current_database() <> 'postgres'
+ OR (SELECT count(*) FROM public.alembic_version) <> 1
+ OR NOT EXISTS (SELECT 1 FROM public.alembic_version WHERE version_num='0007')
+ OR NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles r WHERE rolname='meridian_sync_public'
+ AND rolcanlogin AND NOT (rolsuper OR rolcreatedb OR rolcreaterole OR rolinherit
+ OR rolreplication OR rolbypassrls)
+ AND NOT pg_catalog.has_schema_privilege(r.oid,'public','CREATE')
+ AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid)
+ AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class c WHERE c.relowner=r.oid))
+ THEN RAISE EXCEPTION 'Sync credential preconditions failed'; END IF;
+ SELECT rolpassword INTO current_verifier FROM pg_catalog.pg_authid
+ WHERE rolname='meridian_sync_public';
+ IF {check} THEN RAISE EXCEPTION 'Sync credential state mismatch'; END IF;
+ ALTER ROLE meridian_sync_public PASSWORD {assignment};
+END $sync_credential$;
+SELECT true AS credential_operation_completed;
+""")

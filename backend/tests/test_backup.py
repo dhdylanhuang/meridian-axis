@@ -55,7 +55,7 @@ def test_backup_restore_includes_committed_wal_and_exact_source(database, tmp_pa
     restored = tmp_path / "restored.sqlite3"
     report = create_backup(database.database_path, backup)
     assert report["row_counts"]["source_records"] == 1
-    assert report["schema_revision"] == "0006"
+    assert report["schema_revision"] == "0007"
     restore_backup(backup, restored, environment="demo")
     with closing(sqlite3.connect(restored)) as connection:
         assert connection.execute("SELECT payload_json FROM source_records").fetchone()[0] == (

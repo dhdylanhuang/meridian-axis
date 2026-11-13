@@ -13,6 +13,7 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SessionApplicationDO"] }],
   "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "HYPERDRIVE_CONFIG_ID" }],
+  "services": [{ "binding": "SYNC", "service": "meridian-axis-sync-runtime" }],
   "vars": {
     "PUBLIC_ORIGIN": "PUBLIC_APPLICATION_ORIGIN",
     "SUPABASE_PROJECT_REF": "ssqqjyrgrsjubxysobwy"

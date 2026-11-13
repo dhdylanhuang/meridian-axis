@@ -342,6 +342,8 @@ class Trading212Client:
         max_pages: int = 1000,
         max_history_seconds: float = 1800,
         backoff_seconds: float = 1,
+        reserve_request: Callable[[str], Awaitable[None]] | None = None,
+        observe_response: Callable[[str, int, Mapping[str, str]], Awaitable[None]] | None = None,
     ):
         if environment not in ("demo", "live"):
             raise BrokerError("invalid_environment")
@@ -371,6 +373,8 @@ class Trading212Client:
         self._max_history_seconds, self._backoff = max_history_seconds, backoff_seconds
         self._next_request: dict[str, float] = {}
         self._locks: dict[str, asyncio.Lock] = {}
+        self._reserve_request = reserve_request
+        self._observe_response = observe_response
 
     async def __aenter__(self) -> Trading212Client:
         return self
@@ -437,6 +441,8 @@ class Trading212Client:
         async with lock:
             for attempt in range(self._max_attempts):
                 await self._wait(route, deadline)
+                if self._reserve_request is not None:
+                    await self._reserve_request(route)
                 self._next_request[route] = self._monotonic() + INTERVALS[route]
                 response = None
                 try:
@@ -451,6 +457,8 @@ class Trading212Client:
                         raise BrokerError("transport_failure") from None
                 if response is not None:
                     status = response.status_code
+                    if self._observe_response is not None:
+                        await self._observe_response(route, status, response.headers)
                     reset_delay = self._reset_delay(response.headers)
                     if status == 429 or response.headers.get("x-ratelimit-remaining") == "0":
                         self._next_request[route] = max(
@@ -515,6 +523,20 @@ class Trading212Client:
             if not isinstance(path, str):
                 raise BrokerError("invalid_response")
         raise BrokerError("pagination_limit")
+
+    async def history_page(self, family: str, path: str | None = None):
+        """One bounded page for durable hosted traversal; no inferred time filter."""
+        parsers = {"orders": _order, "dividends": _dividend, "transactions": _transaction}
+        if family not in parsers:
+            raise BrokerError("invalid_history_family")
+        route = PREFIX + "history/" + family
+        page = _object(await self._request(path or route + "?limit=50", route))
+        if not isinstance(page.get("items"), list) or "nextPagePath" not in page:
+            raise BrokerError("invalid_response")
+        continuation = page["nextPagePath"]
+        if continuation is not None:
+            self._url(continuation, route)
+        return [parsers[family](_object(row)) for row in page["items"]], continuation
 
     async def account_summary(self) -> AccountSummary:
         route = PREFIX + "account/summary"

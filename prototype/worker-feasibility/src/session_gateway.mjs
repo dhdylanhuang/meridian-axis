@@ -2,6 +2,8 @@
 const ROUTES = new Map([
   ["/health", "GET"],
   ["/api/v1/portfolio/snapshot", "GET"],
+  ["/api/v1/portfolio/refresh", "POST"],
+  ["/api/v1/portfolio/refresh/status", "GET"],
   ["/api/v1/session/bootstrap", "GET"],
   ["/api/v1/session/current", "GET"],
   ["/api/v1/session/login", "POST"],

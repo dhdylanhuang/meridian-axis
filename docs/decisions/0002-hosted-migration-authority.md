@@ -53,3 +53,7 @@ verified through Hyperdrive at `dc41f7e`; details and cleanup evidence live in
 the handoff. The implemented helper requires empty application control tables.
 It does not implement production password rotation while application data is
 active, and must not be presented as a complete recovery runbook.
+
+## Dedicated sync credential maintenance — 13 November 2026
+
+Native parity `0007` adds the restricted `meridian_sync_public` role. `sync_credential_maintenance_sql` permits only its first-use password assignment or a rollback matching the same verifier. It pins the parity, database, administrator identity and unprivileged role attributes while preserving populated evidence and existing BFF credentials. A separate uncached TLS Hyperdrive origin supplies this credential only to the private sync Worker. No administrator credential enters that runtime. Actual provisioning and deployment remain separately verified operations.

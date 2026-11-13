@@ -34,3 +34,10 @@ test('denied session clears fields and dispatches signout; empty snapshot has ex
  const ui=setup(async()=>({ok:false,status:401}));let ended=false;ui.window.addEventListener('meridian-session-ended',()=>ended=true);await ui.view.load();assert.equal(ended,true);assert.equal(ui.el('total-value').textContent,'—');
  const empty=setup(async()=>({ok:false,status:404}));await empty.view.load();assert.match(empty.el('snapshot-status').textContent,/No saved snapshot/);
 });
+test('failed saved-snapshot reload retains last successful figures',async()=>{
+ let fail=false;
+ const ui=setup(async path=>path.endsWith('/status')?({ok:true,status:200,json:async()=>({jobs:{}})}):fail?({ok:false,status:503}):({ok:true,status:200,json:async()=>snapshot()}));
+ await ui.view.load();fail=true;await ui.view.load();
+ assert.equal(ui.el('total-value').textContent,'£9,007,199,254,740,993.123456789');
+ assert.match(ui.el('snapshot-status').textContent,/Last successful snapshot/);
+});

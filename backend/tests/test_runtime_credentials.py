@@ -58,3 +58,17 @@ def test_verifier_injection_or_wrong_type_is_rejected_without_echo(value):
 def test_only_generated_ascii_password_shape_and_128_bit_salt_are_supported(password, salt):
     with pytest.raises(RuntimeCredentialError, match="runtime_credential_input_invalid"):
         scram_verifier(password, salt)
+
+
+def test_sync_password_maintenance_is_pinned_and_preserves_existing_data():
+    from meridian.security.runtime_credentials import sync_credential_maintenance_sql
+
+    material = generate_bootstrap_secret()
+    sql = sync_credential_maintenance_sql(material.verifier).get_secret_value()
+    assert "version_num='0007'" in sql
+    assert "ALTER ROLE meridian_sync_public PASSWORD" in sql
+    assert "current_verifier IS NOT NULL" in sql
+    assert "DELETE" not in sql and "GRANT" not in sql and "CREATE ROLE" not in sql
+    rollback = sync_credential_maintenance_sql(material.verifier, reset=True).get_secret_value()
+    assert "current_verifier IS DISTINCT FROM" in rollback
+    assert "PASSWORD NULL" in rollback

@@ -48,6 +48,14 @@ def create_app(*, session_http: SessionHttp | None = None) -> FastAPI:
         async def snapshot(request: Request):
             return await session_http.handle(request, "snapshot")
 
+        @app.post("/api/v1/portfolio/refresh")
+        async def refresh(request: Request):
+            return await session_http.handle(request, "refresh")
+
+        @app.get("/api/v1/portfolio/refresh/status")
+        async def refresh_status(request: Request):
+            return await session_http.handle(request, "refresh_status")
+
     # Includes framework 404/405; no CORS grant or automatic slash redirects.
     app.add_middleware(PrivateSessionResponses)
 

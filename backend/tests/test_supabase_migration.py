@@ -28,7 +28,15 @@ RUNTIME_DCL_PATH = (
     Path(__file__).resolve().parents[1] / "migrations/sql/0005_runtime_permissions.sql"
 )
 SNAPSHOT_SQL_PATH = SQL_PATH.with_name("20261113000100_broker_snapshots.sql")
-SQL_PATHS = (SQL_PATH, AUTH_SQL_PATH, LIMIT_SQL_PATH, RUNTIME_SQL_PATH, SNAPSHOT_SQL_PATH)
+SYNC_SQL_PATH = SQL_PATH.with_name("20261113000200_broker_sync.sql")
+SQL_PATHS = (
+    SQL_PATH,
+    AUTH_SQL_PATH,
+    LIMIT_SQL_PATH,
+    RUNTIME_SQL_PATH,
+    SNAPSHOT_SQL_PATH,
+    SYNC_SQL_PATH,
+)
 NOW = datetime(2026, 1, 2, 12, tzinfo=UTC)
 _TABLES = (
     "accounts",
@@ -39,6 +47,9 @@ _TABLES = (
     "app_sessions",
     "login_rate_limits",
     "broker_snapshots",
+    "broker_sync_jobs",
+    "broker_rate_limits",
+    "broker_event_revisions",
     "alembic_version",
 )
 _OWN_SCHEMA = re.compile(r"meridian_test_[0-9a-f]{32}\Z")
@@ -90,13 +101,13 @@ def test_native_supabase_bootstrap_has_exact_schema_head_and_no_seeded_finances(
     assert set(inspect(native_engine).get_table_names()) == set(_TABLES)
     with native_engine.connect() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_revision() == "0006"
+        assert context.get_current_revision() == "0007"
         assert compare_metadata(context, Base.metadata) == []
         for table in _TABLES[:-1]:
             assert connection.scalar(text(f'SELECT count(*) FROM "{table}"')) == 0
         assert connection.execute(
             text("SELECT version_num FROM alembic_version")
-        ).scalars().all() == ["0006"]
+        ).scalars().all() == ["0007"]
 
 
 @pytest.mark.postgres
@@ -141,7 +152,38 @@ def test_native_supabase_asset_removes_default_public_and_existing_api_role_gran
         policies = connection.execute(
             text("SELECT tablename, policyname FROM pg_policies WHERE schemaname=current_schema()")
         ).all()
-        assert set(policies) == {
+        sync_policies = {
+            (t, "meridian_sync_read")
+            for t in (
+                "import_log",
+                "source_records",
+                "broker_snapshots",
+                "broker_sync_jobs",
+                "broker_rate_limits",
+                "broker_event_revisions",
+            )
+        }
+        sync_policies |= {
+            (t, "meridian_sync_insert")
+            for t in (
+                "import_log",
+                "source_records",
+                "broker_snapshots",
+                "broker_sync_jobs",
+                "broker_rate_limits",
+                "broker_event_revisions",
+            )
+        }
+        sync_policies |= {
+            (t, "meridian_sync_update") for t in ("broker_sync_jobs", "broker_rate_limits")
+        }
+        sync_policies |= {
+            ("accounts", "meridian_sync_account_read"),
+            ("import_log", "meridian_sync_import_update"),
+            ("audit_log", "meridian_sync_audit"),
+            ("broker_sync_jobs", "meridian_refresh_health"),
+        }
+        assert set(policies) == sync_policies | {
             ("broker_snapshots", "meridian_snapshot_read"),
             ("account_members", "meridian_member_read"),
             ("app_sessions", "meridian_session_read"),
@@ -156,7 +198,9 @@ def test_native_supabase_asset_removes_default_public_and_existing_api_role_gran
             connection.scalar(
                 text(
                     "SELECT bool_and(p.polroles = ARRAY[(SELECT oid FROM pg_roles "
-                    "WHERE rolname = 'meridian_bff_' || current_schema())]::oid[]) "
+                    "WHERE rolname = CASE WHEN p.polname LIKE 'meridian_sync_%' "
+                    "THEN 'meridian_sync_' ELSE 'meridian_bff_' END "
+                    "|| current_schema())]::oid[]) "
                     "FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid "
                     "JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=current_schema()"
                 )

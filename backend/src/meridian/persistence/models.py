@@ -145,6 +145,7 @@ class SourceRecord(Base):
         CheckConstraint("row_number IS NULL OR row_number > 0", name="ck_source_row_positive"),
         CheckConstraint("length(digest) = 64", name="ck_source_digest_length"),
         Index("ix_source_account_kind", "account_id", "kind"),
+        Index("uq_source_id_account", "id", "account_id", unique=True),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -207,3 +208,64 @@ class BrokerSnapshot(Base):
 
 event.listen(BrokerSnapshot, "before_update", _reject_mutation)
 event.listen(BrokerSnapshot, "before_delete", _reject_mutation)
+
+
+class BrokerSyncJob(Base):
+    __tablename__ = "broker_sync_jobs"
+    __table_args__ = (
+        CheckConstraint("failures >= 0", name="ck_sync_failures"),
+        CheckConstraint(
+            "task IN ('snapshot','orders','dividends','transactions','metadata')",
+            name="ck_sync_task",
+        ),
+    )
+    account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), primary_key=True)
+    task: Mapped[str] = mapped_column(String(32), primary_key=True)
+    lease_token: Mapped[str | None] = mapped_column(String(64))
+    lease_until: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    next_attempt_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    last_attempt_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    last_success_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    failures: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    checkpoint_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+
+
+class BrokerRateLimit(Base):
+    __tablename__ = "broker_rate_limits"
+    account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), primary_key=True)
+    route: Mapped[str] = mapped_column(String(128), primary_key=True)
+    next_request_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+
+
+class BrokerEventRevision(Base):
+    """Append-only event identity/revision facts. Raw evidence remains authoritative."""
+
+    __tablename__ = "broker_event_revisions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["source_id", "account_id"],
+            ["source_records.id", "source_records.account_id"],
+            name="fk_revision_source_account",
+        ),
+        UniqueConstraint(
+            "account_id", "family", "external_id", "revision", name="uq_event_revision"
+        ),
+        CheckConstraint("revision > 0", name="ck_event_revision_positive"),
+        CheckConstraint("family IN ('orders','dividends','transactions')", name="ck_event_family"),
+        CheckConstraint("length(digest) = 64", name="ck_event_digest"),
+    )
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), nullable=False)
+    family: Mapped[str] = mapped_column(String(32), nullable=False)
+    external_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    quality: Mapped[str] = mapped_column(String(32), nullable=False)
+
+
+event.listen(BrokerEventRevision, "before_update", _reject_mutation)
+event.listen(BrokerEventRevision, "before_delete", _reject_mutation)

@@ -109,6 +109,15 @@ def _no_credentials(value):
 
 
 def validate_capture(content: bytes) -> BrokerEvidence:
+    return _validate(content, FAMILIES, 1)
+
+
+def validate_refresh(content: bytes) -> BrokerEvidence:
+    """A summary/positions generation makes no history-completeness assertion."""
+    return _validate(content, ("account_summary", "positions"), 2)
+
+
+def _validate(content: bytes, families: tuple[str, ...], version: int) -> BrokerEvidence:
     if not isinstance(content, bytes) or len(content) > MAX_CAPTURE_BYTES:
         raise EvidenceError("capture_size_invalid")
     try:
@@ -121,18 +130,18 @@ def validate_capture(content: bytes) -> BrokerEvidence:
         _no_credentials(doc)
         if (
             type(doc["version"]) is not int
-            or doc["version"] != 1
+            or doc["version"] != version
             or doc["source"] != "trading212_api_v0"
             or doc["numeric_encoding"] != "decimal_strings"
             or doc["environment"] not in ("demo", "live")
         ):
             raise EvidenceError("capture_contract_invalid")
         observations = doc["observations"]
-        if set(observations) != set(FAMILIES):
+        if set(observations) != set(families):
             raise EvidenceError("capture_families_incomplete")
         starts, ends = [], []
         previous = None
-        for family in FAMILIES:
+        for family in families:
             obs = observations[family]
             start, end = (
                 instant(obs["retrieval_started_at"]),
@@ -169,6 +178,8 @@ def validate_capture(content: bytes) -> BrokerEvidence:
                 identifier(wallet["currency"])
                 number(wallet["currentValue"])
         for family in ("orders", "dividends", "transactions"):
+            if family not in observations:
+                continue
             identities = set()
             for row in observations[family]["records"]:
                 if family == "orders":
@@ -213,10 +224,10 @@ def evidence_payloads(evidence: BrokerEvidence):
     manifest["observations"] = {
         family: {key: value for key, value in observations[family].items() if key != "records"}
         | {"record_count": len(observations[family]["records"])}
-        for family in FAMILIES
+        for family in observations
     }
     yield "trading212_capture_manifest", canonical(manifest)
-    for family in FAMILIES:
+    for family in observations:
         observation = observations[family]
         context = {key: value for key, value in observation.items() if key != "records"}
         rows = (

@@ -47,12 +47,27 @@ class SessionApplicationDO(DurableObject):
                 from pydantic import SecretStr
 
                 stage = "application_configuration"
+                async def refresh():
+                    from js import Request
+                    import json
+
+                    response = await self.env.SYNC.fetch(
+                        Request.new("https://sync.internal/refresh", method="POST")
+                    )
+                    if response.status != 200:
+                        return {"status": "unavailable"}
+                    result = json.loads(await response.text())
+                    if result.get("status") not in {"succeeded", "deferred", "failed"}:
+                        return {"status": "unavailable"}
+                    return {"status": result["status"]}
+
                 async with hosted_application(
                     self.env.HYPERDRIVE,
                     origin=self.env.PUBLIC_ORIGIN,
                     project_ref=self.env.SUPABASE_PROJECT_REF,
                     publishable_key=SecretStr(self.env.SUPABASE_PUBLISHABLE_KEY),
                     login_csrf_key=SecretStr(self.env.LOGIN_CSRF_KEY),
+                    refresh=refresh,
                 ) as app:
                     stage = "request_adapter"
                     return await buffered_fetch(app, request, self.env, self.ctx)
