@@ -6,6 +6,14 @@ from workers import DurableObject, Response, WorkerEntrypoint
 _LOCK = asyncio.Lock()
 
 
+def post_request(url):
+    from js import Object, Request
+
+    options = Object.new()
+    options.method = "POST"
+    return Request.new(url, options)
+
+
 class BrokerSyncDO(DurableObject):
     async def fetch(self, request):
         from urllib.parse import urlsplit
@@ -37,18 +45,14 @@ class Default(WorkerEntrypoint):
     async def fetch(self, request):
         # workers_dev and preview URLs are disabled. Only the approved service
         # binding has access. Browser session/CSRF checks happen before dispatch.
-        from js import Request
         from urllib.parse import urlsplit
 
         if request.method != "POST" or urlsplit(request.url).path != "/refresh":
             return Response("Not found", status=404)
         stub = self.env.SYNC.get(self.env.SYNC.idFromName("shared-isa"))
-        return await stub.fetch(
-            Request.new("https://sync.internal/refresh", method="POST")
-        )
+        return await stub.fetch(post_request("https://sync.internal/refresh"))
 
     async def scheduled(self, controller, env, ctx):
-        from js import Request
 
         stub = self.env.SYNC.get(self.env.SYNC.idFromName("shared-isa"))
-        await stub.fetch(Request.new("https://sync.internal/scheduled", method="POST"))
+        await stub.fetch(post_request("https://sync.internal/scheduled"))

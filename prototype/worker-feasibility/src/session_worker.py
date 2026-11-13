@@ -49,11 +49,13 @@ class SessionApplicationDO(DurableObject):
                 stage = "application_configuration"
 
                 async def refresh():
-                    from js import Request
+                    from js import Object, Request
                     import json
 
+                    options = Object.new()
+                    options.method = "POST"
                     response = await self.env.SYNC.fetch(
-                        Request.new("https://sync.internal/refresh", method="POST")
+                        Request.new("https://sync.internal/refresh", options)
                     )
                     if response.status != 200:
                         return {"status": "unavailable"}

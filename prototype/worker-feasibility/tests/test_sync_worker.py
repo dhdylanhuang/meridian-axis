@@ -18,7 +18,10 @@ class SyncWorkerTests(unittest.IsolatedAsyncioTestCase):
                 WorkerEntrypoint=object, DurableObject=object, Response=Mock()
             ),
             "js": SimpleNamespace(
-                Request=SimpleNamespace(new=lambda url, **kw: (url, kw))
+                Object=SimpleNamespace(new=SimpleNamespace),
+                Request=SimpleNamespace(
+                    new=lambda url, options: (url, {"method": options.method})
+                ),
             ),
         }
         patcher = patch.dict("sys.modules", modules)
