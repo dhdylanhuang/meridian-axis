@@ -47,6 +47,7 @@ class SessionApplicationDO(DurableObject):
                 from pydantic import SecretStr
 
                 stage = "application_configuration"
+
                 async def refresh():
                     from js import Request
                     import json
