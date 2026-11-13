@@ -29,22 +29,31 @@ TABLES = (
     "storage.objects",
     "supabase_migrations.schema_migrations",
 )
+
+
 # Content hashes remain inside the encrypted archive. No real identifiers/amounts
 # are ever printed. C ordering makes source/restore comparison locale independent.
-CONTROLS_SQL = (
-    "SELECT jsonb_build_object("
-    + ",".join(
-        "'" + table + "', (SELECT jsonb_build_object('count', count(*), 'digest', "
-        "md5(COALESCE(string_agg(row_to_json(t)::text, E'\\n' "
-        "ORDER BY row_to_json(t)::text COLLATE \"C\"), ''))) FROM " + table + " t)"
-        for table in TABLES
+def controls_sql(revision):
+    if revision not in ("0005", "0006"):
+        raise RecoveryError("recovery_controls_invalid")
+    tables = TABLES + (("public.broker_snapshots",) if revision == "0006" else ())
+    return (
+        "SELECT jsonb_build_object("
+        + ",".join(
+            "'" + table + "', (SELECT jsonb_build_object('count', count(*), 'digest', "
+            "md5(COALESCE(string_agg(row_to_json(t)::text, E'\\n' "
+            "ORDER BY row_to_json(t)::text COLLATE \"C\"), ''))) FROM " + table + " t)"
+            for table in tables
+        )
+        + ", 'revision', (SELECT version_num FROM public.alembic_version), "
+        + (
+            "'public_tables', (SELECT jsonb_agg(tablename ORDER BY tablename) FROM pg_tables "
+            "WHERE schemaname='public')) AS controls;"
+        )
     )
-    + ", 'revision', (SELECT version_num FROM public.alembic_version), "
-    + (
-        "'public_tables', (SELECT jsonb_agg(tablename ORDER BY tablename) FROM pg_tables "
-        "WHERE schemaname='public')) AS controls;"
-    )
-)
+
+
+CONTROLS_SQL = controls_sql("0005")
 
 
 def run(args: list[str], *, data: bytes | None = None, timeout: int = 300) -> bytes:
@@ -58,27 +67,38 @@ def run(args: list[str], *, data: bytes | None = None, timeout: int = 300) -> by
 
 
 def controls(cli: Path, project: str) -> dict:
-    output = run(
-        [
-            str(cli),
-            "db",
-            "query",
-            f"--remote={project}",
-            "--file",
-            "/dev/stdin",
-            "--read-only",
-            "--output-format",
-            "json",
-            "--log-level",
-            "none",
-        ],
-        data=CONTROLS_SQL.encode(),
-        timeout=60,
-    )
+    command = [
+        str(cli),
+        "db",
+        "query",
+        f"--remote={project}",
+        "--file",
+        "/dev/stdin",
+        "--read-only",
+        "--output-format",
+        "json",
+        "--log-level",
+        "none",
+    ]
+    try:
+        revision = json.loads(
+            run(
+                command,
+                data=b"SELECT version_num AS revision FROM public.alembic_version;",
+                timeout=60,
+            )
+        )["rows"][0]["revision"]
+        query = controls_sql(revision)
+    except Exception:
+        raise RecoveryError("recovery_controls_invalid") from None
+    output = run(command, data=query.encode(), timeout=60)
     try:
         result = json.loads(output)["rows"][0]["controls"]
-        expected = sorted(t.split(".")[1] for t in TABLES if t.startswith("public."))
-        if result["revision"] != "0005" or result["public_tables"] != expected:
+        expected = sorted(
+            [t.split(".")[1] for t in TABLES if t.startswith("public.")]
+            + (["broker_snapshots"] if revision == "0006" else [])
+        )
+        if result["revision"] != revision or result["public_tables"] != expected:
             raise ValueError
         if any(result[t]["count"] for t in ("storage.buckets", "storage.objects")):
             raise RecoveryError("recovery_storage_objects_unsupported")

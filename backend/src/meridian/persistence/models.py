@@ -180,3 +180,30 @@ def _reject_mutation(_mapper, _connection, _target):
 for _immutable_model in (SourceRecord, AuditRecord):
     event.listen(_immutable_model, "before_update", _reject_mutation)
     event.listen(_immutable_model, "before_delete", _reject_mutation)
+
+
+class BrokerSnapshot(Base):
+    """Approved browser-safe projection; raw broker history remains closed."""
+
+    __tablename__ = "broker_snapshots"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["source_run_id", "account_id"],
+            ["import_log.id", "import_log.account_id"],
+            name="fk_snapshot_source_run_account",
+        ),
+        UniqueConstraint("source_run_id", "account_id", name="uq_snapshot_source_account"),
+        CheckConstraint("length(digest) = 64", name="ck_snapshot_digest_length"),
+        Index("ix_snapshot_account_observed", "account_id", "observed_at"),
+    )
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), nullable=False)
+    source_run_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    snapshot_json: Mapped[str] = mapped_column(Text, nullable=False)
+    digest: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+event.listen(BrokerSnapshot, "before_update", _reject_mutation)
+event.listen(BrokerSnapshot, "before_delete", _reject_mutation)

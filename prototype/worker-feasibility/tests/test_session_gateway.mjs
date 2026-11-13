@@ -191,3 +191,13 @@ test("only fixed same-origin sign-in assets are served and carry CSP", async () 
   assert.equal((await gateway.fetch(new Request(ORIGIN + '/?token=secret'), state.env)).status, 400);
   assert.equal(accessed, 1);
 });
+
+test('snapshot GET uses fixed object; no authorization header or query-selected account', async () => {
+  const state=setup();
+  const response=await gateway.fetch(request('/api/v1/portfolio/snapshot',{method:'GET',headers:{authorization:'Bearer discarded'}}),state.env);
+  assert.equal(response.status,200);assert.equal(state.requests.length,1);
+  assert.equal(state.requests[0].headers.get('authorization'),null);privateResponse(response);
+  const forbidden=setup();
+  assert.equal((await gateway.fetch(request('/api/v1/portfolio/snapshot?account=foreign',{method:'GET'}),forbidden.env)).status,400);
+  assert.equal(forbidden.requests.length,0);
+});

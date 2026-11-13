@@ -11,6 +11,8 @@ from pathlib import Path
 FILES = (
     "__init__.py",
     "app.py",
+    "application/__init__.py",
+    "application/snapshot_access.py",
     "persistence/__init__.py",
     "persistence/models.py",
     "persistence/types.py",

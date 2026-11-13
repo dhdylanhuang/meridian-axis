@@ -182,7 +182,14 @@ def test_backup_controls_fail_closed_on_unsupported_scope(monkeypatch, failure):
     else:
         data["public_tables"].append("unexpected_new_table")
     monkeypatch.setattr(
-        hosted_backup, "run", Mock(return_value=json.dumps({"rows": [{"controls": data}]}).encode())
+        hosted_backup,
+        "run",
+        Mock(
+            side_effect=[
+                json.dumps({"rows": [{"revision": data["revision"]}]}).encode(),
+                json.dumps({"rows": [{"controls": data}]}).encode(),
+            ]
+        ),
     )
     with pytest.raises(recovery.RecoveryError):
         hosted_backup.controls(Path("cli"), "a" * 20)

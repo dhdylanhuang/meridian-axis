@@ -1,6 +1,7 @@
 // Application session transport. Provider/database secrets belong to the private owner.
 const ROUTES = new Map([
   ["/health", "GET"],
+  ["/api/v1/portfolio/snapshot", "GET"],
   ["/api/v1/session/bootstrap", "GET"],
   ["/api/v1/session/current", "GET"],
   ["/api/v1/session/login", "POST"],
@@ -89,7 +90,7 @@ export default {
       if (request.url.includes("?") || request.url.includes("#")) {
         return failure("request_invalid", 400);
       }
-      if (["/", "/signin.js", "/signin.css"].includes(url.pathname) && env.ASSETS) {
+      if (["/", "/signin.js", "/signin.css", "/snapshot.js"].includes(url.pathname) && env.ASSETS) {
         if (request.method !== "GET") return failure("method_not_allowed", 405, { Allow: "GET" });
         const supplied = request.headers.get("origin");
         if (supplied !== null && supplied !== origin.origin) return failure("origin_invalid", 403);

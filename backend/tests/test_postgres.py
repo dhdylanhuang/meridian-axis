@@ -295,7 +295,7 @@ def test_postgres_upgrade_preserves_0001_evidence_and_fixes_retry_index(postgres
 def test_postgres_fresh_migration_matches_models(postgres_engine):
     with postgres_engine.connect() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_revision() == "0005"
+        assert context.get_current_revision() == "0006"
         assert compare_metadata(context, Base.metadata) == []
     _assert_private_tables(
         postgres_engine, include_auth=True, include_limiter=True, include_runtime=True

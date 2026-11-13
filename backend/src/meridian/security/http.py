@@ -229,8 +229,16 @@ class SessionHttp:
                 return self._issued(issued)
             token = self._cookie(request, SESSION_COOKIE)
             with self.database() as db, db.begin():
-                if operation == "current":
+                if operation in {"current", "snapshot"}:
                     principal = self.service.authenticate(db, token, now=now)
+                    if operation == "snapshot":
+                        from meridian.application.snapshot_access import read_snapshot
+
+                        snapshot = read_snapshot(db, principal.account_id)
+                        return private_response(
+                            snapshot if snapshot is not None else {"error": "snapshot_unavailable"},
+                            200 if snapshot is not None else 404,
+                        )
                     return private_response(
                         {
                             "subject": principal.subject,

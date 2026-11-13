@@ -1,6 +1,6 @@
 """Foundation HTTP surface. Financial routes are introduced with authentication."""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from starlette.datastructures import MutableHeaders
 
 from meridian.security.http import SessionHttp
@@ -17,7 +17,7 @@ class PrivateSessionResponses:
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] == "http" and scope["path"].startswith("/api/v1/session"):
+        if scope["type"] == "http" and scope["path"].startswith("/api/v1/"):
 
             async def private_send(message):
                 if message["type"] == "http.response.start":
@@ -43,6 +43,11 @@ def create_app(*, session_http: SessionHttp | None = None) -> FastAPI:
     )
     if session_http is not None:
         app.include_router(session_http.router())
+
+        @app.get("/api/v1/portfolio/snapshot")
+        async def snapshot(request: Request):
+            return await session_http.handle(request, "snapshot")
+
     # Includes framework 404/405; no CORS grant or automatic slash redirects.
     app.add_middleware(PrivateSessionResponses)
 

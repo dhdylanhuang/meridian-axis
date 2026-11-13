@@ -267,7 +267,7 @@ def test_migrated_role_denies_provisioning_other_accounts_and_arbitrary_buckets(
 
 def test_native_role_creation_rolls_back_after_a_late_policy_collision(postgres_schema):
     engine = postgres_schema
-    _execute_native_asset(engine, paths=SQL_PATHS[:-1])
+    _execute_native_asset(engine, paths=SQL_PATHS[:3])
     with engine.begin() as connection:
         schema = connection.scalar(text("SELECT current_schema()"))
         connection.exec_driver_sql(
@@ -291,7 +291,7 @@ def test_native_role_creation_rolls_back_after_a_late_policy_collision(postgres_
 
 def test_native_rejects_preexisting_role_without_adopting_or_altering_it(postgres_schema):
     engine = postgres_schema
-    _execute_native_asset(engine, paths=SQL_PATHS[:-1])
+    _execute_native_asset(engine, paths=SQL_PATHS[:3])
     with engine.begin() as connection:
         schema = connection.scalar(text("SELECT current_schema()"))
         role = "meridian_bff_" + schema

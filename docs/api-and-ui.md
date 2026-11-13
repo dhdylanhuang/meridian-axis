@@ -97,3 +97,11 @@ may change their password or receive an application session. The three fixed
 same-origin assets `/`, `/signin.js` and `/signin.css` contain no provider key,
 user identity or private data; CSP permits only this origin. Signed-in content
 currently confirms access and explicitly states that portfolio data is absent.
+
+## Authenticated broker snapshot — 13 November 2026
+
+`GET /api/v1/portfolio/snapshot` is the bounded first financial view. It uses the opaque same-origin application session and rechecks active membership for every request. No account identifier, filter or pagination parameter is accepted. Anonymous/expired/revoked/unrelated sessions are denied; Origin/authority checks and no-store privacy headers apply to success and error responses. The runtime reads only `broker_snapshots`, not raw broker history.
+
+Response fields come from the approved broker-reported projection: source/basis/environment/currency; exact decimal-string total value; reported investments/current value/cost/PnL; separately labelled cash components; holdings with reported quantity, instrument-currency price and account-currency value/cost/PnL; separate account/positions retrieval windows; unknown quote time; unavailable historical returns. Missing fields stay null. No broker account ID, source payloads, provider credentials or session token is returned. Empty storage returns 404 `snapshot_unavailable`; integrity/storage failure fails closed.
+
+AXIS shows reported account figures and HOLDINGS supplies search and exact-decimal sorting. Monetary values are formatted from strings without JavaScript Number coercion. Values are not summed to replace the broker total. The page explicitly describes a saved capture with automatic updates disabled; reloading reads saved storage and does not contact Trading 212. Sign-out, expired sessions and denied reads clear financial DOM/state; in-flight responses cannot repopulate it after clearing. The existing synthetic React preview remains separate.

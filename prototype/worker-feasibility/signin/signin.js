@@ -1,6 +1,8 @@
+import './snapshot.js';
 // Setup secret exists only in this closure; never storage, query strings or logs.
 const elements = Object.fromEntries([...document.querySelectorAll('[id]')].map(el => [el.id, el]));
 let setup = null;
+let expiryTimer;
 if (location.hash) {
   const fragment = new URLSearchParams(location.hash.slice(1));
   const hash = fragment.get('token_hash'), type = fragment.get('type');
@@ -10,13 +12,22 @@ if (location.hash) {
 }
 function message(text) { elements.message.textContent = text; }
 function signedIn(data) {
+  document.title = "Meridian · AXIS";
   setup = null;
   elements.auth.hidden = true;
   elements.workspace.hidden = false;
   elements.form.reset();
+  document.body.classList.add("signed-in");
+  window.meridianSnapshot.load();
+  clearTimeout(expiryTimer);
+  expiryTimer = setTimeout(() => { signedOut(); message("Your session ended. Sign in again."); }, Math.max(0, new Date(data.expires_at).getTime() - Date.now()));
   elements.expiry.textContent = `Session ends at ${new Date(data.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Sign in again afterwards.`;
 }
 function signedOut() {
+  document.title = "Meridian · Sign in";
+  clearTimeout(expiryTimer);
+  window.meridianSnapshot.clear();
+  document.body.classList.remove("signed-in");
   setup = null;
   elements.auth.hidden = false; elements.workspace.hidden = true; elements.form.reset();
   elements.title.textContent = 'Sign in'; elements.intro.textContent = 'Use your approved email address and password.';
@@ -77,3 +88,7 @@ elements.logout.addEventListener('click', async () => {
   } catch { message('Unable to connect. Try signing out again.'); }
   finally { elements.logout.disabled = false; }
 });
+
+window.addEventListener("meridian-session-ended", () => { signedOut(); message("Your session ended. Sign in again."); });
+window.addEventListener("pagehide", () => window.meridianSnapshot.clear());
+window.addEventListener("pageshow", event => { if (event.persisted) { signedOut(); request("current").then(async response => { if (response.ok) signedIn(await response.json()); }); } });

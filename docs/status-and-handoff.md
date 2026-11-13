@@ -10,6 +10,12 @@ Critical path: (1) native restricted runtime permissions and private credential/
 
 Current bounded delivery: minimal two-user sign-in completed; the owner has now confirmed successful browser sign-in. Partner browser confirmation remains pending. Hosted logical export and isolated local restore are now qualified; see the recovery checkpoint below. Live read-only capture is now verified locally. Durable hosted evidence acceptance and the broker-reported snapshot projection are now verified. Next: authenticated snapshot read access and the first financial screen. The owner clarified that Trading 212 figures are authoritative and full ledger reconciliation must not block the snapshot.
 
+## Snapshot access delivery in progress — 13 November 2026
+
+Current authorised slice: additive parity `0006` read model/RLS, authenticated snapshot endpoint and AXIS/HOLDINGS at the existing private sign-in origin. Values remain Trading 212 reported decimal strings; automatic hosted refresh is outside this slice. The pre-migration encrypted `0005` backup including broker evidence was created/read-back verified privately before changes. Source/authentication and raw evidence remain intact.
+
+Implementation and local checks are prepared; validation/native migration/deployment evidence will be recorded here after it is actually observed. Desktop browser inspection uses invented loopback fixtures; real portfolio data must not enter public test fixtures, screenshots or logs. Both users' actual endpoint access and anonymous denial must be qualified after deployment.
+
 ## Owner acceptance and next steps
 
 The owner reported **successful sign-in** after receiving the private setup link. This records owner browser acceptance; it does not claim an automated visual review, a full browser cookie-policy audit or partner browser acceptance. Both identities already passed the separate hosted API lifecycle checks below. Partner first-use confirmation remains pending; regenerate that user's private setup link if it expires, without publishing it or sending an unsolicited invitation.

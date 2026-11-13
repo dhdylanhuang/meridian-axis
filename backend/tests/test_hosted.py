@@ -52,6 +52,7 @@ def test_factory_bootstrap_and_anonymous_denial_without_connecting(monkeypatch):
                 assert len(boot.json()["csrf_token"]) == 43
                 assert "HttpOnly" in boot.headers["set-cookie"]
                 assert (await client.get("/api/v1/session/current")).status_code == 401
+                assert (await client.get("/api/v1/portfolio/snapshot")).status_code == 401
                 assert (await client.get("/openapi.json")).status_code == 404
                 foreign = await client.get(
                     "/api/v1/session/bootstrap", headers={"Origin": "https://other.invalid"}
@@ -175,6 +176,7 @@ def test_wired_provider_limiter_session_lifecycle(tmp_path, monkeypatch):
                 )
                 assert logout.status_code == 200
                 assert (await client.get("/api/v1/session/current")).status_code == 401
+                assert (await client.get("/api/v1/portfolio/snapshot")).status_code == 401
         with Session(engine) as db:
             assert db.get(LoginRateLimit, "shared-login").attempts == 1
             assert all(row.revoked_at is not None for row in db.scalars(select(AppSession)))

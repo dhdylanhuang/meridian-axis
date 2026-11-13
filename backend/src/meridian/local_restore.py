@@ -10,7 +10,7 @@ import re
 import time
 from pathlib import Path
 
-from meridian.hosted_backup import CONTROLS_SQL, run
+from meridian.hosted_backup import controls_sql, run
 from meridian.recovery import RecoveryError, load_archive
 
 
@@ -77,7 +77,7 @@ def restore(container: str, archive: Path, key_file: Path) -> dict:
     if not tables:
         raise RecoveryError("restore_copy_tables_missing")
     expected_sql = json.dumps(expected, sort_keys=True).replace("'", "''")
-    controls_select = CONTROLS_SQL.removesuffix(";")
+    controls_select = controls_sql(expected["revision"]).removesuffix(";")
     verify = (
         "DO $meridian_verify$ DECLARE actual jsonb; BEGIN SELECT controls INTO actual FROM ("
         + controls_select

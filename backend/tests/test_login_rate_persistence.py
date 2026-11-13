@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
-from sqlalchemy import insert, select
+from sqlalchemy import MetaData, insert, select
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 from test_auth_persistence import auth_engine as auth_engine
@@ -90,7 +90,7 @@ def _previous_rows(database):
         return {
             table.name: connection.execute(select(table).order_by(*table.primary_key.columns)).all()
             for table in Base.metadata.sorted_tables
-            if table.name != "login_rate_limits"
+            if table.name not in {"login_rate_limits", "broker_snapshots"}
         }
 
 
@@ -130,5 +130,9 @@ def test_limiter_upgrade_preserves_existing_evidence_membership_and_sessions(pri
     with database.connect() as connection:
         context = MigrationContext.configure(connection)
         assert context.get_current_revision() == "0004"
-        assert compare_metadata(context, Base.metadata) == []
+        baseline = MetaData()
+        for table in Base.metadata.sorted_tables:
+            if table.name != "broker_snapshots":
+                table.to_metadata(baseline)
+        assert compare_metadata(context, baseline) == []
         assert connection.execute(select(LoginRateLimit)).all() == []
