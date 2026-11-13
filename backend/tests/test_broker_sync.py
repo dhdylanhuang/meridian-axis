@@ -345,6 +345,19 @@ def test_sync_writer_can_publish_but_cannot_edit_sources_or_other_accounts(reque
     finally:
         event.remove(engine, "begin", restrict)
         event.remove(engine, "handle_error", capture_error)
+    from meridian.application.refresh_status import refresh_status
+
+    role = "meridian_bff_" + schema
+    event.listen(engine, "begin", restrict)
+    try:
+        with Session(engine) as db:
+            assert refresh_status(db, "shared-isa", NOW)["jobs"]["snapshot"]["error"] is None
+        with pytest.raises(DBAPIError), engine.begin() as connection:
+            connection.exec_driver_sql("SELECT checkpoint_json FROM broker_sync_jobs")
+        with pytest.raises(DBAPIError), engine.begin() as connection:
+            connection.exec_driver_sql("SELECT * FROM broker_event_revisions")
+    finally:
+        event.remove(engine, "begin", restrict)
 
 
 def test_cron_jitter_does_not_skip_the_next_minute(setup):
