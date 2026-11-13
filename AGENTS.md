@@ -2,24 +2,20 @@
 
 ## Read first
 
-1. Read [README](README.md), [documentation index](docs/README.md) and [current status](docs/status-and-handoff.md).
-2. Read [product requirements](docs/product-requirements.md), [architecture](docs/architecture.md) and the current stage in [development stages](docs/development-stages.md).
-3. Read the domain contract for your task. Read [agent workflow](docs/agent-workflow.md) before coordinating parallel work.
+1. Read [current status](docs/status-and-handoff.md) and [the next task brief](docs/next-milestone.md).
+2. Use [the documentation index](docs/README.md) to select the task's domain contract, relevant requirements, implementation and tests. Read architecture/ADRs when changing runtime or persistence.
+3. Read [agent workflow](docs/agent-workflow.md) before coordinating parallel work. Historical checkpoints are reference material for a specific evidence question.
 
-Current repository status: authenticated AXIS/HOLDINGS and ongoing read-only broker refresh are deployed at native parity `0007`. Scheduled minute refresh was verified on 13 November 2026 after owner-provisioned hosted broker credentials were bound. Trading 212 reported figures remain authoritative. The BFF reads approved snapshots and refresh health, while raw evidence stays closed. A separate restricted sync authority publishes complete generations. Normalized economics, historical returns, broader analytics and long-term retention/archive qualification remain open. Read the latest status before claiming completion.
+Current repository status: authenticated AXIS/HOLDINGS and ongoing read-only broker refresh are deployed at native parity `0007`. Minute cadence was verified on 13 November 2026. Trading 212 reported figures remain authoritative. Current status owns implementation evidence and unresolved gates.
 
-**Latest owner instruction, 13 November 2026:** stop development after fixing minute polling and await the next instruction. Minute polling is now verified. Scheduled service remains enabled.
+**Current owner scope, 13 November 2026:** reconcile documentation inconsistencies. Platform development awaits the next instruction after completed minute polling. Scheduled service remains enabled. Earlier project authority and private/free-service boundaries remain subject to the owner's latest task scope and platform execution approvals.
 
-**Development resumed at the owner's explicit request on 12 November 2026**, after the authorised 04:00 London restart time. Full project implementation, verification, commit/push and deployment permission continues. Preserve the historical pause checkpoint. Cloudflare OAuth and Supabase CLI management access are established on the personal laptop; Supabase hosted migrations retain their native GitHub delivery path.
-
-The owner reaffirmed full project implementation, verification, commit/push and deployment authority for this conversation, asking not to repeat project permission questions. Continue within the agreed private-data and free-services scope. Platform sandbox approvals remain separate execution constraints.
-
-**Usage constraint (latest owner instruction): minimise sub-agents and unnecessary rate-limit consumption.** The earlier owner-reported 34% remaining applied until 22:00 London on 12 November; that window has elapsed, and no new quota has been measured or reported. Continue one bounded critical-path stream, reusing existing work and targeted checks. Prioritise secure two-user access, verified broker ingestion/reconciliation and recovery. Defer cosmetic preview changes, extra screens and secondary analytics. Report components and remaining gaps accurately; the synthetic preview and passing tests do not constitute a working portfolio application.
+Minimise sub-agents and unnecessary rate-limit consumption. Use one bounded stream with targeted checks. Keep changes reviewable and preserve the supported requirements. Prior usage reports and time-based pauses are retained in [historical checkpoints](docs/status-history.md).
 
 ## Authority and scope
 
 - The user's latest explicit instruction takes precedence. Documentation does not grant permission to deploy, trade, commit, contact others or change the user's workbook.
-- A documentation request alone does not authorise application implementation, commits or publication. Follow the owner's latest explicit instruction for each action; the owner has now requested executing the plan with delegated agents, committing and pushing each verified stage, and eventual private hosting using free services only.
+- Follow the owner's latest task scope. Earlier project implementation, stage commit/push and private free-hosting authority persists where applicable. A documentation task does not by itself resume platform implementation or activate a proposed next task.
 - Preserve the original brief in `docs/context/original-brief.md` as historical context. Active requirements and recorded resolutions take precedence over its contradictions.
 - Distinguish CONFIRMED requirements, VERIFIED observations, ADOPTED engineering decisions, PROPOSED defaults and OPEN owner decisions. A plan is not a completed feature.
 - Do not promote an assistant suggestion into an owner-confirmed requirement. Use [decisions and questions](docs/decisions-and-questions.md) for unresolved choices.

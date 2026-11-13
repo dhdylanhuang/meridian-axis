@@ -2,7 +2,7 @@
 
 Great Dyke Meridian is a private portfolio monitoring app in development. **AXIS** is its main dashboard. Two people have separate logins with equal full editing rights for one owner's Trading 212 Stocks and Shares ISA.
 
-The hosted target is Cloudflare + Supabase PostgreSQL, with React, Vite, Tailwind CSS and ECharts. Python/FastAPI/SQLAlchemy remain the preferred backend where free-runtime feasibility checks pass. SQLite supports the verified local evidence tooling. Trading 212 is the primary broker-data source; CSV exports provide fallback and missing grouping metadata. A separate market-data adapter supplies prices and FX; yfinance compatibility still needs hosting verification.
+The hosted target is Cloudflare + Supabase PostgreSQL, with React, Vite, Tailwind CSS and ECharts. Python/FastAPI/SQLAlchemy remain the preferred backend where free-runtime feasibility checks pass. SQLite supports the verified local evidence tooling. Trading 212 is the primary broker-data source; CSV exports provide fallback and missing grouping metadata. A separate market-data adapter is planned for general prices and FX. Its yfinance candidate still needs hosting verification.
 
 ## Current status
 
@@ -10,7 +10,7 @@ The hosted target is Cloudflare + Supabase PostgreSQL, with React, Vite, Tailwin
 
 **Dashboard preview:** [Open Meridian AXIS](https://meridian-axis-preview.meridian-worker-feasibility.workers.dev). Explore AXIS, HOLDINGS and GROUPS with charts, search, sorting and group filters. All displayed values are invented demo fixtures; no account is connected. The static preview is separate from the private financial application.
 
-**Development resumed at the owner's request on 12 November 2026.** Continue from [status and handoff](docs/status-and-handoff.md). Stage 0H hosting qualification is the current gate; direct Cloudflare and Supabase management access is established.
+**Current work scope** is maintained in [status and handoff](docs/status-and-handoff.md). Documentation reconciliation follows the completed polling delivery. The handoff also records remaining capacity/recovery gates. Direct Cloudflare and Supabase management access is established.
 
 **Local foundation, broker adapter and snapshot-evidence slices are verified.** Exact-decimal persistence, migrations, evidence/audit records, isolated configuration, backup/restore and holdings CSV preview/atomic import are available. The broker adapter passes mocked HTTP tests, and an encrypted seven-family Live capture is now locally verified; bounded hosted broker refresh and the protected snapshot view are deployed. The default backend exposes liveness only; an explicitly configured secure session component also passes offline/CI tests. The synthetic preview is separate. The private app serves the approved broker snapshot; full Stage 1 economic replay and broader calculations remain open.
 
@@ -46,7 +46,7 @@ The reviewed Trading 212 position/history schemas do not expose the CSV's raw Sl
 
 ## Delivery order
 
-Begin with Stage 0 in the [development plan](docs/development-stages.md). In particular, establish actual historical coverage and cross-source identities, then resolve decisions that affect the first implementation task. Do not assume that every open decision blocks all progress.
+Start with [current status](docs/status-and-handoff.md) and [the proposed next task](docs/next-milestone.md). The [development plan](docs/development-stages.md) retains the wider roadmap. Completed setup and bootstrap steps remain historical evidence. Resolve historical coverage and cross-source identities when the selected task depends on them.
 
 This GitHub repository is public; the running app and portfolio data remain private. Real balances, position sizes, contribution amounts, source files, private notes, credentials, databases and backups must not be published. Documentation preserves methods and synthetic examples. Ignore rules protect local runtime inputs, but tracked/publication content must still be reviewed.
 

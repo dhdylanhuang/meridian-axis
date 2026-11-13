@@ -62,7 +62,7 @@ Resolve when a task depends on them, not as a pretext to stop all work. Do not r
 
 | ID | Question / evidence needed | Proposed handling meanwhile | Blocks |
 | --- | --- | --- | --- |
-| Q01 | One ISA confirmed; GBP primary currency confirmed; connected identity and history still need source verification | Verify connected identity/coverage; three PDFs inspected read-only; see statement contract; do not re-ask account scope | Full replay/since-inception claims |
+| Q01 | One ISA, GBP currency and connected account identity are confirmed; complete historical coverage remains to verify | Verify connected identity/coverage; three PDFs inspected read-only; see statement contract; do not re-ask account scope | Full replay/since-inception claims |
 | Q02 | Snapshot and three PDF structures verified; complete execution-history export/API aliases remain unverified | Slice=ticker, Total-row Name=group; see CSV contract | Transaction CSV parser and event dedupe |
 | Q03 | Owner confirms a cash-funded start with no earlier holdings/transfers. Captured account identity now matches the PDF ISA section; independently complete opening cash and historical calculated returns remain unestablished. | Show current observed positions with explicit historical limits | Complete NAV replay, cost basis and since-inception results |
 | Q05 | £100,000 goal settled; original 30 April date retained; timing/partial periods and scenario rates remain | Legacy model separate; actual contributions private | Final scenario output |
@@ -73,7 +73,6 @@ Resolve when a task depends on them, not as a pretext to stop all work. Do not r
 | Q12 | Weekly reliability minimum and desired short-horizon descriptive display? | Propose 20 weekly observations; daily minimum remains 60 | Final weekly/reliability controls |
 | Q13 | Calendar source/coverage, portfolio valuation cutoff and cross-market time convention? | Cache sourced schedules, store session dates and ages | Production cross-market daily alignment |
 | Q14 | Which provider can actually supply required intraday benchmark/FX freshness and its timestamps/delay? | Capability disclosure; no real-time promise | Guaranteed polling expectations, not scheduler skeleton |
-| Q17 | Least-privilege Worker database connection and later trusted administration | Cloudflare OAuth and synthetic deployments are verified. Supabase native schema deployment, CLI management login and a synthetic read-only SQL check are confirmed; the Worker driver/runtime credential remains open. Do not re-ask for confirmed project/tables or copy credentials here. | Worker-database/Auth tests and app deployment |
 | Q18 | Can representative workloads and 90-day lossless quote retention fit free runtime/storage budgets? | [Worker probe](worker-feasibility.md), Postgres parity and measured capacity gates; no silent scope reduction | Final hosted runtime/storage design |
 | Q15 | What dated data/definition supports VNRG/VUAG overlap, revenue currencies and broader look-through? | Explicit unavailable/coverage; do not hardcode 19% | Evidence-based detailed exposure results |
 
@@ -91,9 +90,10 @@ Use the [decision template](templates/decision-record.md) if a choice changes sh
 | Q07 | Tax engine deferred. ISA allowance is not a portfolio-value limit; no balance-triggered activation. |
 | Q08 | Re-arm after recovery; group >=10% running drawdown; portfolio >=2% largest peak-to-trough fall within two trading days. Optional hysteresis defaults to zero. |
 | Q16 | July date unknown. Preserve label/uncertainty, invent no date and do not ask repeatedly. Dividend coverage remains qualified. |
+| Q17 | Restricted BFF/sync roles, uncached TLS Hyperdrive origins, managed credentials and actual HTTPS access/denial checks are verified at `0007` for the deployed scope. Active-data credential rotation and expanded access remain separate operational work. |
 
 These drawdown rules do not define holding RAG (Q09) or tech stress (Q11). Resolve remaining questions at their dependent stage; no answer requires publishing personal source data.
 
 ## Implementation authorisation and hosting clarification
 
-On 11 November 2026 the owner authorised implementation, delegated agents and stage commits/pushes, then reaffirmed project-wide development/deployment authority during the personal-device resume. The owner requires free hosting services only and confirmed GBP account currency. The empty Supabase evidence schema and synthetic Cloudflare controls are deployed; the financial application remains behind security/recovery and capacity acceptance. Three statement PDFs were inspected privately; source coverage and alias gaps remain explicit. Routine engineering decisions remain delegated to the orchestrator.
+On 11 November 2026 the owner authorised implementation, delegated agents and stage commits/pushes, then reaffirmed project-wide development/deployment authority during the personal-device resume. The owner requires free hosting services only and confirmed GBP account currency. The private authenticated financial snapshot and ongoing broker refresh are now deployed at `0007`. Full economics, remaining screens, expanded recovery and long-term capacity retain their delivery gates. Three statement PDFs were inspected privately; source coverage and alias gaps remain explicit. Routine engineering decisions remain delegated to the orchestrator.

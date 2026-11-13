@@ -1,7 +1,7 @@
 # ADR 0003 - Python object runtime qualification
 
 - Date: **11 November 2026**.
-- Status: **ADOPTED engineering direction for the next Stage 0H checks**, not production acceptance.
+- Status: **ADOPTED runtime direction** on 11 November 2026, subsequently deployed for session/snapshot/broker-refresh scope by 13 November. General analytics and full capacity/recovery acceptance remain open.
 - Owner/reviewer: orchestrator and delegated runtime reviewers.
 - Requirements/questions: P02, QA01/QA02, Q17/Q18; depends on ADR 0001 and ADR 0002.
 
@@ -9,11 +9,11 @@
 
 The deployed synthetic Python/FastAPI Worker returns correct responses, but measured full-probe CPU exceeds the documented ordinary Free request budget. A native Python fetch control running the same functions also exceeds it. Removing ASGI alone therefore does not qualify this workload. Exact source commits, provider versions and timing samples live in [Worker feasibility](../worker-feasibility.md).
 
-A separately deployed JavaScript gateway calling the same FastAPI app inside a Python Durable Object passed three synthetic response checks. Its provider traces distinguish stateless gateway execution from object execution, with the gateway reporting 0 ms CPU at the exposed measurement precision. The object performs no storage calls. This gives a concrete candidate for retaining Python while continuing the approved Cloudflare/Supabase architecture.
+A separately deployed JavaScript gateway calling the same FastAPI app inside a Python Durable Object passed three synthetic response checks. Its provider traces distinguish stateless gateway execution from object execution, with the gateway reporting 0 ms CPU at the exposed measurement precision. The original synthetic probe object performed no storage calls. This gives a concrete candidate for retaining Python while continuing the approved Cloudflare/Supabase architecture.
 
 ## Decision
 
-Use the gateway/Python-object path for the **next synthetic database and runtime qualification**. Do not promote the ordinary Python HTTP Worker to the application runtime based on its successful responses. Keep the separately named controls distinct from the application and from each other.
+Use the gateway/Python-object path. The initial synthetic qualification progressed to the deployed private session and broker-refresh runtime. Do not promote the ordinary Python HTTP Worker to the application runtime based on its successful responses. Keep the separately named controls distinct from the application and from each other.
 
 The gateway owns routing/transport only. Authoritative financial calculations remain Python modules; the experiment is not permission to recreate them in JavaScript. Supabase remains application persistence, including durable leases, accepted checkpoints, sessions and audit. An object instance or its in-memory state does not establish job ownership, transaction correctness or durable financial state.
 
@@ -30,6 +30,10 @@ The SQLite-backed namespace is provider runtime infrastructure for Free eligibil
 
 The public synthetic gateway intentionally strips caller headers/body/query. It is **not** the production Auth/session boundary and must not be attached to financial credentials. A protected database diagnostic needs a separate least-privilege connection and explicit authentication before any credential is bound.
 
-Before production selection, verify actual account Free eligibility/quotas, object lifetime and aggregate daily duration, memory, representative analytics, external provider behavior, request-scoped database commit/rollback, authorization-context isolation, two-member Auth/CSRF, job fencing, retention capacity and independent restore. Successful synthetic traces are not the whole Stage 0H gate. The provider's CPU allowance and burst behavior must be interpreted from current documentation and actual outcomes rather than inferred from HTTP 200 alone.
+The original production-qualification gates required verification of actual account Free eligibility/quotas, object lifetime and aggregate daily duration, memory, representative analytics, external provider behavior, request-scoped database commit/rollback, authorization-context isolation, two-member Auth/CSRF, job fencing, retention capacity and independent restore. Successful synthetic traces are not the whole Stage 0H gate. The provider's CPU allowance and burst behavior must be interpreted from current documentation and actual outcomes rather than inferred from HTTP 200 alone.
 
-No Supabase schema or application-data backfill is included in this runtime experiment. [Architecture](../architecture.md), [current handoff](../status-and-handoff.md) and the requirement/question register consume this direction.
+No Supabase schema or application-data backfill was included in the original runtime experiment. [Architecture](../architecture.md), [current handoff](../status-and-handoff.md) and the requirement/question register consume this direction.
+
+## Deployed progression — 13 November 2026
+
+The JavaScript gateway dispatches HTTP session work and minute Cron signals to Python Durable Objects. Session-checked manual refresh reaches the same sync object. Its alarm persists a wake-up time so broker waits release the session request lock. Supabase continues to own financial evidence, leases, rate state, checkpoints, sessions and audit. Actual deployed snapshot/refresh evidence is recorded in [current status](../status-and-handoff.md). This acceptance covers that bounded workload. Future analytics, 90-day capacity and expanded recovery require their own measurements.

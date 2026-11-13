@@ -20,7 +20,7 @@ Status: planning risks, not evidence that failures have occurred in an implement
 | RSK14 | Login/CSRF/security deferred until financial UI is exposed | High | Security gate before usable financial endpoints | Stage 2 negative-path checks |
 | RSK15 | Backups cannot restore, or local SQLite evidence is mistaken for hosted recovery | High | SQLite online backup locally; encrypted hosted logical export and isolated local restore now verified; independent key custody, scheduling and replacement hosted recovery remain open | Stage 0H/1 then Stage 5 recovery |
 | RSK16 | Multiple agents redefine contracts or overwrite shared files | High | Bounded write sets, single migration owner, integration review | Every task handoff |
-| RSK17 | Scope overwhelms a local-model implementation | High | Small cohesive modules and vertical slices; no extra infrastructure | Stage-sized verified deliveries |
+| RSK17 | Scope overwhelms a local-model implementation | High | Small cohesive modules and vertical slices; no extra infrastructure | Task-sized verified deliveries |
 | RSK18 | Static look-through/currency evidence becomes stale or incomplete | Medium | Dated source/coverage, no inferred exposure claims | Stage 4/5 available/unavailable views |
 | RSK19 | Retention deletes evidence behind daily closes or alerts | High | Durable selected observations/references before tick deletion | Stage 5 retention/replay tests |
 | RSK20 | API beta contract or library defaults drift | High | Verify YAML, schema fixtures, explicit adapter options and versioned dependencies | Stage 0 plus adapter-change review |

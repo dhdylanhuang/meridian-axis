@@ -1,14 +1,14 @@
 # Documentation guide
 
-Baseline: **11 November 2026**. Implementation is authorised; see current status for verified delivery.
+Requirements baseline **11 November 2026**, reconciled **13 November 2026**. Current status owns deployment evidence and the latest owner work scope.
 
 This is the working specification for Great Dyke Meridian. Its purpose is to let an unfamiliar contributor implement a bounded task without reconstructing a conversation or inventing financial definitions.
 
 ## Reading routes
 
-**Owner:** product requirements → workbook baseline → development stages → decisions and questions → status and handoff.
+**Owner:** current status → next task brief → relevant requirements and open decisions.
 
-**Orchestrator:** current status → agent workflow → requirements → stage gates → architecture → relevant contracts → testing and acceptance.
+**Contributor:** current status → next task brief → relevant domain contract → affected code/tests. Read only the stage/ADR sections needed for the assignment.
 
 **Backend/data agent:** architecture → data model → Trading 212 integration → imports and reconciliation → relevant calculations → security and operations.
 
@@ -16,7 +16,7 @@ This is the working specification for Great Dyke Meridian. Its purpose is to let
 
 **Frontend agent:** API and UI → product requirements → calculation availability states → alerts → security and operations. The browser must not create a parallel financial calculation engine.
 
-For the next implementation session, read [the current milestone brief](next-milestone.md) after the latest status.
+For the next assignment, read [the proposed task brief](next-milestone.md) after the current status. Historical checkpoints are loaded only when their evidence is relevant.
 
 ## Authoritative homes
 
@@ -25,10 +25,10 @@ For the next implementation session, read [the current milestone brief](next-mil
 | [Product requirements](product-requirements.md) | Scope, requirement IDs, exclusions and changes to the original brief |
 | [Hosting decision](decisions/0001-cloudflare-supabase.md) | Approved production platform and superseded local assumptions |
 | [Hosted migration authority](decisions/0002-hosted-migration-authority.md) | One hosted schema writer with Alembic/model parity |
-| [Python object qualification](decisions/0003-python-object-qualification.md) | Measured ordinary-Worker CPU limitation and next synthetic runtime candidate |
+| [Python object qualification](decisions/0003-python-object-qualification.md) | Measured ordinary-Worker limitation and the adopted gateway/Python-object runtime |
 | [Supabase deployment](supabase-deployment.md) | Dedicated target, native GitHub settings and observed deployment gates |
 | [Worker feasibility](worker-feasibility.md) | Local/hosted controls, measured CPU limits and remaining qualification gates |
-| [Architecture](architecture.md) | Component responsibilities, dependency rules, runtime and proposed source tree |
+| [Architecture](architecture.md) | Component responsibilities, current runtime, dependency rules and target structure |
 | [Data model](data-model.md) | Identity, persistence, provenance, constraints and migrations |
 | [Stage 0 verification](stage-0-source-verification.md) | Direct YAML/JSON comparison, field coverage and remaining source gates |
 | [Hosted recovery](hosted-recovery.md) | Encrypted hosted exports, isolated local restore evidence and remaining recovery gates |
@@ -52,7 +52,9 @@ For the next implementation session, read [the current milestone brief](next-mil
 | [Decisions and questions](decisions-and-questions.md) | Design status, owner questions and defaults awaiting confirmation |
 | [Risk register](risk-register.md) | Material project risks and mitigations |
 | [Source register](source-register.md) | Primary references, verification dates and evidence limitations |
-| [Status and handoff](status-and-handoff.md) | Actual progress, outstanding work and next task |
+| [Status and handoff](status-and-handoff.md) | Authoritative current implementation, evidence and work scope |
+| [Next task brief](next-milestone.md) | Bounded proposed follow-up for owner selection |
+| [Historical checkpoints](status-history.md) | Archived delivery evidence and superseded task instructions |
 | [Original brief](context/original-brief.md) | Historical brief with personal workbook filename redacted; current decisions supersede it |
 | [Integration amendment](context/integration-amendment.md) | Owner's API-primary and polling revision, retained as historical source |
 

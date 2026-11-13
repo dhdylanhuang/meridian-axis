@@ -1,6 +1,6 @@
 # Development plan and stage gates
 
-Status: implementation, delegation, stage commits/pushes and private hosting are owner-authorised. Cloudflare + Supabase is the approved free production target. The [provider contract](stage-0-source-verification.md) and local foundation slices are verified; account-history/alias gates remain open. Stage 0H qualifies hosted runtime/storage before further production-specific work. See [ADR 0001](decisions/0001-cloudflare-supabase.md) and actual slice evidence in the handoff.
+Status, **13 November 2026:** this document defines the delivery roadmap and acceptance gates. [Current status](status-and-handoff.md) owns completed slices and the latest owner scope. Secure two-user broker views and minute refresh are deployed. Stage 1 evidence/import slices and parts of Stage 2 are verified. Full economic replay, daily market inputs, analytics and final operational acceptance remain open. Stage 0H retains unresolved capacity and workload gates.
 
 ## Delivery discipline
 
@@ -43,7 +43,7 @@ If a runtime cannot meet scope, record the measured limitation and propose the s
 
 ## Stage 1 — durable evidence, ledger and safe import
 
-**Progress:** local 1A, broker-adapter portion of 1B and snapshot-evidence portion of 1C verified; full Stage 1 and hosted parity remain open. See [status/handoff](status-and-handoff.md).
+**Progress:** foundation, broker observations, durable history revisions, holdings CSV evidence and Excel baseline evidence are implemented. Hosted parity `0007` is verified. Full Stage 1 remains open for economic replay, verified cross-source aliases, corporate-action economics and group workflows. See [current status](status-and-handoff.md).
 
 **Outcome:** accepted source data survives restart, replay is deterministic, and repeated imports do not change economics.
 
@@ -61,17 +61,17 @@ Quantity and recorded snapshot allocation can be reconciled here. Do not claim f
 
 ## Stage 2 — secure daily valuation and minimal useful dashboard
 
-**12 November owner clarification:** the initial financial snapshot uses Trading 212 reported account and position figures directly. Full ledger reconciliation is not a gate for this sourced snapshot; derived valuations/performance/analytics retain separate input/method requirements. Hosted evidence acceptance is verified, while authenticated financial snapshot access/UI remains the next delivery.
+**12 November owner clarification:** the initial financial snapshot uses Trading 212 reported account and position figures directly. Full ledger reconciliation is not a gate for this sourced snapshot; derived valuations/performance/analytics retain separate input/method requirements. Hosted evidence acceptance, authenticated snapshot access/UI and bounded refresh are now verified. Derived valuation and performance keep their own input gates.
 
 **Outcome:** both logins can inspect a trustworthy portfolio snapshot with clear source quality.
 
-**Entry:** evidence/import gate, supported quantities/cash and restored schema.
+**Entry:** accepted account-bound evidence and secure membership access support the broker-reported snapshot. Calculated valuations additionally require supported quantities/cash, price/FX inputs and their reconciliation controls.
 
 **Slices:**
 
 - **2A:** same-origin HTTPS, two approved Supabase Auth identities, secure session/CSRF and explicit portfolio membership, equal full-editor permissions, audited mutations and exact dev/prod origins. Reject unrelated authenticated users as well as anonymous requests. No financial API exposed without login.
 
-  Closed membership/session schema parity and the provider-verification/opaque-session services passed validation on 12 November 2026 (P01, S01, S02, QA01/QA02). Hosted parity `0003` and closed grants/RLS were inspected after promotion. This foundation adds no login route, real identity, runtime role or authorization policy. Application and HTTP acceptance remain open; see the current handoff.
+  Secure login/session access and approved snapshot/refresh routes are deployed for both identities. Native parity is `0007`. Actual HTTPS access/denial checks and the owner's browser sign-in are recorded in current status. Partner browser confirmation and remaining browser/operational checks are open.
 - **2B:** mapping UI/service, market-data adapter, explicit adjusted/unadjusted bases, daily price/FX cache, approved selections, ledger/broker reconciliation, GBP NAV and holding/group weights.
 - **2C:** minimal AXIS/HOLDINGS/GROUPS and source-history views; no invented return/risk cards. One scheduled-job authority, shared manual-job leases, durable backfill/checkpoints and job progress. No persistent in-process scheduler on Workers.
 - **2D:** basic quote monitoring with requested 60-second interval/capability disclosure, session calendars, stored observations, last-good/freshness, polling operation logs and authenticated SSE. End-session candidate remains provisional. Final alert/retention refinements are Stage 5.

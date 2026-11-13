@@ -1,6 +1,6 @@
 # Local development and recovery
 
-Local evidence foundation and snapshot-import slice, verified on **11 November 2026**. This provides durable evidence infrastructure, maintenance commands and a liveness endpoint. It is not yet a usable portfolio app. No financial HTTP endpoints, users, scheduler or frontend exist at this checkpoint. The newly approved Cloudflare/Supabase production target is under qualification; these SQLite commands are local tooling, not hosted deployment instructions.
+Reviewed **13 November 2026**. This guide covers local SQLite evidence tooling and verification commands. The hosted private application, financial snapshot routes and minute broker refresh are deployed separately at native parity `0007`. Local setup does not provision hosted users or recreate the production projects. [Current status](status-and-handoff.md) owns deployment evidence and active work scope.
 
 ## Install and verify
 

@@ -1,6 +1,6 @@
 # Supabase native GitHub deployment
 
-Reviewed **11 November 2026**. The owner reports creating a dedicated Supabase project and connecting this repository. Project reference **`ssqqjyrgrsjubxysobwy`** is a nonsecret identifier; it is not an API key or evidence that a deployment succeeded. [Project dashboard](https://supabase.com/dashboard/project/ssqqjyrgrsjubxysobwy)
+Reviewed **13 November 2026**. The dedicated project and native repository integration are established. Native parity `0007`, the restricted session/sync roles and preserved financial/member controls were independently inspected. Earlier bootstrap checkpoints below retain their historical scope. Project reference **`ssqqjyrgrsjubxysobwy`** is a nonsecret identifier; it is not an API key or evidence that a deployment succeeded. [Project dashboard](https://supabase.com/dashboard/project/ssqqjyrgrsjubxysobwy)
 
 The owner has now completed **Supabase CLI 3.1.0 browser login on the personal laptop**. Authenticated project inspection and a fixed synthetic read-only SQL check succeeded. The selected schema delivery path remains the **native Supabase GitHub integration**; administrative access does not add a second schema writer. Never request a database password, service-role key or persistent management token in chat or commit it to this public repository.
 
@@ -66,7 +66,7 @@ enabled = true
 enabled = false
 ```
 
-Use the committed file as the actual configuration; this excerpt is not a second configuration to maintain. PostgreSQL 17 is the tested foundation target, not an independently observed hosted server version. Check the actual version before making version-specific deployment assumptions. No database upgrade is implied by a local version field. [CLI database and seed configuration](https://supabase.com/docs/guides/local-development/cli/config)
+Use the committed file as the actual configuration; this excerpt is not a second configuration to maintain. PostgreSQL 17 is the tested foundation target. Hosted inspection also observed engine 17, as recorded above. Check the actual version before making version-specific deployment assumptions. No database upgrade is implied by a local version field. [CLI database and seed configuration](https://supabase.com/docs/guides/local-development/cli/config)
 
 After the Auth/session origin is ready and its settings are reviewed, an explicitly scoped remote entry can opt production into configuration changes. For example, the following is **future configuration, not part of the initial bootstrap**:
 
@@ -101,7 +101,7 @@ The initial release path is a temporary validation branch with automatic preview
 1. Open that exact GitHub commit and inspect its Checks/status details. Record any **actual Supabase-provided check name**, conclusion and Details URL alongside the full commit SHA. `Supabase Preview` appears in [preview-workflow guidance](https://supabase.com/docs/guides/deployment/branching/working-with-branches); it must not be invented as the required production check on this Free project. Backend Windows/Linux/Postgres CI checks are separate evidence.
 2. Follow the native integration's deployment Details link, or inspect the project's branch/deployment workflow logs in Supabase. Confirm the expected project, branch and commit. If the dashboard groups these under **Manage Branches → selected branch → View logs**, inspecting the existing production branch does not require enabling automatic previews.
 3. Verify `migrate` completed and the expected migration appears in history. With the initial no-remotes configuration, general Auth/API configuration is intentionally skipped; do not report signup as closed. If a later remote block is adopted, verify the intended settings actually applied. Seeding should be disabled; absent functions should not be mistaken for a missing application deploy.
-4. Verify the four application tables plus version marker, expected revision, accepted-hash partial index, RLS and revoked public/client grants. The project must contain no seeded financial rows. Do not paste data, account responses or secrets into a public issue/check log.
+4. Verify the expected tables and marker for the reviewed migration, accepted-hash uniqueness, RLS and intended grants. The initial bootstrap had four application tables plus its marker. Current parity `0007` has 12 public tables with reviewed BFF/sync role policies. The original bootstrap created no financial rows. Later upgrades must preserve approved existing evidence and identities. Do not paste data, account responses or secrets into a public issue/check log.
 
 Workflow step statuses are `CREATED`, `RUNNING`, `EXITED` (success), `PAUSED` (warning or intentional skip) and `DEAD` (failure). A failed health step can be a warning while later work continues; a dead migration blocks dependent seed/deploy steps. Therefore a green-looking summary or a warning alone does not replace checking the migration/configuration result. [Deployment monitoring and status meanings](https://supabase.com/docs/guides/deployment/branching/troubleshooting)
 
@@ -111,7 +111,7 @@ Do not hardcode a required GitHub check until its actual emitted name is observe
 
 First check the dedicated project, saved production-deploy toggle, `main`, working directory `.`, GitHub repository permission and presence of the pushed migration/config files. Check workflow logs for the exact commit rather than repeatedly reconnecting an unrelated app. Do not turn on paid previews as a workaround. Use a reviewed harmless config/schema change only when a fresh deployment trigger is actually needed; repeated dummy pushes are not a diagnosis.
 
-If native deployment remains unavailable, a trusted authenticated administrative device may use the documented Supabase CLI workflow instead, after recording it as the single writer for that release. Inspect the installed CLI's current help and plan the exact command before use; this guide does not guess flags or request credentials here. Manual execution in the project's SQL console is a last fallback, requiring the exact reviewed asset, transaction/history reconciliation and post-apply checks; do not execute it and then let the integration blindly reapply the same bootstrap.
+Native migration failures require inspection of the existing integration, commit and migration history under ADR 0002. An alternate hosted schema writer would require an explicit architecture decision that supersedes that ADR and reconciles delivery history. CLI management login by itself adds no alternate DDL path.
 
 ## Observed bootstrap outcome
 
@@ -119,8 +119,12 @@ The exact reviewed commit `caa0ccd36ce70a605459a71915cabba9a1f73899` passed [val
 
 The owner separately confirmed the four empty application tables and `alembic_version` containing `0002` in Table Editor. This establishes the initial empty-schema deployment through provider status and owner inspection. It does not establish an authenticated Management API connection, application Auth, runtime database access, source import or financial reconciliation. Preserve that distinction in future handoffs; do not keep asking for this same table check after it is confirmed.
 
-Hosted Auth, API routes, scheduled sync, market-provider access, streaming and backup/restore remain separate gates after this bootstrap.
+That bootstrap checkpoint preceded hosted Auth, financial routes and broker sync. These are now verified in current status. General market feeds, streaming and expanded recovery retain separate gates.
 
 ## Snapshot read model — 13 November 2026
 
 Validated source `e79fedc` was promoted only after Windows/Linux, all 71 PostgreSQL cases and Worker validation passed. Native GitHub applied `20261113000100_broker_snapshots.sql`; its emitted Supabase check succeeded, and independent SQL confirmed parity `0006`. Shared immutable DCL adds fixed-account SELECT on the approved snapshot table only. Raw evidence/import privileges, existing identity/session grants, role password and origin binding were preserved. Actual HTTPS snapshot reads subsequently passed for both approved identities through the deployed restricted driver. No Alembic upgrade or administrative DDL was run against the hosted database.
+
+## Ongoing broker sync — parity 0007
+
+Native GitHub delivery applied `20261113000200_broker_sync.sql` after validation-branch checks. Independent inspection verified parity `0007`, 12 RLS-enabled public tables, restricted sync role flags and preserved financial evidence, memberships and the existing BFF password. The additive tables are `broker_sync_jobs`, `broker_rate_limits` and `broker_event_revisions`. The BFF has selected health-column access. Its raw source/import/history denial remains in place. Current deployment and cadence evidence is recorded in [status](status-and-handoff.md).

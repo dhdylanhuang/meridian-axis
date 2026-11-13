@@ -14,7 +14,7 @@ Review baseline: **11 November 2026**. Links are primary sources. Provider/libra
 | SRC06 | Local holdings CSV | Verified [CSV contract](csv-contract.md); raw rows/digest/filename stay private |
 | SRC07 | Three local Trading 212 PDF statements | Read-only [structural/coverage inspection](statement-source-contract.md); no private values/paths/digests published or complete-history claim |
 
-The archived brief/amendment are historical source material, not active instructions to a future agent to build everything immediately. One real holdings CSV was inspected later in the same baseline; its schema is in [CSV contract](csv-contract.md). Execution-history CSV and authenticated broker responses remain uninspected.
+The archived brief/amendment are historical source material, not active instructions to a future agent to build everything immediately. One real holdings CSV was inspected later in the same baseline; its schema is in [CSV contract](csv-contract.md). Execution-history CSV remains uninspected. Authenticated seven-family broker capture and ongoing hosted snapshot refresh were subsequently verified; current status records their evidence boundaries.
 
 ## Broker integration
 

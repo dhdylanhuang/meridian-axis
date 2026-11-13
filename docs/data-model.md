@@ -1,6 +1,6 @@
 # Data model and invariants
 
-Status: ADOPTED target logical model; Stage 1A implements accounts, import_log, source_records and audit_log with initial migration and precise storage types. Broker-capture evidence acceptance now uses those existing tables, including a capture manifest and per-row financial observations; source facts do not book economic events. Parity `0006` also implements the closed immutable `broker_snapshots` browser projection with a fixed-account SELECT policy. Other tables below remain planned. Add tables when their delivery stage needs them; this model is not an instruction to build every table in Stage 1.
+Status, **13 November 2026:** the target logical model below includes planned entities. Native parity `0007` implements `accounts`, `account_members`, `app_sessions`, `login_rate_limits`, `import_log`, `source_records`, `audit_log`, `broker_snapshots`, `broker_sync_jobs`, `broker_rate_limits` and `broker_event_revisions`, plus `alembic_version`. Source observations and revisions book zero normalized economic events. Additional named entities remain planned unless explicitly identified as implemented. Current delivery evidence lives in [status](status-and-handoff.md).
 
 ## Production platform amendment
 
@@ -45,14 +45,17 @@ SQLite's [type-affinity documentation](https://www.sqlite.org/datatype3.html) ex
 | `benchmarks` | Configured role to verified instrument/provider series and return basis; reuse instrument prices, not duplicate them |
 | `risk_free` | Dated UK Bank Rate observations, source/manual override and effective interval |
 | `valuations`, `valuation_lines` | Run/session/as-of, basis, ledger/price/FX/group revisions, total cash/securities/NAV and holding/group components |
-| `baseline_snapshots`, `baseline_lines` | Original Excel label, known observation date/precision, recorded value/invested/dividends, group coverage, cell addresses, file hash and `excel_migration` |
+| `baseline_snapshots`, `baseline_lines` (target concepts; current Excel evidence uses `source_records`) | Original Excel label, known observation date/precision, recorded value/invested/dividends, group coverage, cell addresses, file hash and `excel_migration` |
 | `tax_runs`, `tax_matches` (DEFERRED) | Owner/security class/tax year, method version, matched acquisition quantities/costs, residual pool and provisional/completeness state |
 | `analytics_runs` | Input revision/hash, settings/method, window, frequency, coverage, result payload and quality; do not build a table per scalar statistic |
 | `thesis_notes` | Exactly one instrument or group target, dated text, optional review date, author and revision |
 | `alert_rules`, `alert_state`, `alerts` | Versioned thresholds, evaluation basis, durable arm state, excursion identity, observed values and acknowledgement |
 | `settings`, `settings_revisions` | Typed validated settings, scope, effective date, actor and before/after; secrets remain outside these tables |
 | `import_log` | CSV/Excel/API sync and polling-cycle outcomes, operation type, counts, hash/run, safe error, timing and actor; indexed/filtered by type |
-| `sync_checkpoints` | Account/history family and committed source watermark; advance only after successful commit |
+| `broker_sync_jobs` (implemented `0007`) | Fixed account/task, lease token/expiry, retry eligibility, attempt/success times, failure health and private page checkpoint. Completion advances with accepted source effects. |
+| `broker_rate_limits` (implemented `0007`) | Fixed account/allowlisted endpoint, atomically reserved next request time and durable provider reset/backoff. |
+| `broker_event_revisions` (implemented `0007`) | Append-only family/fill-or-reference identity, revision, source link, exact payload/digest and review quality. |
+| `sync_checkpoints` (target concept) | General future checkpoint abstraction. Broker history currently stores its bounded checkpoint in `broker_sync_jobs`; no separate table exists. |
 | `audit_log` | Append-only timestamp, actor/user or system job, action/entity, redacted before/after JSON, run and source hash |
 
 Supporting entities may be combined when invariants remain enforceable. Use ordinary relations instead of a generic entity-attribute-value financial ledger.

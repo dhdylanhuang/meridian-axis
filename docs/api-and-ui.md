@@ -1,8 +1,8 @@
 # Application API and user interface
 
-Status: ADOPTED design proposal, with the explicitly configured session component below verified in offline/CI tests. Other route families remain planned, **not existing endpoints and not Trading 212 endpoint paths**. Provider routes belong only in the broker adapter.
+Status, **13 November 2026:** session, portfolio snapshot, manual refresh and refresh-health routes below are deployed. The broader route-family and nine-tab tables describe the target design. Provider routes belong in the broker adapter. [Current status](status-and-handoff.md) owns deployment and acceptance evidence.
 
-The [deployed dashboard preview](https://meridian-axis-preview.meridian-worker-feasibility.workers.dev) implements AXIS, HOLDINGS and GROUPS as a standalone static interface with invented fixtures. It has no financial API or account connection. Other nine-tab requirements and real financial behavior remain unimplemented; see [preview evidence and limits](status-and-handoff.md#dashboard-preview-delivered---12-november-2026).
+The [deployed dashboard preview](https://meridian-axis-preview.meridian-worker-feasibility.workers.dev) implements AXIS, HOLDINGS and GROUPS as a standalone static interface with invented fixtures. It has no financial API or account connection. The private application separately serves real broker-reported AXIS/HOLDINGS data and refresh controls. The remaining target screens and calculated analytics are open. See [historical preview evidence](status-history.md#dashboard-preview-delivered---12-november-2026) and [current application status](status-and-handoff.md).
 
 ## Interface principles
 
@@ -10,9 +10,9 @@ Build a dense dark monitoring tool with legible numbers, compact sortable tables
 
 Use React/Vite/Tailwind and prefer ECharts for matrices and dense charts. Keep query state, persisted settings and transient scenario inputs distinct. Use generated/typed DTO contracts where useful; do not add a state-management framework solely because one might eventually be useful.
 
-## Common response and mutation contract
+## Target response and mutation contract
 
-Financial responses identify environment/account, as_of, result_version, currency, method, source/quality, observation count/coverage and unavailable reason. Use decimal strings for precise amounts and provider IDs, numeric floating-point values for explicitly analytical chart arrays. Missing means null with a reason, never zero. Date-only/session dates remain distinct from UTC timestamps.
+Future derived financial responses identify their fixed application scope, as_of, result_version, currency, method, source/quality, observation count/coverage and unavailable reason. The deployed broker snapshot follows the explicit projection contract below and omits the private broker account reference. Use decimal strings for precise amounts and provider IDs, numeric floating-point values for explicitly analytical chart arrays. Missing means null with a reason, never zero. Date-only/session dates remain distinct from UTC timestamps.
 
 List endpoints use bounded pagination and stable ordering. Sort/filter holdings and transaction lists server-side when needed; the frontend must not invent economics from a filtered page. Every mutation validates input, checks an authenticated full-editor session and CSRF, accepts an expected revision for conflict detection, commits audit with the change and returns the new revision. Unknown concurrent revision produces a conflict rather than silently losing another user's edit.
 
@@ -51,7 +51,7 @@ Final methods/schemas are established in the implementation task and FastAPI Ope
 | `POST /api/v1/session/rotate` | Exact Origin and bound CSRF header; consume old session, issue new token/nonce and preserve original expiry |
 | `POST /api/v1/session/logout` | Exact Origin and bound CSRF header; atomically revoke/audit, then expire cookies |
 
-All session routes require the configured HTTPS authority; foreign Origin headers are rejected on reads, and mutations require Origin. No forwarded header can choose the accepted authority. Cookies use `__Host-` names, Secure, SameSite=Strict, Path=/ and no Domain; the authentication cookie is HttpOnly, while the independent CSRF cookie is browser-readable. Authentication/provider tokens never enter response JSON. Responses are non-cacheable, including route/method failures; automatic slash redirects are disabled. Login accepts at most 8 KiB streamed JSON with exactly string `email`/`password` fields and rejects duplicate keys; fixed errors never echo credentials. Cookie issuance follows commit. These routes do not perform provider refresh or extend a session beyond its original expiry, and are not a usable portfolio application. The empty hosted transport now passes actual HTTPS denial, prelogin-cookie and shared-limiter qualification; positive setup/login/session/logout for both approved identities now passes actual HTTPS checks. Browser acceptance remains open. All current routes are finite JSON, with direct ASGI privacy-header middleware; adding streaming/background work requires new resource-lifecycle qualification.
+All session routes require the configured HTTPS authority; foreign Origin headers are rejected on reads, and mutations require Origin. No forwarded header can choose the accepted authority. Cookies use `__Host-` names, Secure, SameSite=Strict, Path=/ and no Domain; the authentication cookie is HttpOnly, while the independent CSRF cookie is browser-readable. Authentication/provider tokens never enter response JSON. Responses are non-cacheable, including route/method failures; automatic slash redirects are disabled. Login accepts at most 8 KiB streamed JSON with exactly string `email`/`password` fields and rejects duplicate keys; fixed errors never echo credentials. Cookie issuance follows commit. Session rotation preserves original expiry. Supabase provider-token refresh remains unimplemented, so expiry requires a fresh login. Broker data refresh uses the separate authenticated portfolio route. Both approved identities passed hosted setup/login/session/logout checks, and the owner confirmed browser sign-in. Partner browser confirmation and the remaining browser audit are open. All current routes are finite JSON, with direct ASGI privacy-header middleware; adding streaming/background work requires new resource-lifecycle qualification.
 
 ## Nine-tab contract
 
@@ -93,10 +93,10 @@ Use representative invented data including 100 holdings and a dense matrix, not 
 The minimal onboarding page adds `POST /api/v1/session/setup` under the same
 transport protections as login. Exact JSON fields are `token_hash`, `type`
 (`signup` or `recovery`) and `password` (12–128 characters). Only active members
-may change their password or receive an application session. The three fixed
-same-origin assets `/`, `/signin.js` and `/signin.css` contain no provider key,
-user identity or private data; CSP permits only this origin. Signed-in content
-currently confirms access and explicitly states that portfolio data is absent.
+may change their password or receive an application session. The four fixed
+same-origin assets `/`, `/signin.js`, `/snapshot.js` and `/signin.css` contain no
+provider key, user identity or private data. CSP permits only this origin.
+Signed-in content retrieves the approved portfolio snapshot after authorization.
 
 ## Authenticated broker snapshot — 13 November 2026
 
@@ -104,4 +104,13 @@ currently confirms access and explicitly states that portfolio data is absent.
 
 Response fields come from the approved broker-reported projection: source/basis/environment/currency; exact decimal-string total value; reported investments/current value/cost/PnL; separately labelled cash components; holdings with reported quantity, instrument-currency price and account-currency value/cost/PnL; separate account/positions retrieval windows; unknown quote time; unavailable historical returns. Missing fields stay null. No broker account ID, source payloads, provider credentials or session token is returned. Empty storage returns 404 `snapshot_unavailable`; integrity/storage failure fails closed.
 
-AXIS shows reported account figures and HOLDINGS supplies search and exact-decimal sorting. Monetary values are formatted from strings without JavaScript Number coercion. Values are not summed to replace the broker total. The page explicitly describes a saved capture with automatic updates disabled; reloading reads saved storage and does not contact Trading 212. Sign-out, expired sessions and denied reads clear financial DOM/state; in-flight responses cannot repopulate it after clearing. The existing synthetic React preview remains separate.
+AXIS shows reported account figures and HOLDINGS supplies search and exact-decimal sorting. Monetary values are formatted from strings without JavaScript Number coercion. Values are not summed to replace the broker total. The browser retrieves the last successfully published snapshot every 60 seconds. Scheduled jobs refresh Trading 212 separately during relevant sessions. The Reload saved snapshot control reads approved storage, and Refresh Trading 212 queues authenticated broker work. Sign-out, expired sessions and denied reads clear financial DOM/state; in-flight responses cannot repopulate it after clearing. The existing synthetic React preview remains separate.
+
+## Authenticated broker refresh — 13 November 2026
+
+| Route | Deployed contract |
+| --- | --- |
+| `POST /api/v1/portfolio/refresh` | Require active membership, session, exact Origin and bound CSRF token. Return 202 with `status=queued` after persisting a durable alarm in the fixed sync object. |
+| `GET /api/v1/portfolio/refresh/status` | Require active membership/session. Return target interval, unknown quote age and approved per-task attempt/success/retry/failure health. Private checkpoints and lease tokens are excluded. |
+
+Gateway routes reject query-selected accounts and request bodies on refresh. Manual and scheduled work share database leases and endpoint reservations. A queued acknowledgement records delivery of a signal. Completion is observed through health and the next published snapshot. Published financial values and their original retrieval times remain available on failure. The current browser transport is authenticated periodic pull. SSE and a general job-ID/progress API remain target capabilities.

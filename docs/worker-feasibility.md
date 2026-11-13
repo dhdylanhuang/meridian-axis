@@ -1,6 +1,6 @@
 # Python Workers feasibility evidence
 
-Reviewed **11 November 2026**. The owner selected Cloudflare + Supabase, with free services only. The original local experiment below used no account, hosted deployment, credentials or database. The resumed hosted experiment now verifies synthetic response compatibility but **does not qualify ordinary Free CPU fit**. Neither experiment establishes production readiness.
+Evidence through **13 November 2026**. The owner selected free Cloudflare + Supabase hosting. The dated experiments below record the runtime decision and its limitations. The gateway/Python-object architecture now serves the private session/snapshot/broker-refresh workload. [Current status](status-and-handoff.md) owns that deployed acceptance. General analytics, long-term capacity and expanded recovery remain open. The original ordinary Python Worker controls exceeded their measured Free CPU budget.
 
 ## Session runtime qualification — 12 November 2026
 
@@ -15,8 +15,9 @@ direct privacy-header middleware; finite JSON response checks and cancellation
 cleanup protect request-owned resources. No request-header tail was used.
 
 Source `8184b74` is retained remotely; final lint/test-only follow-up `2625982`
-passes backend CI. No actual user login, financial workload, load/capacity or
-recovery acceptance is claimed. Exact checks, failed-attempt cleanup and remaining
+passed backend CI. That checkpoint preceded actual user login and financial
+workloads. Later snapshot/refresh and recovery acceptance is recorded in current
+status, while load/capacity qualification remains open. Exact checks, failed-attempt cleanup and remaining
 gates are in [status/handoff](status-and-handoff.md). Cloudflare describes its
 [Python deployment snapshot lifecycle](https://developers.cloudflare.com/workers/languages/python/how-python-workers-work/).
 
@@ -97,7 +98,7 @@ All outcomes were `ok`, with no reported exception. Gateway CPU **reported** 0 m
 
 ### Protected database control preparation at pause
 
-The next control is implemented but **has not been deployed**. `database_worker.py` wraps the fixed `run_database_probe(connect)` operation inside a Python object with an isolate-level asyncio lock and a fresh pg8000 connection per invocation. `database_gateway.mjs` requires a generated bearer secret, verifies it with WebCrypto HMAC, and forwards only the fixed synthetic route. Missing/wrong authentication fails closed; no caller credentials/body/query reach the object.
+At this historical pause, the next control was implemented but **had not been deployed**. `database_worker.py` wraps the fixed `run_database_probe(connect)` operation inside a Python object with an isolate-level asyncio lock and a fresh pg8000 connection per invocation. `database_gateway.mjs` requires a generated bearer secret, verifies it with WebCrypto HMAC, and forwards only the fixed synthetic route. Missing/wrong authentication fails closed; no caller credentials/body/query reach the object.
 
 `database_probe.py` uses only a transaction-local TEMP table with `ON COMMIT DROP`, fixed invented numeric/timestamp inputs, a deliberate SQLSTATE 23505 failure, savepoint rollback and post-commit table-removal check. Its result explicitly sets `durable_commit_verified: false`: temporary data does not establish durable evidence/import acceptance. Errors return bounded categories without driver text. Connection/cursor cleanup is covered by offline tests.
 
@@ -215,7 +216,9 @@ NumPy, pandas, SciPy and scikit-learn appear in the current Pyodide package cata
 
 yfinance currently declares dependencies including `curl_cffi`, lxml, NumPy, pandas and websockets. It is not a pure-Python HTTP wrapper that can be assumed portable unchanged. Its complete Workers wheel resolution and real network behavior remain unverified; this experiment makes no claim that it works or is impossible. Keep the narrow market-provider interface and verify the chosen source before introducing a replacement or reducing requested coverage. [yfinance dependency manifest](https://github.com/ranaroussi/yfinance/blob/main/pyproject.toml)
 
-## Unresolved hosted gates
+## Original hosted qualification gates
+
+These gates describe the initial probe checkpoint. Later sections record qualification progress, and [current status](status-and-handoff.md) owns the deployed acceptance and remaining work.
 
 1. **Free runtime CPU and memory:** current Free limits include 10 ms CPU per HTTP/Cron invocation and 128 MB memory. Local elapsed request times include tool/runtime overhead and are not hosted CPU measurements. Profile actual authentication, Decimal parsing, import validation, sync and a representative correlation calculation in the intended hosted environment before promising fit. Network waiting is different from CPU consumption. [Runtime limits](https://developers.cloudflare.com/workers/platform/limits/)
 2. **Actual database behavior:** prove exact Decimal-string/Postgres numeric round-trip, committed and rolled-back import generations, dedupe races, immutable evidence/audit guards, timezone round-trip, pooler/TLS behavior and source-backed restore. A successful `create_engine` without `connect` is not any of these tests.
