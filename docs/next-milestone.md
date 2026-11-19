@@ -1,10 +1,10 @@
-# Proposed next task
+# Storage capacity review — completed report
 
-Reviewed **13 November 2026**. The ten-minute refresh/query-reduction incident fix was deployed on 19 November at `073ffca`. Post-reset live verification remains open. Earlier minute cadence was verified on 13 November. Current application state, evidence and work scope are maintained in [status and handoff](status-and-handoff.md). The completed refresh brief is retained in [historical checkpoints](status-history.md#archived-broker-refresh-milestone-brief).
+Reviewed **19 November 2026**. The ten-minute refresh/query-reduction incident fix was deployed on 19 November at `073ffca`. Post-reset live verification remains open. Earlier minute cadence was verified on 13 November. Current application state, evidence and work scope are maintained in [status and handoff](status-and-handoff.md). The completed refresh brief is retained in [historical checkpoints](status-history.md#archived-broker-refresh-milestone-brief).
 
 ## Candidate outcome
 
-**PROPOSED for owner selection:** produce a measured 90-day storage budget and a concrete retention/archive proposal for the existing free Cloudflare/Supabase deployment. Related requirements are P02, L03, O01 and QA02, with open question Q18.
+**Owner-selected report completed:** [storage capacity and retention proposal](storage-capacity-report.md) records measured inputs, modeled overhead, limits and a conditional archive design. The assignment was to produce a measured-input 90-day storage budget and a concrete retention/archive proposal for the existing free Cloudflare/Supabase deployment. Related requirements are P02, L03, O01 and QA02, with open question Q18.
 
 The review should account for immutable refresh sources, approved projections, import/audit rows, indexes, history revisions and held-listing metadata. Report measured data and assumptions separately. Preserve the owner-amended ten-minute session target and the requested 90-day observations. A shorter retention period or reduced sampling requires an owner scope decision.
 
@@ -25,3 +25,5 @@ Acceptance requires reproducible measurement commands, exact precision/provenanc
 ## Other open work
 
 Normalized economics and corporate-action review, transaction CSV aliases, groups, daily market inputs, performance and analytics remain on the development plan. Choose those through a separate bounded brief when directed. The original seven-family capture and deployed refresh already supply broker observations.
+
+The next smallest proposed action is one bounded post-reset physical-storage measurement. Archive implementation remains a separate selected task. This report changed no production data or configuration and ran no application tests or CI.

@@ -4,7 +4,9 @@ Reviewed **19 November 2026**. This file is the authoritative implementation sna
 
 ## Current work scope
 
-The owner authorized reducing Hyperdrive queries after reported account-wide daily query exhaustion and changing automatic refresh from 60 seconds to **ten minutes**. The fix was validated on `fix/ten-minute-query-budget`, promoted to `main` and deployed at **`073ffca`**. It includes hidden-tab pause, failure backoff, manual cooldown, batched history revision comparisons, combined snapshot/health reads and fewer coordination statements. The deployed Cron is `*/10 * * * *` (144 scheduled slots/day). The [next task brief](next-milestone.md) remains a separate capacity follow-up.
+The owner selected step 2: the storage/retention report, completed in [the capacity report](storage-capacity-report.md). Existing private aggregate measurements were reused and arithmetic calculated once. No production queries, exports, schema/runtime changes, application tests or CI were needed. The report does not qualify physical capacity: the around-the-clock raw envelope exceeds the free allowance, while a generic compressed scenario may fit. Current physical usage, actual compression and backup egress remain open. The next smallest proposed action is one bounded post-reset aggregate measurement; archive implementation requires a separate selected task.
+
+The ten-minute refresh/query-reduction fix remains deployed at `073ffca`, with Cron `*/10 * * * *`. Its post-reset incident verification remains open.
 
 **Validation discipline, explicit owner instruction on 19 November:** avoid unnecessary tests/checks and repeated validation. Run targeted checks for changed behaviour, reuse passing results and broaden/repeat only for new changes, failures or unresolved risk. Avoid repeated CI polling and live probes, especially during quota exhaustion. Preserve results and outstanding steps here for resumed agents.
 
@@ -49,6 +51,6 @@ Private deployment IDs, receipts, source values, credential material and recover
 
 ## Remaining delivery
 
-The immediate proposed follow-up is storage and retention qualification. Private sizing indicates that 90 days of full refresh evidence/projections can exceed or severely pressure the free database allowance before indexes, audit and history overhead. Lossless archive design, scheduled retention/backups and independent key custody remain open. Replacement hosted Auth/browser recovery and active-data credential rotation also remain open.
+The measured-input [storage report](storage-capacity-report.md) is complete. Physical qualification remains open: ten-minute compressed retention may fit, but around-the-clock raw retention exceeds the database allowance. Lossless archive design, scheduled retention/backups and independent key custody remain open. Replacement hosted Auth/browser recovery and active-data credential rotation also remain open.
 
 Other supported requirements include normalized ledger/cash/quantity reconciliation, verified transaction CSV aliases, group mapping/editing, daily prices/FX and approved closes, historical performance, projections, correlation/risk, remaining screens and alerts. Tax remains owner-deferred. The contracts in [the documentation index](README.md) retain those requirements.
