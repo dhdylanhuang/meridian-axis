@@ -4,7 +4,7 @@ Reviewed **19 November 2026**. This file is the authoritative implementation sna
 
 ## Current work scope
 
-The owner authorized reducing Hyperdrive queries after reported account-wide daily query exhaustion and changing automatic refresh from 60 seconds to **ten minutes**. The fix is in progress on `fix/ten-minute-query-budget`. It includes hidden-tab pause, failure backoff, manual cooldown, batched history revision comparisons, combined snapshot/health reads and fewer coordination statements. Runtime deployment is not yet complete. The [next task brief](next-milestone.md) remains a separate capacity follow-up.
+The owner authorized reducing Hyperdrive queries after reported account-wide daily query exhaustion and changing automatic refresh from 60 seconds to **ten minutes**. The fix was validated on `fix/ten-minute-query-budget`, promoted to `main` and deployed at **`073ffca`**. It includes hidden-tab pause, failure backoff, manual cooldown, batched history revision comparisons, combined snapshot/health reads and fewer coordination statements. The deployed Cron is `*/10 * * * *` (144 scheduled slots/day). The [next task brief](next-milestone.md) remains a separate capacity follow-up.
 
 **Validation discipline, explicit owner instruction on 19 November:** avoid unnecessary tests/checks and repeated validation. Run targeted checks for changed behaviour, reuse passing results and broaden/repeat only for new changes, failures or unresolved risk. Avoid repeated CI polling and live probes, especially during quota exhaustion. Preserve results and outstanding steps here for resumed agents.
 
@@ -12,7 +12,7 @@ The owner authorized reducing Hyperdrive queries after reported account-wide dai
 
 [Open Meridian](https://meridian-axis-session-gateway.meridian-worker-feasibility.workers.dev/) serves authenticated AXIS and HOLDINGS for two approved identities sharing one GBP Stocks ISA. Both users have equal application permissions. The separate [React preview](https://meridian-axis-preview.meridian-worker-feasibility.workers.dev) contains invented data.
 
-- Deployed application source is **`0410a8e`**. Supabase native schema parity is **`0007`**, with 12 public tables and RLS enabled. Native GitHub migrations own hosted DDL.
+- Deployed application source is **`073ffca`**. Supabase native schema parity is **`0007`**, with 12 public tables and RLS enabled. Native GitHub migrations own hosted DDL.
 - Trading 212 reported account/cash/position figures are authoritative. Exact decimal strings, separate retrieval windows, missing fields and unknown market quote age remain visible. Historical returns are unavailable.
 - Scheduled refresh targets **ten minutes during relevant regular sessions**, per the 19 November owner amendment. Cron dispatch runs in the JavaScript gateway. Python Durable Objects execute bounded work, with PostgreSQL task leases, endpoint reservations and retry state. Unknown schedule coverage permits conservative polling.
 - Manual refresh requires membership, session, Origin and CSRF checks. It queues a durable alarm promptly. Evidence, approved snapshot publication, success health and audit commit together. Failures preserve the last successful snapshot.
@@ -33,7 +33,9 @@ Six Excel baseline observations are accepted into private hosted evidence with e
 
 Validation-branch CI passed at `b79b90a`: [backend checks](https://github.com/dhdylanhuang/meridian-axis/actions/runs/44605588558) passed Windows/Linux and PostgreSQL, including native restricted-role/concurrency checks; [Worker checks](https://github.com/dhdylanhuang/meridian-axis/actions/runs/44605588372) passed Linux/macOS. A subsequent browser-only refinement applies the same failure pause to manual POST errors; its new targeted test passed (one test, seven unrelated cases deselected). Backend and Worker Python sources are unchanged from passing CI. Per owner instruction, reuse these results rather than retriggering the same CI matrices for promotion/documentation.
 
-Pending: source promotion and existing Worker updates preserving secrets/origins. No schema migration or live SQL measurement is required. Do not repeatedly probe the exhausted service; after deployment use bounded nonfinancial asset/config checks and defer authenticated cadence/account usage verification until reset. See [query budget](market-data-and-polling.md#hyperdrive-query-budget--19-november-incident).
+Actual 19 November deployment: all three existing Workers (sync, session owner and gateway) updated at `073ffca`. Cloudflare's schedule API reported exactly `*/10 * * * *`. Three nonfinancial asset reads confirmed the ten-minute UI notice, new polling code and updated sign-in lifecycle. Managed secret/Hyperdrive binding sets and the existing uncached TLS origin profiles were preserved. No schema, credential or evidence changes were made. The private deployment receipt retains previous versions for rollback.
+
+**Remaining incident verification:** the owner-reported free query allowance resets at 00:00 UTC on 20 November. Do not claim login recovery, actual ten-minute broker cadence or a measured daily query reduction from deployment/configuration checks. Authenticated cadence and provider-reported account/configuration usage remain unverified until a bounded post-reset check. Avoid repeated probes or rerunning passing CI. Old open tabs need one reload to receive the new browser polling policy. See [query budget](market-data-and-polling.md#hyperdrive-query-budget--19-november-incident).
 
 Earlier deployed acceptance, 13 November:
 

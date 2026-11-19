@@ -1,6 +1,6 @@
 # Proposed next task
 
-Reviewed **13 November 2026**. The ten-minute refresh/query-reduction incident fix is the active task. Earlier minute cadence was verified on 13 November. Current application state, evidence and work scope are maintained in [status and handoff](status-and-handoff.md). The completed refresh brief is retained in [historical checkpoints](status-history.md#archived-broker-refresh-milestone-brief).
+Reviewed **13 November 2026**. The ten-minute refresh/query-reduction incident fix was deployed on 19 November at `073ffca`. Post-reset live verification remains open. Earlier minute cadence was verified on 13 November. Current application state, evidence and work scope are maintained in [status and handoff](status-and-handoff.md). The completed refresh brief is retained in [historical checkpoints](status-history.md#archived-broker-refresh-milestone-brief).
 
 ## Candidate outcome
 
