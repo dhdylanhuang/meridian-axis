@@ -1,9 +1,15 @@
 """Private broker sync entrypoint with one shared manual/scheduled authority."""
 
 import asyncio
+import time
 from workers import DurableObject, Response, WorkerEntrypoint
 
 _LOCK = asyncio.Lock()
+_SIGNAL_LOCK = asyncio.Lock()
+
+
+def deadline(value):
+    return value if isinstance(value, (int, float)) else 0
 
 
 class BrokerSyncDO(DurableObject):
@@ -14,11 +20,22 @@ class BrokerSyncDO(DurableObject):
         if request.method != "POST" or path not in {"/refresh", "/scheduled"}:
             return Response("Not found", status=404)
         if path == "/refresh":
-            import time
-
-            # A durable signal acknowledges immediately while broker work runs
-            # independently of the session object's serialised request lock.
-            await self.ctx.storage.setAlarm(int(time.time() * 1000) + 1)
+            # Operational deadlines only: no financial/session data in object storage.
+            async with _SIGNAL_LOCK:
+                now = int(time.time() * 1000)
+                blocked = max(
+                    deadline(await self.ctx.storage.get("manual-not-before")),
+                    deadline(await self.ctx.storage.get("database-not-before")),
+                )
+                if now < blocked:
+                    return Response.json(
+                        {"status": "deferred"},
+                        status=202,
+                        headers={"Cache-Control": "no-store"},
+                    )
+                await self.ctx.storage.put("manual-not-before", now + 60_000)
+                # A durable signal acknowledges without waiting for broker execution.
+                await self.ctx.storage.setAlarm(now + 1)
             return Response.json(
                 {"status": "queued"}, status=202, headers={"Cache-Control": "no-store"}
             )
@@ -39,10 +56,13 @@ class BrokerSyncDO(DurableObject):
 
     async def execute(self, *, scheduled):
         async with _LOCK:
+            now = int(time.time() * 1000)
+            if now < deadline(await self.ctx.storage.get("database-not-before")):
+                return {"status": "deferred"}
             try:
                 from meridian.security.hosted_sync import run_sync
 
-                return await run_sync(
+                result = await run_sync(
                     self.env.HYPERDRIVE,
                     api_key=self.env.BROKER_API_KEY,
                     api_secret=self.env.BROKER_API_SECRET,
@@ -50,7 +70,24 @@ class BrokerSyncDO(DurableObject):
                     scheduled=scheduled,
                 )
             except Exception:
-                return {"status": "unavailable"}
+                result = {"status": "unavailable"}
+            if result.get("status") in {"unavailable", "failed"}:
+                failures = deadline(await self.ctx.storage.get("database-failures")) + 1
+                delay = min(3_600_000, 600_000 * 2 ** min(failures - 1, 3))
+                until = int(time.time() * 1000) + delay
+                await self.ctx.storage.put("database-failures", failures)
+                await self.ctx.storage.put("database-not-before", until)
+                # Do not allow a shorter manual alarm retry to undo outage backoff.
+                from datetime import UTC, datetime
+
+                retry = result.get("retry_at")
+                if retry:
+                    until = max(until, int(datetime.fromisoformat(retry).timestamp() * 1000))
+                result["retry_at"] = datetime.fromtimestamp(until / 1000, UTC).isoformat()
+            elif result.get("status") in {"succeeded", "outside_session"}:
+                await self.ctx.storage.put("database-failures", 0)
+                await self.ctx.storage.put("database-not-before", 0)
+            return result
 
 
 class Default(WorkerEntrypoint):

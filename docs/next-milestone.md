@@ -1,12 +1,12 @@
 # Proposed next task
 
-Reviewed **13 November 2026**. Minute broker refresh is deployed and verified. Current application state, evidence and work scope are maintained in [status and handoff](status-and-handoff.md). The completed refresh brief is retained in [historical checkpoints](status-history.md#archived-broker-refresh-milestone-brief).
+Reviewed **13 November 2026**. The ten-minute refresh/query-reduction incident fix is the active task. Earlier minute cadence was verified on 13 November. Current application state, evidence and work scope are maintained in [status and handoff](status-and-handoff.md). The completed refresh brief is retained in [historical checkpoints](status-history.md#archived-broker-refresh-milestone-brief).
 
 ## Candidate outcome
 
 **PROPOSED for owner selection:** produce a measured 90-day storage budget and a concrete retention/archive proposal for the existing free Cloudflare/Supabase deployment. Related requirements are P02, L03, O01 and QA02, with open question Q18.
 
-The review should account for immutable refresh sources, approved projections, import/audit rows, indexes, history revisions and held-listing metadata. Report measured data and assumptions separately. Preserve the 60-second session target and the requested 90-day observations. A shorter retention period or reduced sampling requires an owner scope decision.
+The review should account for immutable refresh sources, approved projections, import/audit rows, indexes, history revisions and held-listing metadata. Report measured data and assumptions separately. Preserve the owner-amended ten-minute session target and the requested 90-day observations. A shorter retention period or reduced sampling requires an owner scope decision.
 
 ## Read for this task
 

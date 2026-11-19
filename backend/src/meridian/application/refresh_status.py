@@ -26,6 +26,6 @@ def refresh_status(db, account_id, now):
             failures=failures,
             error=error,
             stale=success is None
-            or (now - success).total_seconds() > (120 if task == "snapshot" else 7200),
+            or (now - success).total_seconds() > (1200 if task == "snapshot" else 7200),
         )
-    return dict(target_interval_seconds=60, quote_age="unknown", jobs=result)
+    return dict(target_interval_seconds=600, quote_age="unknown", jobs=result)

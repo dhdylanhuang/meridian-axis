@@ -119,7 +119,7 @@ def test_snapshot_exact_values_failed_refresh_preserves_last_good(setup):
         assert first["total_value"] == api.rows["account_summary"]["records"][0]["totalValue"]
         assert first["quote_age"] == "unknown"
     assert asyncio.run(service.refresh())["status"] == "deferred"
-    clock[0] += timedelta(seconds=60)
+    clock[0] += timedelta(seconds=600)
     api.fail_positions = True
     assert asyncio.run(service.refresh())["status"] == "failed"
     with Session(engine) as db:
@@ -152,7 +152,7 @@ def test_atomic_publication_failure_rolls_back_evidence(setup):
     assert count(engine, SourceRecord) == 0
     with Session(engine) as db:
         assert read_snapshot(db, "shared-isa") is None
-    clock[0] += timedelta(seconds=3)
+    clock[0] += timedelta(seconds=600)
     assert asyncio.run(sync(setup, API()).refresh())["status"] == "succeeded"
 
 
@@ -256,7 +256,7 @@ def test_failed_later_page_preserves_checkpoint_and_previous_accepted_events(set
     assert asyncio.run(service.history_page("dividends"))["status"] == "in_progress"
     assert asyncio.run(service.history_page("dividends"))["status"] == "failed"
     assert count(engine, BrokerEventRevision) == 0
-    clock[0] += timedelta(seconds=3)
+    clock[0] += timedelta(seconds=600)
     api.pages = [([], None)]
     assert asyncio.run(service.history_page("dividends"))["status"] == "succeeded"
     assert count(engine, BrokerEventRevision) == 1
@@ -286,13 +286,13 @@ def test_provider_retry_after_http_date_is_persisted(setup):
     assert caught.value.until == NOW + timedelta(hours=1)
 
 
-def test_cron_next_minute_is_eligible_after_one_second_request(setup):
+def test_cron_next_ten_minute_slot_is_eligible_after_one_second_request(setup):
     engine, clock, jobs = setup
     token = jobs.acquire("snapshot")
     clock[0] += timedelta(seconds=1)
     with Session(engine) as db, db.begin():
-        jobs.succeed(jobs.owned(db, "snapshot", token), interval=60)
-    clock[0] = NOW + timedelta(seconds=60)
+        jobs.succeed(jobs.owned(db, "snapshot", token), interval=600)
+    clock[0] = NOW + timedelta(seconds=600)
     assert jobs.acquire("snapshot") is not None
 
 
@@ -402,14 +402,14 @@ def test_sync_writer_can_publish_but_cannot_edit_sources_or_other_accounts(reque
         event.remove(engine, "begin", restrict)
 
 
-def test_cron_jitter_does_not_skip_the_next_minute(setup):
+def test_cron_jitter_does_not_skip_the_next_ten_minute_slot(setup):
     engine, clock, jobs = setup
     clock[0] = NOW + timedelta(seconds=1.5)
     token = jobs.acquire("snapshot")
     clock[0] += timedelta(seconds=2)
     with Session(engine) as db, db.begin():
-        jobs.succeed(jobs.owned(db, "snapshot", token), interval=60)
-    clock[0] = NOW + timedelta(seconds=60.2)
+        jobs.succeed(jobs.owned(db, "snapshot", token), interval=600)
+    clock[0] = NOW + timedelta(seconds=600.2)
     assert jobs.acquire("snapshot") is not None
 
 
@@ -464,3 +464,65 @@ def test_manual_transport_failure_returns_durable_retry_deadline(setup, monkeypa
     with Session(engine) as db:
         job = db.get(BrokerSyncJob, ("shared-isa", "snapshot"))
         assert result["retry_at"] == job.next_attempt_at.isoformat()
+
+
+def test_history_replay_batches_existing_revision_reads(setup):
+    engine, clock, jobs = setup
+    api = API()
+    template = api.rows["transactions"]["records"][0]
+    rows = [dict(template, reference=f"synthetic-{i}") for i in range(1101)]
+    api.pages = [(rows, None)]
+    service = sync(setup, api)
+    assert asyncio.run(service.history_page("transactions"))["status"] == "succeeded"
+    clock[0] += timedelta(hours=1)
+    statements = []
+
+    def record(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    api.pages = [(rows, None)]
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        assert asyncio.run(service.history_page("transactions"))["status"] == "succeeded"
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+    revision_reads = [
+        sql
+        for sql in statements
+        if sql.lstrip().upper().startswith("SELECT") and "broker_event_revisions" in sql
+    ]
+    assert len(revision_reads) == 3  # 500, 500 and 101, rather than 1,101 lookups.
+    assert count(engine, BrokerEventRevision) == len(rows)
+
+
+def test_successful_response_without_rate_deadline_does_not_query_database(setup):
+    engine, clock, jobs = setup
+    statements = []
+
+    def record(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        asyncio.run(jobs.observe(PREFIX + "positions", 200, {}))
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+    assert statements == []
+
+
+def test_ten_minute_cooldown_and_twenty_minute_staleness(setup):
+    from meridian.application.refresh_status import refresh_status
+
+    engine, clock, jobs = setup
+    assert asyncio.run(sync(setup, API()).refresh())["status"] == "succeeded"
+    clock[0] += timedelta(minutes=9)
+    assert jobs.acquire("snapshot") is None
+    with Session(engine) as db:
+        status = refresh_status(db, "shared-isa", clock[0])
+        assert status["target_interval_seconds"] == 600
+        assert not status["jobs"]["snapshot"]["stale"]
+        assert refresh_status(db, "shared-isa", NOW + timedelta(minutes=21))["jobs"]["snapshot"][
+            "stale"
+        ]
+    clock[0] += timedelta(minutes=1)
+    assert jobs.acquire("snapshot") is not None

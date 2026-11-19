@@ -1,10 +1,12 @@
 # Current status and handoff
 
-Reviewed **13 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
+Reviewed **19 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
 ## Current work scope
 
-The owner requested documentation reconciliation after minute polling was fixed. Platform development awaits the owner's next instruction. Scheduled broker refresh remains enabled. The [next task brief](next-milestone.md) contains a proposed bounded follow-up for owner selection.
+The owner authorized reducing Hyperdrive queries after reported account-wide daily query exhaustion and changing automatic refresh from 60 seconds to **ten minutes**. The fix is in progress on `fix/ten-minute-query-budget`. It includes hidden-tab pause, failure backoff, manual cooldown, batched history revision comparisons, combined snapshot/health reads and fewer coordination statements. Runtime deployment is not yet complete. The [next task brief](next-milestone.md) remains a separate capacity follow-up.
+
+**Validation discipline, explicit owner instruction on 19 November:** avoid unnecessary tests/checks and repeated validation. Run targeted checks for changed behaviour, reuse passing results and broaden/repeat only for new changes, failures or unresolved risk. Avoid repeated CI polling and live probes, especially during quota exhaustion. Preserve results and outstanding steps here for resumed agents.
 
 ## Deployed application
 
@@ -12,20 +14,26 @@ The owner requested documentation reconciliation after minute polling was fixed.
 
 - Deployed application source is **`0410a8e`**. Supabase native schema parity is **`0007`**, with 12 public tables and RLS enabled. Native GitHub migrations own hosted DDL.
 - Trading 212 reported account/cash/position figures are authoritative. Exact decimal strings, separate retrieval windows, missing fields and unknown market quote age remain visible. Historical returns are unavailable.
-- Scheduled refresh targets **60 seconds during relevant regular sessions**. Cron dispatch runs in the JavaScript gateway. Python Durable Objects execute bounded work, with PostgreSQL task leases, endpoint reservations and retry state. Unknown schedule coverage permits conservative polling.
+- Scheduled refresh targets **ten minutes during relevant regular sessions**, per the 19 November owner amendment. Cron dispatch runs in the JavaScript gateway. Python Durable Objects execute bounded work, with PostgreSQL task leases, endpoint reservations and retry state. Unknown schedule coverage permits conservative polling.
 - Manual refresh requires membership, session, Origin and CSRF checks. It queues a durable alarm promptly. Evidence, approved snapshot publication, success health and audit commit together. Failures preserve the last successful snapshot.
 - The BFF reads approved snapshots and selected refresh-health columns. Raw imports, source evidence and event revisions remain closed to it. A separate restricted broker writer accesses only its fixed account and broker source kinds. Broker keys are held in managed secret bindings.
-- The private browser client retrieves saved snapshots every 60 seconds and exposes manual broker refresh. An older open client needs one reload to load that implementation. Authenticated SSE remains planned.
+- The private browser client retrieves saved snapshots and health together every ten minutes while visible and exposes manual broker refresh. An older open client needs one reload to load that implementation. Authenticated SSE remains planned.
 
 ## History and import boundaries
 
-Orders, dividends and cash transactions advance one family page per scheduled invocation, rotating families. Each family uses a one-hour cooldown anchored to its successful final-page attempt. Pagination may take longer, and lifetime completeness remains unverified. Running-page checkpoints and staging survive retries. Complete acceptance appends fill/reference revisions and deduplicates repeated observations. Corporate actions retain original facts with review quality states. Normalized economic replay and calculated performance remain open.
+Orders, dividends and cash transactions advance one family page per scheduled invocation, rotating families in ten-minute slots (at most one page per family per thirty minutes). Each family uses a one-hour cooldown anchored to its successful final-page attempt. Pagination may take longer, and lifetime completeness remains unverified. Running-page checkpoints and staging survive retries. Complete acceptance appends fill/reference revisions and deduplicates repeated observations. Corporate actions retain original facts with review quality states. Normalized economic replay and calculated performance remain open.
 
 The verified holdings CSV supports preview and atomic evidence import. It retains group context and excludes Total controls from holdings. Transaction CSV formats and API/CSV aliases remain unverified. The owner currently has transaction history in PDF, including the previously inspected cash-only statement.
 
 Six Excel baseline observations are accepted into private hosted evidence with exact read-back and duplicate rejection. Group-value controls reconcile within £0.01. Three observations retain month precision, two explicit days and July an unknown date. Historical group-cost controls are absent. Recorded invested values remain source costs. Original workbook bytes were preserved.
 
 ## Verification evidence
+
+19 November fix, local evidence on `fix/ten-minute-query-budget`: `/private/tmp/meridian-query-venv/bin/python -m pytest -q backend/tests/test_broker_sync.py backend/tests/test_snapshot_access.py backend/tests/test_refresh_http.py -m 'not postgres'` passed **23 tests, 42 deselected**. Targeted Node snapshot/gateway checks passed **22 tests**; sync-worker checks passed **four tests**, including persistent outage pause and duplicate manual signal coalescing. Changed backend files passed targeted Ruff checks/formatting, and whitespace checks passed. The synthetic 1,101-event replay passed with three revision SELECTs. These checks need not be repeated on resume. Initial failures reflected old one-minute/three-second timing expectations; tests now follow the ten-minute contract. Existing backend virtualenv points to a removed temporary interpreter; the temporary Python 3.13 environment above holds current dependencies.
+
+Pending: one validation-branch CI run for PostgreSQL restricted-role/concurrency checks, then source promotion and existing Worker updates preserving secrets/origins. No schema migration or live SQL measurement is required. Do not repeatedly probe the exhausted service; after deployment use bounded nonfinancial asset/config checks and defer authenticated cadence/account usage verification until reset. See [query budget](market-data-and-polling.md#hyperdrive-query-budget--19-november-incident).
+
+Earlier deployed acceptance, 13 November:
 
 - [Backend validation](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43404788223) passed Windows/Linux and disposable PostgreSQL checks for the refresh/import implementation. [Worker validation](https://github.com/dhdylanhuang/meridian-axis/actions/runs/43413867781) passed Linux/macOS for the deployed gateway/object correction. Historical test totals remain attached to their original checkpoints.
 - Actual scheduled observations at **14:53, 14:54 and 14:55 London on 13 November** demonstrate minute cadence. Consecutive intervals were **51.353 seconds** during startup and **59.688 seconds** thereafter. Snapshot health showed zero consecutive failures. Held-listing metadata refresh completed.

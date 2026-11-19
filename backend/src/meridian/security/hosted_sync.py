@@ -128,9 +128,9 @@ async def run_sync(binding, *, api_key, api_secret, environment, scheduled=False
                         raise ValueError("broker_account_scope_invalid")
                 elif result.get("status") != "succeeded":
                     return result | {"session": state}
-                # One history page per invocation, rotating families each minute.
+                # One history page per ten-minute slot, rotating families.
                 family = ("orders", "dividends", "transactions")[
-                    int(jobs.clock().timestamp() // 60) % 3
+                    int(jobs.clock().timestamp() // 600) % 3
                 ]
                 await service.history_page(family)
                 await refresh_metadata(service)

@@ -12,9 +12,18 @@ class Element {
 }
 function setup(fetcher){
   const elements=new Map();const window=new EventTarget();
-  const document={getElementById(id){if(!elements.has(id))elements.set(id,new Element());return elements.get(id);},createElement(){return new Element();},createDocumentFragment(){const e=new Element();e.fragment=true;return e;},body:{classList:{add(){},remove(){}}}};
-  vm.runInNewContext(source,{document,window,fetch:fetcher,AbortController,Event,BigInt,Date});
-  return {view:window.meridianSnapshot,el:id=>document.getElementById(id),window};
+  let now = 1_000_000, nextTimer = 0;
+  const timers = new Map(), events = {};
+  class Clock extends Date { constructor(...args){super(...(args.length ? args : [now]));} static now(){return now;} }
+  const setTimeout = (fn, delay) => {const id=++nextTimer;timers.set(id,{fn,at:now+delay,delay});return id;};
+  const clearTimeout = id => timers.delete(id);
+  const document={hidden:false,addEventListener(name,fn){events[name]=fn;},getElementById(id){if(!elements.has(id))elements.set(id,new Element());return elements.get(id);},createElement(){return new Element();},createDocumentFragment(){const e=new Element();e.fragment=true;return e;},body:{classList:{add(){},remove(){}}}};
+  vm.runInNewContext(source,{document,window,fetch:fetcher,AbortController,Event,BigInt,Date:Clock,setTimeout,clearTimeout});
+  return {view:window.meridianSnapshot,el:id=>document.getElementById(id),window,timers,document,
+    advance(ms){now+=ms;},
+    async tick(ms){now+=ms;for(const [id,timer] of [...timers])if(timer.at<=now){timers.delete(id);await timer.fn();}},
+    async visibility(hidden){document.hidden=hidden;await events.visibilitychange();await new Promise(resolve=>setImmediate(resolve));}
+  };
 }
 function snapshot(){return {source:'trading212',basis:'broker_reported',environment:'demo',currency:'GBP',total_value:'9007199254740993.123456789',investments:{currentValue:'99',totalCost:'11',unrealizedProfitLoss:'2'},cash_components:{availableToTrade:'7'},account_retrieval:{retrieval_completed_at:'2026-01-02T12:00:00Z'},positions_retrieval:{retrieval_completed_at:'2026-01-02T12:00:01Z'},positions:[{name:'<img src=x>',ticker:'SYNTH',quantity:'0.00000000000000001',current_value:'10',account_currency:'GBP',instrument_currency:'USD',current_price:'12.34'}]};}
 test('broker total stays exact; values missing remain unavailable and names are literal text',async()=>{
@@ -37,7 +46,40 @@ test('denied session clears fields and dispatches signout; empty snapshot has ex
 test('failed saved-snapshot reload retains last successful figures',async()=>{
  let fail=false;
  const ui=setup(async path=>path.endsWith('/status')?({ok:true,status:200,json:async()=>({jobs:{}})}):fail?({ok:false,status:503}):({ok:true,status:200,json:async()=>snapshot()}));
- await ui.view.load();fail=true;await ui.view.load();
+ await ui.view.load();fail=true;ui.advance(60_000);await ui.view.load();
  assert.equal(ui.el('total-value').textContent,'£9,007,199,254,740,993.123456789');
  assert.match(ui.el('snapshot-status').textContent,/Last successful snapshot/);
+});
+
+test('snapshot and health share one request, polling waits ten minutes and pauses while hidden',async()=>{
+ let reads=0;
+ const ui=setup(async path=>{reads++;assert.equal(path,'/api/v1/portfolio/snapshot');return {ok:true,status:200,json:async()=>({...snapshot(),refresh_health:{jobs:{snapshot:{stale:false}}}})};});
+ ui.view.start();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(reads,1);assert.equal([...ui.timers.values()][0].delay,600_000);
+ await ui.tick(599_999);assert.equal(reads,1);
+ await ui.tick(1);assert.equal(reads,2);
+ await ui.visibility(true);assert.equal(ui.timers.size,0);
+ await ui.tick(600_000);assert.equal(reads,2);
+ await ui.visibility(false);assert.equal(reads,3);
+ ui.view.clear();await ui.tick(600_000);assert.equal(reads,3);
+});
+test('outage backoff resists reload and visibility storms and retains last-good values',async()=>{
+ let reads=0, fail=false;
+ const ui=setup(async()=>{reads++;return fail?{ok:false,status:503}:{ok:true,status:200,json:async()=>snapshot()};});
+ ui.view.start();await new Promise(resolve=>setImmediate(resolve));fail=true;
+ await ui.tick(600_000);assert.equal(reads,2);
+ for(let i=0;i<5;i++){await ui.view.load();await ui.visibility(true);await ui.visibility(false);}
+ assert.equal(reads,2);
+ assert.equal(ui.el('total-value').textContent,'£9,007,199,254,740,993.123456789');
+ await ui.tick(600_000);assert.equal(reads,3);
+ assert.equal([...ui.timers.values()][0].delay,1_200_000);
+});
+test('repeated manual clicks queue once and do not immediately re-read the old snapshot',async()=>{
+ let reads=0, posts=0;
+ const ui=setup(async(path,options)=>{if(options?.method==='POST'){posts++;return {ok:true,status:202,json:async()=>({status:'queued'})};}reads++;return {ok:true,status:200,json:async()=>snapshot()};});
+ ui.view.start();await new Promise(resolve=>setImmediate(resolve));
+ ui.document.cookie='__Host-meridian_csrf=synthetic';
+ await ui.el('refresh-broker').listeners.click();await ui.el('refresh-broker').listeners.click();
+ assert.equal(posts,1);assert.equal(reads,1);
+ await ui.tick(60_000);assert.equal(reads,2);
 });

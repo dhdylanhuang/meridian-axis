@@ -42,7 +42,7 @@ Optimise for readable financial tables, dependable imports, explainable calculat
 | K03 | Raw and Ledoit-Wolf covariance/correlation; PSD checks and visible difference | Correlation; Stage 4 |
 | K04 | Holding matrix, group matrix, rolling pair drilldown and benchmark views | Correlation and UI; Stage 4/5 |
 | K05 | Average pair correlation, eigenvalue effective bets, diversification ratio and high-correlation pairs | Correlation; Stage 4 |
-| L01 | Held instruments, benchmarks and needed FX only; 60-second requested quote interval during relevant sessions | Polling; Stage 2/5 |
+| L01 | Held instruments, benchmarks and needed FX only; ten-minute automatic interval during relevant sessions (owner amendment, 19 November 2026) | Polling; Stage 2/5 |
 | L02 | Exchange calendars, holidays, half-days, background execution and graceful shutdown | Polling; Stage 2 |
 | L03 | Intraday observations, original/GBP values, 90-day configurable retention; daily data indefinite | Polling and data model; Stage 2/5 |
 | L04 | Source, fetch/quote times, delay/stale state; last-good values on failure; SSE updates | Polling and UI; Stage 2/5 |

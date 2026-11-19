@@ -1,6 +1,6 @@
 # Development plan and stage gates
 
-Status, **13 November 2026:** this document defines the delivery roadmap and acceptance gates. [Current status](status-and-handoff.md) owns completed slices and the latest owner scope. Secure two-user broker views and minute refresh are deployed. Stage 1 evidence/import slices and parts of Stage 2 are verified. Full economic replay, daily market inputs, analytics and final operational acceptance remain open. Stage 0H retains unresolved capacity and workload gates.
+Status, **13 November 2026:** this document defines the delivery roadmap and acceptance gates. [Current status](status-and-handoff.md) owns completed slices and the latest owner scope. Secure two-user broker views are deployed; the owner changed refresh to ten minutes on 19 November, with deployment evidence in current status. Stage 1 evidence/import slices and parts of Stage 2 are verified. Full economic replay, daily market inputs, analytics and final operational acceptance remain open. Stage 0H retains unresolved capacity and workload gates.
 
 ## Delivery discipline
 
@@ -39,7 +39,7 @@ For every stage, deliver actual code/file tree when authorised, migration implic
 
 **Exit evidence:** reproducible local and hosted probe results, authenticated nonmember/anonymous denials, measured budgets, accepted migration/restore evidence, account/project identity and rollback. A local bundle build does not prove free CPU fit or production readiness. Supabase RLS-enabled tables without member policies are a safe closed foundation, not completed authorization. No paid resources or trial-only dependencies.
 
-If a runtime cannot meet scope, record the measured limitation and propose the smallest alternative. Do not silently rewrite Python, reduce requested 60-second polling/90-day retention, or bypass a provider quota. Lossless private archival can preserve retention if it is verified before pruning the hot database.
+If a runtime cannot meet scope, record the measured limitation and propose the smallest alternative. Do not silently rewrite Python, reduce owner-amended ten-minute polling/90-day retention, or bypass a provider quota. Lossless private archival can preserve retention if it is verified before pruning the hot database.
 
 ## Stage 1 — durable evidence, ledger and safe import
 
@@ -74,7 +74,7 @@ Quantity and recorded snapshot allocation can be reconciled here. Do not claim f
   Secure login/session access and approved snapshot/refresh routes are deployed for both identities. Native parity is `0007`. Actual HTTPS access/denial checks and the owner's browser sign-in are recorded in current status. Partner browser confirmation and remaining browser/operational checks are open.
 - **2B:** mapping UI/service, market-data adapter, explicit adjusted/unadjusted bases, daily price/FX cache, approved selections, ledger/broker reconciliation, GBP NAV and holding/group weights.
 - **2C:** minimal AXIS/HOLDINGS/GROUPS and source-history views; no invented return/risk cards. One scheduled-job authority, shared manual-job leases, durable backfill/checkpoints and job progress. No persistent in-process scheduler on Workers.
-- **2D:** basic quote monitoring with requested 60-second interval/capability disclosure, session calendars, stored observations, last-good/freshness, polling operation logs and authenticated SSE. End-session candidate remains provisional. Final alert/retention refinements are Stage 5.
+- **2D:** basic quote monitoring with owner-amended ten-minute interval/capability disclosure, session calendars, stored observations, last-good/freshness, polling operation logs and authenticated SSE. End-session candidate remains provisional. Final alert/retention refinements are Stage 5.
 
 **Exit evidence:** both logins work; insecure/missing session/CSRF rejected; no secrets reach UI/logs; prices/FX convert accurately including pence; NAV decomposes; weights use NAV; missing price cannot improve a total; daily close selection isolated from intraday; duplicate jobs prevented; calendar/half-day/backoff tests pass; provider/network optional tests separately marked; real broker reconciliation differences explained.
 

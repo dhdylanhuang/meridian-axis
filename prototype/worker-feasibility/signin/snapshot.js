@@ -2,6 +2,16 @@
 (() => {
   const el = id => document.getElementById(id);
   let snapshot = null, generation = 0, controller = null;
+  let active = false, loading = false, timer = null, failures = 0, nextRead = 0, nextManual = 0;
+  const INTERVAL = 600_000, MAX_BACKOFF = 3_600_000, READ_COOLDOWN = 60_000;
+  function schedule(delay = INTERVAL) {
+    clearTimeout(timer);
+    if (active && !document.hidden) timer = setTimeout(load, Math.max(delay, nextRead - Date.now()));
+  }
+  function start() {
+    active = true;
+    if (!document.hidden) void load();
+  }
   const amounts = ['total-value','investment-value','available-cash','unrealised-pnl','cash-in-pies','reserved-cash','investment-cost','realised-pnl'];
   function decimal(value, currency) {
     if (typeof value !== 'string' || !/^-?\d+(\.\d+)?$/.test(value)) return 'Unavailable';
@@ -19,11 +29,12 @@
     return x < y ? -1 : x > y ? 1 : 0;
   }
   function clear() {
+    active = false; clearTimeout(timer); failures = 0; nextRead = 0; nextManual = 0;
     generation++; controller?.abort(); snapshot = null;
     amounts.forEach(id => el(id).textContent = '—');
     el('holdings-body').replaceChildren(); el('holding-count').textContent = '';
     el('snapshot-time').textContent = '—'; el('snapshot-status').textContent = ''; el('refresh-status').textContent = '';
-    el('holding-search').value = ''; document.body.classList.remove('snapshot-ready');
+    el('holding-search').value = ''; el('refresh-broker').disabled = false; document.body.classList.remove('snapshot-ready');
   }
   function renderHoldings() {
     const query = el('holding-search').value.trim().toLowerCase();
@@ -43,13 +54,16 @@
     el('holding-count').textContent = `${rows.length} of ${snapshot?.positions.length || 0} holdings`;
   }
   async function load() {
+    if (loading || document.hidden) return;
+    if (Date.now() < nextRead) { schedule(nextRead - Date.now()); return; }
+    loading = true;
     generation++; controller?.abort(); const version = generation; controller = new AbortController();
     el('snapshot-status').textContent = 'Loading saved broker snapshot…';
     try {
       const response = await fetch('/api/v1/portfolio/snapshot', { credentials:'same-origin', cache:'no-store', redirect:'error', signal:controller.signal });
       if (version !== generation) return;
       if ([401,403].includes(response.status)) { clear(); window.dispatchEvent(new Event('meridian-session-ended')); return; }
-      if (response.status === 404) { el('snapshot-status').textContent = 'No saved snapshot is available yet.'; return; }
+      if (response.status === 404) { failures = 0; nextRead = Date.now() + READ_COOLDOWN; el('snapshot-status').textContent = 'No saved snapshot is available yet.'; return; }
       if (!response.ok) throw new Error('unavailable');
       const data = await response.json();
       if (version !== generation) return;
@@ -60,25 +74,26 @@
       const when = value => new Date(value).toLocaleString('en-GB',{timeZone:'Europe/London',timeZoneName:'short'});
       el('snapshot-time').textContent = `Trading 212 · ${data.environment.toUpperCase()} account · Account captured ${when(data.account_retrieval.retrieval_completed_at)}; holdings captured ${when(data.positions_retrieval.retrieval_completed_at)}.`;
       el('snapshot-status').textContent = ''; document.body.classList.add('snapshot-ready'); renderHoldings();
-      await health(version);
+      failures = 0; nextRead = Date.now() + READ_COOLDOWN;
+      health(data.refresh_health);
     } catch (error) {
-      if (version === generation && error.name !== 'AbortError') { el('snapshot-status').textContent = snapshot ? 'Refresh failed. Last successful snapshot remains displayed.' : 'The saved snapshot could not be loaded. Try again shortly.'; }
-    }
+      if (version === generation && error.name !== 'AbortError') {
+        failures++; nextRead = Date.now() + Math.min(MAX_BACKOFF, INTERVAL * 2 ** Math.min(failures - 1, 3));
+        el('snapshot-status').textContent = snapshot ? 'Refresh failed. Last successful snapshot remains displayed. Automatic retries are paused.' : 'The saved snapshot could not be loaded. Automatic retries are paused.';
+      }
+    } finally { loading = false; if (version === generation) schedule(); }
   }
-  async function health(version) {
-    try {
-      const response = await fetch('/api/v1/portfolio/refresh/status', {credentials:'same-origin', cache:'no-store', redirect:'error', signal:controller.signal});
-      if (version !== generation) return;
-      if ([401,403].includes(response.status)) { clear(); window.dispatchEvent(new Event('meridian-session-ended')); return; }
-      if (!response.ok) { el('refresh-status').textContent = 'Broker refresh status is unavailable.'; return; }
-      const status = await response.json();
-      if (version !== generation) return;
-      const job = status.jobs?.snapshot;
-      if (!job) { el('refresh-status').textContent = 'Hosted broker refresh has not completed yet.'; return; }
-      el('refresh-status').textContent = job.error === 'action_required' ? 'Broker refresh requires administrator attention. Last successful snapshot remains displayed.' : job.error ? 'Broker refresh is retrying. Last successful snapshot remains displayed.' : job.stale ? 'Last broker refresh was over two minutes ago. Check the retrieval times and market session.' : 'Broker refresh is healthy. Market quote age is unknown.';
-    } catch (error) { if (version === generation && error.name !== 'AbortError') el('refresh-status').textContent = 'Broker refresh status is unavailable.'; }
+  function health(status) {
+    const job = status?.jobs?.snapshot;
+    if (!job) { el('refresh-status').textContent = 'Hosted broker refresh status is unavailable.'; return; }
+    el('refresh-status').textContent = job.error === 'action_required' ? 'Broker refresh requires administrator attention. Last successful snapshot remains displayed.' : job.error ? 'Broker refresh is retrying with backoff. Last successful snapshot remains displayed.' : job.stale ? 'Last broker refresh was over twenty minutes ago. Check the retrieval times and market session.' : 'Automatic refresh every ten minutes. Market quote age is unknown.';
   }
   async function refreshBroker() {
+    if (Date.now() < Math.max(nextManual, failures ? nextRead : 0)) {
+      el('refresh-status').textContent = 'Refresh is cooling down. Please wait before trying again.';
+      return;
+    }
+    nextManual = Date.now() + READ_COOLDOWN;
     const version = generation;
     el('refresh-broker').disabled = true;
     el('refresh-status').textContent = 'Refreshing Trading 212…';
@@ -91,7 +106,7 @@
       if (!response.ok) { el('refresh-status').textContent = 'Broker refresh is unavailable. Last successful snapshot remains displayed.'; return; }
       const result = await response.json();
       if (version !== generation) return;
-      await load();
+      schedule(READ_COOLDOWN);
       if (result.status === 'queued') el('refresh-status').textContent = 'Broker refresh queued. This view updates automatically.';
       if (result.status === 'deferred') el('refresh-status').textContent = 'Refresh is already running or waiting for the shared rate limit.';
       if (result.status === 'failed' || result.status === 'unavailable') el('refresh-status').textContent = 'Broker refresh failed. Last successful snapshot remains displayed.';
@@ -106,5 +121,9 @@
   el('holding-search').addEventListener('input',renderHoldings); el('holding-sort').addEventListener('change',renderHoldings);
   el('reload-snapshot').addEventListener('click',load);
   el('refresh-broker').addEventListener('click',refreshBroker);
-  window.meridianSnapshot = {load,clear};
+  document.addEventListener('visibilitychange', () => {
+    clearTimeout(timer);
+    if (active && !document.hidden) void load();
+  });
+  window.meridianSnapshot = {load,clear,start};
 })();

@@ -253,9 +253,14 @@ class SessionHttp:
 
                         return private_response(refresh_status(db, principal.account_id, now))
                     if operation == "snapshot":
+                        from meridian.application.refresh_status import refresh_status
                         from meridian.application.snapshot_access import read_snapshot
 
                         snapshot = read_snapshot(db, principal.account_id)
+                        if snapshot is not None:
+                            snapshot = snapshot | {
+                                "refresh_health": refresh_status(db, principal.account_id, now)
+                            }
                         return private_response(
                             snapshot if snapshot is not None else {"error": "snapshot_unavailable"},
                             200 if snapshot is not None else 404,

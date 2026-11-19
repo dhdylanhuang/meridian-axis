@@ -24,11 +24,6 @@ def now_utc():
     return datetime.now(UTC)
 
 
-def ensure_row(db, model, values):
-    insert = pg_insert if db.bind.dialect.name == "postgresql" else sqlite_insert
-    db.execute(insert(model).values(**values).on_conflict_do_nothing())
-
-
 class BrokerJobs:
     def __init__(self, engine, account_id, *, clock=now_utc, random_value=random.random):
         self.engine, self.account_id = engine, account_id
@@ -37,30 +32,32 @@ class BrokerJobs:
     def acquire(self, task):
         now, token = self.clock(), uuid4().hex
         with Session(self.engine) as db, db.begin():
-            ensure_row(
-                db,
-                BrokerSyncJob,
-                dict(
+            insert = pg_insert if db.bind.dialect.name == "postgresql" else sqlite_insert
+            acquired = db.scalar(
+                insert(BrokerSyncJob)
+                .values(
                     account_id=self.account_id,
                     task=task,
                     next_attempt_at=now,
                     failures=0,
                     checkpoint_json="{}",
-                ),
-            )
-            changed = db.execute(
-                update(BrokerSyncJob)
-                .where(
-                    BrokerSyncJob.account_id == self.account_id,
-                    BrokerSyncJob.task == task,
-                    BrokerSyncJob.next_attempt_at <= now,
-                    (BrokerSyncJob.lease_until.is_(None)) | (BrokerSyncJob.lease_until <= now),
+                    lease_token=token,
+                    lease_until=now + timedelta(seconds=90),
+                    last_attempt_at=now,
                 )
-                .values(
-                    lease_token=token, lease_until=now + timedelta(seconds=90), last_attempt_at=now
+                .on_conflict_do_update(
+                    index_elements=[BrokerSyncJob.account_id, BrokerSyncJob.task],
+                    set_=dict(
+                        lease_token=token,
+                        lease_until=now + timedelta(seconds=90),
+                        last_attempt_at=now,
+                    ),
+                    where=(BrokerSyncJob.next_attempt_at <= now)
+                    & ((BrokerSyncJob.lease_until.is_(None)) | (BrokerSyncJob.lease_until <= now)),
                 )
+                .returning(BrokerSyncJob.lease_token)
             )
-            return token if changed.rowcount == 1 else None
+            return acquired
 
     def resume(self, task, *, actor="administration", restart=False):
         """Trusted maintenance after correcting credentials/schema. Active work is fenced."""
@@ -120,8 +117,8 @@ class BrokerJobs:
         job.last_success_at = self.clock()
         anchor = job.last_attempt_at
         if job.task == "snapshot":
-            # Minute-aligned eligibility tolerates Cron delivery jitter.
-            anchor = anchor.replace(second=0, microsecond=0)
+            # Align to the configured interval so delivery jitter does not skip a slot.
+            anchor = datetime.fromtimestamp(int(anchor.timestamp() // interval) * interval, UTC)
         job.next_attempt_at = max(self.clock(), anchor + timedelta(seconds=interval))
         job.failures, job.error_code = 0, None
         job.lease_token, job.lease_until = None, None
@@ -147,7 +144,10 @@ class BrokerJobs:
                     "pagination_limit",
                 }
                 # Terminal failures require explicit administrative resume after correction.
-                delay = min(900, 2 ** min(job.failures, 10)) * (0.5 + 0.5 * self.random())
+                delay = max(
+                    600,
+                    min(3600, 600 * 2 ** min(job.failures - 1, 3)) * (0.5 + 0.5 * self.random()),
+                )
                 job.next_attempt_at = (
                     datetime.max.replace(tzinfo=UTC)
                     if terminal
@@ -161,21 +161,22 @@ class BrokerJobs:
             raise BrokerError("invalid_continuation")
         now = self.clock()
         with Session(self.engine) as db, db.begin():
-            ensure_row(
-                db,
-                BrokerRateLimit,
-                dict(account_id=self.account_id, route=route, next_request_at=now),
-            )
-            changed = db.execute(
-                update(BrokerRateLimit)
-                .where(
-                    BrokerRateLimit.account_id == self.account_id,
-                    BrokerRateLimit.route == route,
-                    BrokerRateLimit.next_request_at <= now,
+            insert = pg_insert if db.bind.dialect.name == "postgresql" else sqlite_insert
+            reserved = db.scalar(
+                insert(BrokerRateLimit)
+                .values(
+                    account_id=self.account_id,
+                    route=route,
+                    next_request_at=now + timedelta(seconds=INTERVALS[route]),
                 )
-                .values(next_request_at=now + timedelta(seconds=INTERVALS[route]))
+                .on_conflict_do_update(
+                    index_elements=[BrokerRateLimit.account_id, BrokerRateLimit.route],
+                    set_=dict(next_request_at=now + timedelta(seconds=INTERVALS[route])),
+                    where=BrokerRateLimit.next_request_at <= now,
+                )
+                .returning(BrokerRateLimit.next_request_at)
             )
-            if changed.rowcount != 1:
+            if reserved is None:
                 until = db.get(BrokerRateLimit, (self.account_id, route)).next_request_at
                 raise Deferred(until)
 
@@ -205,6 +206,8 @@ class BrokerJobs:
         if status == 429:
             deadlines.append(now + timedelta(seconds=60))
         until = max(deadlines)
+        if until <= now:
+            return
         with Session(self.engine) as db, db.begin():
             db.execute(
                 update(BrokerRateLimit)

@@ -116,6 +116,8 @@ def test_authenticated_snapshot_both_users_and_revocation(engine):
                 response = await client.get(url, headers={"cookie": SESSION_COOKIE + "=" + token})
                 assert response.status_code == 200 and response.json()["basis"] == "broker_reported"
                 assert response.headers["cache-control"] == "no-store"
+                assert response.json()["refresh_health"]["target_interval_seconds"] == 600
+                assert "checkpoint" not in response.text
                 assert "synthetic-broker" not in response.text
                 assert (
                     await client.get(

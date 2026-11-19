@@ -8,9 +8,9 @@
 
 Current repository status: authenticated AXIS/HOLDINGS and ongoing read-only broker refresh are deployed at native parity `0007`. Minute cadence was verified on 13 November 2026. Trading 212 reported figures remain authoritative. Current status owns implementation evidence and unresolved gates.
 
-**Current owner scope, 13 November 2026:** reconcile documentation inconsistencies. Platform development awaits the next instruction after completed minute polling. Scheduled service remains enabled. Earlier project authority and private/free-service boundaries remain subject to the owner's latest task scope and platform execution approvals.
+**Current owner scope, 19 November 2026:** reduce Hyperdrive queries and change automatic refresh from 60 seconds to ten minutes. Include hidden-tab pause, failure backoff, manual cooldown, batched history comparisons and combined snapshot/health reads. Preserve existing access controls and source evidence. Earlier project authority and private/free-service boundaries remain subject to the owner's latest task scope and platform execution approvals.
 
-Minimise sub-agents and unnecessary rate-limit consumption. Use one bounded stream with targeted checks. Keep changes reviewable and preserve the supported requirements. Prior usage reports and time-based pauses are retained in [historical checkpoints](docs/status-history.md).
+Minimise sub-agents and unnecessary rate-limit consumption. Use one bounded stream with targeted checks. **Owner instruction, 19 November 2026:** avoid unnecessary validation runs, tests and checks. Select meaningful checks for changed behaviour, reuse passing results, and repeat or broaden only after new changes, failures or unresolved concerns. Do not repeatedly poll CI or live services. Batch independent read-only inspections, avoid duplicate CI runs for the same source, and record completed evidence and outstanding work in the handoff so a resumed agent does not restart validation. Keep changes reviewable and preserve the supported requirements. Prior usage reports and time-based pauses are retained in [historical checkpoints](docs/status-history.md).
 
 ## Authority and scope
 

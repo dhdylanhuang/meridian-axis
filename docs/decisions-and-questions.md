@@ -14,7 +14,7 @@ Baseline: 11 November 2026. This register distinguishes explicit owner requireme
 | DC06 | Groups from export context; inspected Slice=ticker, Total-row Name=group; reviewed assignments; no pie objects/targets/projections/RAG | Original intent corrected by CSV evidence |
 | DC07 | Trading 212 API v0 primary; CSV fallback/enrichment; verify YAML; Demo default; explicit Live | Later owner amendment |
 | DC08 | Broker integration read-only; env key/secret using Basic | Later owner amendment |
-| DC09 | Requested 60-second session-aware polling, 90-day intraday retention, SSE preferred, last-good preservation | Later owner amendment |
+| DC09 | Ten-minute session-aware automatic refresh, 90-day intraday retention, SSE preferred, last-good preservation | Owner superseded the 60-second interval on 19 November 2026 after Hyperdrive query exhaustion |
 | DC10 | Risk/correlation use daily data; live monitoring has separate basis and source honesty | Later amendment, with cost-basis wording corrected below |
 | DC11 | Execute the plan with orchestrated subagents; commit and push each verified stage | Latest owner instruction supersedes the earlier documentation-only restriction |
 | DC12 | One Trading 212 Stocks and Shares ISA; both logins have equal full editing rights | Explicit owner answers |

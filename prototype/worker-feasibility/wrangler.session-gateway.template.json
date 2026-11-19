@@ -24,7 +24,7 @@
       }
     ]
   },
-  "triggers": { "crons": ["* * * * *"] },
+  "triggers": { "crons": ["*/10 * * * *"] },
   "assets": {
     "directory": "./signin",
     "binding": "ASSETS",

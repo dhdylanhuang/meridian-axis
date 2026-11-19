@@ -6,7 +6,7 @@ import json
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select, tuple_
 from sqlalchemy.orm import Session
 
 from meridian.adapters.broker_evidence import EvidenceError, canonical, identifier, validate_refresh
@@ -166,7 +166,7 @@ class BrokerSync:
                     now=self.jobs.clock(),
                     actor="broker-sync",
                 )
-                self.jobs.succeed(job, interval=60)
+                self.jobs.succeed(job, interval=600)
             return {"status": "succeeded"}
         except Exception as error:
             safe = (
@@ -277,7 +277,7 @@ class BrokerSync:
             .where(SourceRecord.run_id == run.id, SourceRecord.account_id == self.account_id)
             .order_by(SourceRecord.row_number)
         )
-        seen, added = {}, 0
+        seen, records = {}, {}
         for source in sources:
             for row in json.loads(source.payload_json)["records"]:
                 if family == "orders":
@@ -301,31 +301,48 @@ class BrokerSync:
                         raise BrokerError("history_identity_conflict")
                     continue
                 seen[external_id] = digest
-                previous = db.scalar(
-                    select(BrokerEventRevision)
-                    .where(
-                        BrokerEventRevision.account_id == self.account_id,
-                        BrokerEventRevision.family == family,
-                        BrokerEventRevision.external_id == external_id,
-                    )
-                    .order_by(BrokerEventRevision.revision.desc())
-                    .limit(1)
+                records[external_id] = (source.id, encoded, digest, quality)
+        # One lookup per bounded batch, rather than one query per historical event.
+        # Keep acceptance in this fenced transaction; no partial economic watermark.
+        previous_by_id = {}
+        ids = list(records)
+        event = BrokerEventRevision
+        for offset in range(0, len(ids), 500):
+            latest = (
+                select(event.external_id, func.max(event.revision))
+                .where(
+                    event.account_id == self.account_id,
+                    event.family == family,
+                    event.external_id.in_(ids[offset : offset + 500]),
                 )
-                if previous is not None and previous.digest == digest:
-                    continue
-                db.add(
-                    BrokerEventRevision(
-                        id=uuid4().hex,
-                        account_id=self.account_id,
-                        family=family,
-                        external_id=external_id,
-                        revision=1 if previous is None else previous.revision + 1,
-                        source_id=source.id,
-                        observed_at=self.jobs.clock(),
-                        digest=digest,
-                        payload_json=encoded,
-                        quality=quality,
-                    )
+                .group_by(event.external_id)
+            )
+            for previous in db.scalars(
+                select(event).where(
+                    event.account_id == self.account_id,
+                    event.family == family,
+                    tuple_(event.external_id, event.revision).in_(latest),
                 )
-                added += 1
+            ):
+                previous_by_id[previous.external_id] = previous
+        added = 0
+        for external_id, (source_id, encoded, digest, quality) in records.items():
+            previous = previous_by_id.get(external_id)
+            if previous is not None and previous.digest == digest:
+                continue
+            db.add(
+                BrokerEventRevision(
+                    id=uuid4().hex,
+                    account_id=self.account_id,
+                    family=family,
+                    external_id=external_id,
+                    revision=1 if previous is None else previous.revision + 1,
+                    source_id=source_id,
+                    observed_at=self.jobs.clock(),
+                    digest=digest,
+                    payload_json=encoded,
+                    quality=quality,
+                )
+            )
+            added += 1
         return added
