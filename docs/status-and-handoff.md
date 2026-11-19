@@ -4,7 +4,47 @@ Reviewed **19 November 2026**. This file is the authoritative implementation sna
 
 ## Current work scope
 
-The current delivery implements a **local, read-only execution quantity diagnostic**
+The owner selected **broker-led automatic holding discovery/enrichment** next:
+orders remain in Trading 212; one integrated AXIS supports PM, trading-monitoring,
+risk and portfolio cash/treasury workflows. Current prices and reported figures
+come from the broker. A parallel current-account valuation/live-price engine is
+removed from the delivery plan; historical price/benchmark/FX inputs remain for
+risk/performance. See the [requirements amendment](product-requirements.md#broker-led-monitoring-amendment--19-november-2026)
+and revised delivery order. No role or tax scope change.
+
+Implemented source: new held tickers request the existing metadata job before its
+successful daily cooldown ends, preserving leases, failures and provider retry
+limits. Scheduled and manual success share that job. Snapshot publication adds
+whitelisted listing enrichment/coverage/provenance and observed additions/closures;
+the existing private view displays these states. Position facts always win, cash
+components remain separate, and quote age remains unknown. Financial publication
+precedes metadata lookup; fresh enrichment appears in the next successful snapshot.
+The existing metadata reader is shared by session checks and publication. There
+was no duplicate live-price service to delete; the unused sixty-second quote and
+ninety-day local retention settings/sample environment entries were removed.
+The fixed Worker bundle allowlist includes the new shared module. No schema,
+credential, grant, ten-minute cadence, retention or workbook change.
+
+Offline checks completed once for changed paths:
+- `/private/tmp/meridian-query-venv/bin/python -m pytest -q -p no:cacheprovider backend/tests/test_holding_discovery.py backend/tests/test_broker_sync.py backend/tests/test_snapshot_access.py -m 'not postgres'`: **31 passed, 42 deselected**.
+- `node --test prototype/worker-feasibility/tests/test_snapshot_ui.mjs`: **9 passed**.
+- `/private/tmp/meridian-query-venv/bin/python -m pytest -q -p no:cacheprovider backend/tests/test_config.py prototype/worker-feasibility/tests/test_application_bundle.py`: **10 passed**.
+- Targeted Ruff check/format passed for changed Python files. No full suite/CI
+  matrix, retention test, sizing query or hosted database probe was repeated.
+
+Coverage includes new/closed holdings, repeated and missing metadata, exact broker
+figures, manual/scheduled dispatch, successful cooldown bypass, active leases,
+retry/terminal pauses, metadata provenance/conflict/staleness, immutable snapshots,
+unheld catalogue exclusion, UI notices and removal of unused configuration.
+PostgreSQL execution and actual hosted enrichment remain unverified. This is a
+source delivery; **discovery/enrichment has not been deployed**. Existing deployed
+sources remain listed below. Next: release the reviewed Worker bundle/assets using
+the existing preservation/rollback procedure, then bounded feature verification
+when the quota incident allows it. Do not infer deployment from offline checks.
+
+## Previous completed slice
+
+The preceding delivery (`c2cf7b3`) implements a **local, read-only execution quantity diagnostic**
 (method `known_trade_quantity_v1`). It normalizes accepted initial capture order
 rows and ongoing fill revisions into one effective quantity record per identity,
 preserving evidence/revision links. It compares known signed trade deltas with the
@@ -35,8 +75,7 @@ check was run. No real-input reconciliation or PostgreSQL execution is claimed.
 The manual Excel archive remains completed: the private **AXIS Archive** sheet has
 1,360 retained refresh generations, with original sheets/formulas preserved. Use
 [the manual export command](workbook-archive.md); no workbook was read or changed
-for this delivery. [Next assignment](next-milestone.md) identifies the remaining
-history/reconciliation boundary.
+for this delivery. [Next assignment](next-milestone.md) identifies the revised delivery sequence.
 
 Bounded retention and the separately authorized backup repair are **complete and deployed**. Native schema parity is `0008`; the sync Worker source is `0afd670`. Session/gateway source remains `073ffca`. Detailed broker-refresh snapshot/source pairs expire after sixty days, in one daily batch of at most 200 pairs, while the final observed snapshot of every UTC day is kept indefinitely. The global latest snapshot, all transaction/dividend/cash history, revisions, initial captures, metadata, Excel/CSV evidence, imports and prior audit are retained. Referenced or mixed-source runs are skipped. Daily observations are not approved exchange closes or implemented historical performance.
 
@@ -91,8 +130,8 @@ Private deployment IDs, receipts, source values, credential material and recover
 
 ## Remaining delivery
 
-Owner amendment, 19 November: site availability takes priority; 60-day observation retention is approved as a fallback if 90 days cannot fit safely. The same conservative model projects 275–301 MB for 60 additional days. Ninety days remains the target and no cleanup has been implemented. Prefer evaluating this approved fallback before expanding archive infrastructure. Storage capacity does not establish runtime RAM safety; preserve bounded processing and do not claim crash prevention from disk sizing.
+Owner amendment, 19 November: site availability takes priority; 60-day observation retention is approved as a fallback if 90 days cannot fit safely. The same conservative model projects 275–301 MB for 60 additional days. Ninety days remains the capacity target; the sixty-day detailed-refresh cleanup is implemented and deployed as recorded above. Hosted archive infrastructure remains deferred. Storage capacity does not establish runtime RAM safety; preserve bounded processing and do not claim crash prevention from disk sizing.
 
-The measured-input [storage report](storage-capacity-report.md) is complete. Physical qualification remains open: ten-minute compressed retention may fit, but around-the-clock raw retention exceeds the database allowance. Lossless archive design, scheduled retention/backups and independent key custody remain open. Replacement hosted Auth/browser recovery and active-data credential rotation also remain open.
+The measured-input [storage report](storage-capacity-report.md) is complete. Physical qualification remains open: ten-minute compressed retention may fit, but around-the-clock raw retention exceeds the database allowance. Hosted lossless archive infrastructure remains deferred; scheduled backups and independent key custody remain open. Detailed-refresh retention is deployed. Replacement hosted Auth/browser recovery and active-data credential rotation also remain open.
 
 Other supported requirements include normalized ledger/cash/quantity reconciliation, verified transaction CSV aliases, group mapping/editing, daily prices/FX and approved closes, historical performance, projections, correlation/risk, remaining screens and alerts. Tax remains owner-deferred. The contracts in [the documentation index](README.md) retain those requirements.

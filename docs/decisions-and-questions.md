@@ -29,6 +29,8 @@ Baseline: 11 November 2026. This register distinguishes explicit owner requireme
 | DC21 | Trading 212 reported figures are authoritative for the first financial snapshot: account total/cash from summary and holding value/cost/PnL from positions. Do not replace them with reconstructed sums. Full ledger reconciliation is deferred from this snapshot delivery; derived analytics remain separately labelled. | Explicit owner clarification, 12 November 2026 |
 | DC22 | The ISA began from cash with no earlier holdings or transferred positions before captured history. | Explicit owner answer, 12 November 2026; opening cash completeness still requires evidence before calculated historical returns |
 
+| DC23 | Broker-led automatic holding discovery/enrichment; Trading 212 supplies current prices and broker figures while order execution stays there. Remove duplicate live-pricing/current-account reconstruction from the delivery path; retain historical inputs and derived analytics. | Explicit owner direction, 19 November 2026; [requirements amendment](product-requirements.md#broker-led-monitoring-amendment--19-november-2026) |
+
 Owner clarification: AXIS remains a unified operating dashboard with the existing shared access model. Separate role-based screens or permissions are not required for the current scope. Future workflow suggestions remain proposals until selected.
 
 ## Adopted engineering decisions

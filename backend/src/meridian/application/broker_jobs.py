@@ -1,5 +1,6 @@
 """Short durable transactions for shared budgets and fenced, bounded broker work."""
 
+import json
 import random
 from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
@@ -29,9 +30,24 @@ class BrokerJobs:
         self.engine, self.account_id = engine, account_id
         self.clock, self.random = clock, random_value
 
-    def acquire(self, task):
+    def acquire(self, task, *, metadata_tickers=None):
         now, token = self.clock(), uuid4().hex
         with Session(self.engine) as db, db.begin():
+            early_metadata = False
+            if metadata_tickers is not None:
+                if task != "metadata":
+                    raise ValueError("metadata_scope_task_invalid")
+                previous = db.scalar(
+                    select(BrokerSyncJob)
+                    .where(
+                        BrokerSyncJob.account_id == self.account_id,
+                        BrokerSyncJob.task == "metadata",
+                    )
+                    .with_for_update()
+                )
+                if previous is not None:
+                    requested = json.loads(previous.checkpoint_json).get("requested_tickers", [])
+                    early_metadata = bool(set(metadata_tickers) - set(requested))
             insert = pg_insert if db.bind.dialect.name == "postgresql" else sqlite_insert
             acquired = db.scalar(
                 insert(BrokerSyncJob)
@@ -52,7 +68,17 @@ class BrokerJobs:
                         lease_until=now + timedelta(seconds=90),
                         last_attempt_at=now,
                     ),
-                    where=(BrokerSyncJob.next_attempt_at <= now)
+                    # New held scope may shorten only a successful daily cooldown.
+                    # Failures, terminal pauses and an active lease still win.
+                    where=(
+                        (BrokerSyncJob.next_attempt_at <= now)
+                        | (
+                            BrokerSyncJob.last_success_at.is_not(None)
+                            & early_metadata
+                            & (BrokerSyncJob.failures == 0)
+                            & BrokerSyncJob.error_code.is_(None)
+                        )
+                    )
                     & ((BrokerSyncJob.lease_until.is_(None)) | (BrokerSyncJob.lease_until <= now)),
                 )
                 .returning(BrokerSyncJob.lease_token)
@@ -63,8 +89,6 @@ class BrokerJobs:
         """Trusted maintenance after correcting credentials/schema. Active work is fenced."""
         if task not in {"snapshot", "orders", "dividends", "transactions", "metadata"}:
             raise ValueError("invalid_sync_task")
-        import json
-
         with Session(self.engine) as db, db.begin():
             job = db.scalar(
                 select(BrokerSyncJob)

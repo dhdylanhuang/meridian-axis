@@ -2,6 +2,29 @@
 
 Status, **13 November 2026:** this document defines the delivery roadmap and acceptance gates. [Current status](status-and-handoff.md) owns completed slices and the latest owner scope. Secure two-user broker views are deployed; the owner changed refresh to ten minutes on 19 November, with deployment evidence in current status. Stage 1 evidence/import slices and parts of Stage 2 are verified. Full economic replay, daily market inputs, analytics and final operational acceptance remain open. Stage 0H retains unresolved capacity and workload gates.
 
+## Active delivery order — owner amendment, 19 November 2026
+
+This order supersedes the earlier requirement to build an independent current-price
+and reconstructed live-account valuation pipeline before the dashboard is useful.
+Trading 212 remains the authority for current prices and reported figures; trading
+stays in Trading 212. Stage definitions below retain the analytical acceptance
+contracts, subject to this source/ordering amendment and current status.
+
+1. Automatic holding discovery/enrichment: reuse successful broker snapshots and
+   the existing metadata job, expose available facts and missing coverage.
+2. Integrated transaction/cash reconciliation: traceable execution, dividend, fee
+   and cash records alongside the authoritative broker snapshot.
+3. Portfolio/risk analytics: allocations and concentration, then narrowly scoped
+   historical daily/benchmark/FX inputs for eligible risk and performance.
+4. Integrated decision dashboard: complete the nine-tab workflows, grouping,
+   stress, persistent alerts, and bounded attribution/projection deliveries.
+5. Operational acceptance: bounded post-reset cadence/query checks, browser checks,
+   measured analytics workload, scheduled backup and current-schema recovery.
+
+No separate PM/trader/risk/treasury roles or screens. No duplicate live-quote
+service or current-account valuation engine is required. Historical data,
+reconciliation, analytics and operational gates remain supported work.
+
 ## Delivery discipline
 
 Deliver one reviewable vertical capability at a time. Complete offline tests, reconciliation, operational instructions and affected documentation before declaring a stage verified. Do not build nine placeholder tabs as evidence that nine financial capabilities are done.
@@ -72,7 +95,7 @@ Quantity and recorded snapshot allocation can be reconciled here. Do not claim f
 - **2A:** same-origin HTTPS, two approved Supabase Auth identities, secure session/CSRF and explicit portfolio membership, equal full-editor permissions, audited mutations and exact dev/prod origins. Reject unrelated authenticated users as well as anonymous requests. No financial API exposed without login.
 
   Secure login/session access and approved snapshot/refresh routes are deployed for both identities. Native parity is `0007`. Actual HTTPS access/denial checks and the owner's browser sign-in are recorded in current status. Partner browser confirmation and remaining browser/operational checks are open.
-- **2B:** mapping UI/service, market-data adapter, explicit adjusted/unadjusted bases, daily price/FX cache, approved selections, ledger/broker reconciliation, GBP NAV and holding/group weights.
+- **2B:** mapping UI/service, broker-led current figures, ledger/broker reconciliation and supported holding/group weights; a narrowly scoped historical market-data adapter, explicit adjusted/unadjusted bases, daily price/FX cache and approved selections for analytics. Do not rebuild the current broker account valuation.
 - **2C:** minimal AXIS/HOLDINGS/GROUPS and source-history views; no invented return/risk cards. One scheduled-job authority, shared manual-job leases, durable backfill/checkpoints and job progress. No persistent in-process scheduler on Workers.
 - **2D:** basic quote monitoring with owner-amended ten-minute interval/capability disclosure, session calendars, stored observations, last-good/freshness, polling operation logs and authenticated SSE. End-session candidate remains provisional. Final alert/retention refinements are Stage 5.
 

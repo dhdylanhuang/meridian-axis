@@ -2,9 +2,19 @@
 
 Status: CONFIRMED polling requirements with ADOPTED correctness resolutions. The owner-approved Cloudflare + Supabase target replaces the resident polling process with bounded scheduled work; see [ADR 0001](decisions/0001-cloudflare-supabase.md). The owner changed automatic summary/positions refresh from one minute to ten minutes on 19 November 2026 after Hyperdrive quota exhaustion. Deployment evidence is maintained in current status. General quote/FX feeds, daily close selection, SSE and 90-day retention acceptance remain open. Broker retrieval time and market quote age are distinct. Current evidence is recorded in [status and handoff](status-and-handoff.md).
 
+## Broker-led current data — 19 November 2026
+
+Owner-confirmed source amendment: current holdings, prices and reported values
+come from Trading 212 positions/account summary through the existing ten-minute
+sync. Automatically discover/enrich new holdings there. No parallel live-price
+poller or reconstructed current-account NAV is required. The independent provider,
+FX, session-close and sampling contracts below apply to historical/daily analytics
+or explicitly sourced scenario inputs where broker snapshots are insufficient.
+Preserve unknown quote age; retrieval time is not a market quote timestamp.
+
 ## Provider contracts
 
-Keep broker account sync and market-data refresh separate. A broker position price may support held-instrument monitoring, but unheld benchmarks, FX and historical closes require the market-data adapter. Expose capabilities: batch quotes, history, corporate actions, quote timestamps, reported delay, official-close status and supported symbols. Unsupported capabilities return explicit results, not guessed routes.
+Current held-instrument monitoring uses broker positions. Keep the historical/daily market-data boundary separate for unheld benchmarks, required FX and historical closes; it must not become a duplicate current-held-price poller. Expose capabilities: batch quotes, history, corporate actions, quote timestamps, reported delay, official-close status and supported symbols. Unsupported capabilities return explicit results, not guessed routes.
 
 The initial market-adapter candidate remains yfinance behind this boundary. Its Worker dependency/runtime suitability and provider access must pass qualification; ordinary CPython compatibility does not establish that. A substitute provider needs a recorded field/capability contract rather than guessed endpoints or a hidden freshness reduction. Pass adjustment, corporate-action, timezone and repair options explicitly; persist selected basis and provider/library version. Its documented download API has configurable OHLC adjustment and repair behaviour. [yfinance reference](https://ranaroussi.github.io/yfinance/reference/api/yfinance.download.html)
 
@@ -25,9 +35,9 @@ Price unchanged is not proof of failure; request succeeded is not proof of fresh
 
 ## Polling universe and sessions
 
-Poll nonzero held instruments, VUAG/IWDA benchmark listings and necessary GBP FX pairs only. No closed-position or full-map quote polling. Refresh metadata separately. Batch requests when supported; do not label parallel individual requests as provider batching.
+The historical/daily analytics universe is nonzero held instruments, VUAG/IWDA benchmark listings and necessary GBP FX pairs only. Current held prices already arrive through the broker snapshot. Do not add duplicate held-quote, closed-position or full-map polling. Refresh metadata separately. Batch requests when supported; do not label parallel individual requests as provider batching.
 
-Requested interval is a setting, default **ten minutes** (600 seconds; owner amendment, 19 November) during eligible sessions. The adapter's rate limits/capabilities can impose a slower interval, disclosed to the user. Market-hours rules are exchange-specific with time zone, holidays, half-days, lunch breaks and regular-session boundaries. Extended-hours polling is a separate explicit setting, initially off. Sourced calendar data is cached/versioned; editable overrides are audited with dates and reasons.
+Current broker refresh uses the deployed **ten-minute** policy (600 seconds; owner amendment, 19 November) during eligible sessions. There is no separate local quote-interval setting. Historical daily-data jobs use their own bounded eligibility, not a second ten-minute live-price poller. The adapter's rate limits/capabilities can impose a slower interval, disclosed to the user. Market-hours rules are exchange-specific with time zone, holidays, half-days, lunch breaks and regular-session boundaries. Extended-hours polling is a separate explicit setting, initially off. Sourced calendar data is cached/versioned; editable overrides are audited with dates and reasons.
 
 FX uses its own session/provider policy and may remain relevant while an underlying listing is closed. Stop that instrument's quote polling outside its session, but do not label its GBP valuation frozen if FX continues moving. A closed instrument shows its last selected close, source and session date; before a new close exists, show the last quote as provisional rather than claiming it is the close.
 

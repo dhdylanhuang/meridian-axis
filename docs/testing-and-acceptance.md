@@ -99,3 +99,15 @@ read-only CLI and integrity failures. Targeted Ruff checks passed. Exact command
 and reuse instructions are in current status. This is local read-model evidence;
 API/CSV aliases, cash/dividend/fee booking, openings/corporate actions, PostgreSQL
 execution and dashboard acceptance remain open. No full-stage acceptance claimed.
+
+
+## Broker-led discovery delivery — 19 November 2026
+
+D02/D03/D06/L01/L04/U01 subset: **31** targeted offline backend cases passed
+(new discovery coverage plus relevant sync/snapshot regressions), **9** Node
+snapshot-view cases passed, and **10** config/Worker-allowlist cases passed.
+Exact commands and reuse instructions are in current status. Full matrices,
+PostgreSQL execution, real-input enrichment and browser visual acceptance are not
+claimed. Reuse prior retention/security evidence for unchanged paths. No second
+current-price provider or reconstructed account valuation gate is required under
+the owner amendment; historical risk/performance inputs retain their own gates.

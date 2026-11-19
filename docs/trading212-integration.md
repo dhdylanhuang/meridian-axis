@@ -117,3 +117,36 @@ Each history family advances one page per invocation. Its next eligibility uses 
 
 
 On 19 November 2026 the owner changed automatic refresh to ten minutes after Hyperdrive quota exhaustion. Snapshot eligibility and history rotation follow ten-minute slots; history comparison is batched in groups of 500 identities. Metadata remains daily and family cooldowns remain one hour after the final accepted page. See the [query budget and incident controls](market-data-and-polling.md#hyperdrive-query-budget--19-november-incident).
+
+
+## Automatic discovery/enrichment — 19 November 2026
+
+Owner-confirmed current-data authority is Trading 212; order execution remains in
+the broker. Successful account/position refresh automatically discovers the held
+universe without manual symbol setup. The approved snapshot compares nonzero held
+tickers with the preceding saved snapshot and reports additions/closures as
+observations, never as execution confirmations. Initial capture is a baseline.
+
+The one existing metadata job now runs after successful scheduled **or manual**
+refresh. Its successful checkpoint retains requested held tickers. A newly held
+ticker can shorten a successful daily cooldown, while active leases, failures,
+terminal pauses and provider endpoint reservations retain precedence. A missing
+catalogue ticker is remembered as requested so it cannot trigger a lookup every
+cycle. Closure alone does not shorten the daily cooldown. Older successful jobs
+without a scope checkpoint get one scope catch-up. Only held rows and their
+schedules are retained, not the complete provider catalogue.
+
+Snapshot publication uses the latest accepted metadata to fill absent name,
+listing currency and ISIN, and to supply instrument type. Position fields take
+precedence; conflicting currency prevents metadata fallback. Price/value/cost/PnL
+and cash remain the original broker figures with no reconstruction. Metadata
+coverage is `pending`, `available`, `missing`, `stale` (over 36 hours) or `conflict`,
+with source ID/retrieval time. Unknown quote timestamp stays unknown.
+
+Financial snapshots publish before metadata lookup. Newly fetched enrichment is
+visible on the **next successful snapshot**, avoiding a metadata dependency for
+current broker figures or mutation of an already published snapshot. This is not
+broker push, instant discovery, a historical daily feed or calculated performance.
+No new schema/role/HTTP route/poller. The metadata reader/refresher is shared by
+session checks and publication; unused local parallel quote/retention config has
+been removed. Deployment and exact targeted evidence belong in current status.

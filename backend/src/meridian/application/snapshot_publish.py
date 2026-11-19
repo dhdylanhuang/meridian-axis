@@ -1,6 +1,7 @@
 """Trusted maintenance only; application runtime has no snapshot write grant."""
 
 import hashlib
+import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -8,6 +9,7 @@ from sqlalchemy import select
 
 from meridian.adapters.broker_evidence import canonical, instant
 from meridian.application.broker_ingestion import KIND
+from meridian.application.broker_metadata import latest_metadata
 from meridian.application.broker_snapshot import broker_snapshot
 from meridian.application.snapshot_access import MAX_SNAPSHOT_BYTES
 from meridian.persistence.models import Account, AuditRecord, BrokerSnapshot, ImportRun
@@ -34,13 +36,28 @@ def publish_snapshot(db, *, account_id, run_id, evidence, now=None, actor="admin
     )
     if existing is not None:
         return existing
-    payload = canonical(broker_snapshot(evidence))
-    if len(payload.encode()) > MAX_SNAPSHOT_BYTES:
-        raise ValueError("snapshot_size_limit")
     observations = evidence.document["observations"]
     observed = max(
         instant(observations[f]["retrieval_completed_at"]) for f in ("account_summary", "positions")
     )
+    metadata = latest_metadata(db, account_id)
+    previous = db.scalar(
+        select(BrokerSnapshot)
+        .where(BrokerSnapshot.account_id == account_id, BrokerSnapshot.observed_at <= observed)
+        .order_by(BrokerSnapshot.observed_at.desc(), BrokerSnapshot.id.desc())
+        .limit(1)
+    )
+    payload = canonical(
+        broker_snapshot(
+            evidence,
+            metadata={"source_id": metadata.id, "payload": json.loads(metadata.payload_json)}
+            if metadata
+            else None,
+            previous=json.loads(previous.snapshot_json) if previous else None,
+        )
+    )
+    if len(payload.encode()) > MAX_SNAPSHOT_BYTES:
+        raise ValueError("snapshot_size_limit")
     snapshot = BrokerSnapshot(
         id=uuid4().hex,
         account_id=account_id,

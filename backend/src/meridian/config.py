@@ -14,8 +14,6 @@ class Settings(BaseSettings):
     broker_environment: Literal["demo", "live"] = "demo"
     broker_api_key: SecretStr | None = Field(default=None, repr=False)
     broker_api_secret: SecretStr | None = Field(default=None, repr=False)
-    quote_interval_seconds: int = Field(default=60, ge=15, le=3600)
-    intraday_retention_days: int = Field(default=90, ge=1, le=3650)
     max_import_bytes: int = Field(default=20 * 1024 * 1024, ge=1024, le=100 * 1024 * 1024)
 
     @model_validator(mode="after")

@@ -48,7 +48,9 @@
     for (const row of rows) {
       const tr = document.createElement('tr');
       const name = document.createElement('td'); name.textContent = row.name || row.ticker;
-      const ticker = document.createElement('small'); ticker.textContent = row.ticker; name.append(ticker); tr.append(name);
+      const ticker = document.createElement('small'); ticker.textContent = row.ticker;
+      const metadataStates = {pending:'metadata pending',missing:'metadata unavailable',stale:'metadata stale',conflict:'metadata needs review'};
+      if (metadataStates[row.metadata?.state]) ticker.textContent += ` · ${metadataStates[row.metadata.state]}`; name.append(ticker); tr.append(name);
       for (const value of [decimal(row.quantity), decimal(row.current_price,row.instrument_currency), decimal(row.current_value,row.account_currency), decimal(row.total_cost,row.account_currency), decimal(row.unrealized_profit_loss,row.account_currency)]) {
         const cell = document.createElement('td'); cell.textContent = value; tr.append(cell);
       }
@@ -77,7 +79,10 @@
       amounts.forEach((id,index) => el(id).textContent = decimal(values[index],data.currency));
       const when = value => new Date(value).toLocaleString('en-GB',{timeZone:'Europe/London',timeZoneName:'short'});
       el('snapshot-time').textContent = `Trading 212 · ${data.environment.toUpperCase()} account · Account captured ${when(data.account_retrieval.retrieval_completed_at)}; holdings captured ${when(data.positions_retrieval.retrieval_completed_at)}.`;
-      el('snapshot-status').textContent = ''; document.body.classList.add('snapshot-ready'); renderHoldings();
+      const changes = data.holding_changes;
+      const additions = changes?.added_tickers || [], closures = changes?.closed_tickers || [];
+      el('snapshot-status').textContent = additions.length || closures.length ? `Since previous saved snapshot: ${additions.length} holdings added, ${closures.length} no longer held. These are position observations, not execution confirmations.` : '';
+      document.body.classList.add('snapshot-ready'); renderHoldings();
       failures = 0; nextRead = Date.now() + READ_COOLDOWN;
       health(data.refresh_health);
     } catch (error) {

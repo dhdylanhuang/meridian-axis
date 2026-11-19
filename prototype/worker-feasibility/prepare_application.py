@@ -16,6 +16,7 @@ FILES = (
     "application/refresh_status.py",
     "application/broker_jobs.py",
     "application/broker_sessions.py",
+    "application/broker_metadata.py",
     "application/broker_sync.py",
     "application/broker_snapshot.py",
     "application/snapshot_publish.py",

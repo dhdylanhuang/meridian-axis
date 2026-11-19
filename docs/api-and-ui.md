@@ -114,3 +114,20 @@ AXIS shows reported account figures and HOLDINGS supplies search and exact-decim
 | `GET /api/v1/portfolio/refresh/status` | Require active membership/session. Return target interval, unknown quote age and approved per-task attempt/success/retry/failure health. Private checkpoints and lease tokens are excluded. |
 
 Gateway routes reject query-selected accounts and request bodies on refresh. Manual and scheduled work share database leases and endpoint reservations. A queued acknowledgement records delivery of a signal. Completion is observed through health and the next published snapshot. Published financial values and their original retrieval times remain available on failure. The current browser transport is authenticated periodic pull. SSE and a general job-ID/progress API remain target capabilities.
+
+
+### Broker-led discovery projection — 19 November 2026
+
+Approved snapshot rows add nullable `isin`/`instrument_type` and `metadata` with
+`state`, opaque `source_id` and `retrieved_at`. Coverage states and fallback rules
+are defined in [broker integration](trading212-integration.md#automatic-discoveryenrichment--19-november-2026).
+The BFF reads only the approved snapshot, with no new raw-source permission or
+browser request. The existing holdings view renders metadata limitations as text.
+
+`holding_changes` carries `basis` (`initial_observation` or
+`previous_saved_snapshot`), `added_tickers` and `closed_tickers`. The existing
+snapshot-status line displays counts since the preceding saved snapshot. These
+are observed position-set changes, not order/fill confirmations, and can age out
+of the latest view on the next refresh; immutable evidence/history retains its
+existing retention policy. Newly fetched metadata appears in the next successful
+snapshot. Old saved snapshots without these fields remain readable.

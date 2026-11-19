@@ -4,6 +4,16 @@ Status: **CONFIRMED production platform change, 11 November 2026**. The owner se
 
 **Implemented state, 19 November 2026:** the private two-user AXIS/HOLDINGS application and bounded broker refresh are deployed at native parity `0008`. The BFF reads approved projections and refresh health. A separate restricted writer persists broker evidence and revisions. Ten-minute refresh and bounded sixty-day detailed-observation expiry are deployed, with latest/daily observations and financial history protected. A manual local XLSX archive is implemented. Normalized economics, broader analytics, streaming and full capacity acceptance remain open. [Current status](status-and-handoff.md) owns delivery evidence.
 
+## Current-data authority — owner amendment, 19 November 2026
+
+Use one broker snapshot publication path for current holdings, prices, values,
+cost/PnL and cash components. Automatically enrich discovered holdings from the
+existing held-listing metadata job. Do not add a parallel live-quote provider,
+scheduler or current-account reconstruction engine. External market-data/FX
+adapters in the target diagram serve historical daily analytics and explicit
+scenarios. They are not a prerequisite for displaying a newly observed holding.
+Orders remain in Trading 212; all AXIS broker integration stays read-only.
+
 ## Choose the smallest system that can be checked
 
 Keep a modular application with same-origin Cloudflare assets/API and private Supabase PostgreSQL. The deployed private UI uses static HTML/CSS/JavaScript under `prototype/worker-feasibility/signin/`. The separate React preview contains invented data. React/Vite/Tailwind/ECharts remains the broader frontend target. The production gateway dispatches to Python/FastAPI inside a Durable Object. Authenticated bounded scheduled invocations replace a resident scheduler. Two equal full-editor logins share one owner's live ISA; Demo and Live evidence remain isolated. No initial role hierarchy is required; tax remains a later optional extension.

@@ -30,8 +30,6 @@ def test_environment_loading_and_secret_repr(monkeypatch):
         {"broker_environment": "https://attacker.invalid"},
         {"broker_api_key": "synthetic"},
         {"broker_api_key": "", "broker_api_secret": ""},
-        {"quote_interval_seconds": 0},
-        {"intraday_retention_days": -1},
     ],
 )
 def test_invalid_configuration_rejected(kwargs):
@@ -41,3 +39,15 @@ def test_invalid_configuration_rejected(kwargs):
 
 def test_data_directory_must_be_a_path():
     assert Settings(data_dir="private/example").data_dir == Path("private/example")
+
+
+@pytest.mark.parametrize(
+    "retired",
+    [
+        {"quote_interval_seconds": 60},
+        {"intraday_retention_days": 90},
+    ],
+)
+def test_unused_parallel_quote_controls_are_rejected(retired):
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        Settings(**retired)

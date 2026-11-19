@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 
 from meridian.adapters.trading212 import Trading212Client
 from meridian.application.broker_jobs import BrokerJobs
-from meridian.application.broker_sessions import relevant_session, select_session_metadata
-from meridian.application.broker_sync import BrokerSync, decimal_strings, source_record
-from meridian.persistence.models import Account, BrokerSnapshot, BrokerSyncJob, SourceRecord
+from meridian.application.broker_metadata import latest_metadata, refresh_metadata
+from meridian.application.broker_sessions import relevant_session
+from meridian.application.broker_sync import BrokerSync
+from meridian.persistence.models import Account, BrokerSnapshot, BrokerSyncJob
 from meridian.security.hosted import create_binding_engine
 
 
@@ -22,20 +23,7 @@ def session_state(engine, account_id, now):
             .order_by(BrokerSnapshot.observed_at.desc())
             .limit(1)
         )
-        # Metadata sources are immutable and only inserted with successful jobs.
-        from meridian.persistence.models import ImportRun
-
-        metadata = db.scalar(
-            select(SourceRecord)
-            .join(ImportRun, SourceRecord.run_id == ImportRun.id)
-            .where(
-                SourceRecord.account_id == account_id,
-                SourceRecord.kind == "trading212_metadata",
-                ImportRun.status == "succeeded",
-            )
-            .order_by(ImportRun.finished_at.desc())
-            .limit(1)
-        )
+        metadata = latest_metadata(db, account_id)
         if snapshot is None or metadata is None:
             return "unknown"
         payload = json.loads(metadata.payload_json)
@@ -53,48 +41,6 @@ def metadata_time(payload):
     from meridian.adapters.broker_evidence import instant
 
     return instant(payload["retrieved_at"])
-
-
-async def refresh_metadata(service):
-    jobs = service.jobs
-    token = jobs.acquire("metadata")
-    if token is None:
-        return
-    try:
-        with Session(service.engine) as db:
-            snapshot = db.scalar(
-                select(BrokerSnapshot)
-                .where(BrokerSnapshot.account_id == service.account_id)
-                .order_by(BrokerSnapshot.observed_at.desc())
-                .limit(1)
-            )
-            if snapshot is None:
-                raise ValueError("snapshot_unavailable")
-            tickers = [row["ticker"] for row in json.loads(snapshot.snapshot_json)["positions"]]
-        started = jobs.clock().isoformat()
-        instruments = await service.api.instruments()
-        exchanges = await service.api.exchanges()
-        payload = select_session_metadata(
-            tickers,
-            [decimal_strings(r.raw_payload) for r in instruments],
-            [decimal_strings(r.raw_payload) for r in exchanges],
-        ) | dict(retrieval_started_at=started, retrieved_at=jobs.clock().isoformat())
-        with Session(service.engine) as db, db.begin():
-            job = jobs.owned(db, "metadata", token)
-            service.scope(db)
-            run = service.new_run(db, "trading212_metadata")
-            db.add(source_record(service.account_id, run.id, 1, "trading212_metadata", payload))
-            run.status, run.finished_at = "succeeded", jobs.clock()
-            service.audit(db, run, "broker_metadata_accepted", {"families": 2})
-            jobs.succeed(job, interval=86400)
-    except Exception as error:
-        from meridian.adapters.trading212 import BrokerError
-
-        jobs.fail(
-            "metadata",
-            token,
-            error if isinstance(error, BrokerError) else BrokerError("metadata_failed"),
-        )
 
 
 async def run_sync(binding, *, api_key, api_secret, environment, scheduled=False):
@@ -133,6 +79,7 @@ async def run_sync(binding, *, api_key, api_secret, environment, scheduled=False
                     int(jobs.clock().timestamp() // 600) % 3
                 ]
                 await service.history_page(family)
+            if result.get("status") == "succeeded" or (scheduled and state == "closed"):
                 await refresh_metadata(service)
             if not scheduled and result["status"] in {"failed", "deferred"}:
                 with Session(engine) as db:

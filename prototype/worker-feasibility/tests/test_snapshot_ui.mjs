@@ -95,3 +95,15 @@ test('failed manual request pauses further manual and saved-snapshot requests',a
  assert.equal(calls,2);
  assert.match(ui.el('refresh-status').textContent,/cooling down/);
 });
+
+test('new-holding notice and metadata limitations render through the existing snapshot view',async()=>{
+ const data=snapshot();data.holding_changes={added_tickers:['SYNTH'],closed_tickers:[]};
+ data.positions[0].metadata={state:'pending'};
+ const ui=setup(async()=>({ok:true,status:200,json:async()=>data}));await ui.view.load();
+ assert.match(ui.el('snapshot-status').textContent,/1 holdings added, 0 no longer held/);
+ assert.match(ui.el('snapshot-status').textContent,/not execution confirmations/);
+ const ticker=ui.el('holdings-body').children[0].children[0].children[0];
+ assert.equal(ticker.textContent,'SYNTH · metadata pending');
+ assert.equal(ui.el('holdings-body').children[0].children[2].textContent,'12.34 USD');
+ ui.view.clear();assert.equal(ui.el('snapshot-status').textContent,'');
+});

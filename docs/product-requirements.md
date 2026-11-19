@@ -8,6 +8,25 @@ Great Dyke Meridian replaces a manually maintained Excel portfolio tracker with 
 
 Optimise for readable financial tables, dependable imports, explainable calculations and visible data quality. The desired visual direction is a dark Koyfin/Bloomberg-style terminal. There is no marketing site, trade execution or autonomous investment advice.
 
+## Broker-led monitoring amendment — 19 November 2026
+
+CONFIRMED owner direction: one integrated dashboard supports portfolio management,
+risk, trading monitoring and portfolio cash/treasury analysis. Orders continue to
+be executed in Trading 212. AXIS automatically discovers holdings on successful
+broker refreshes and uses supplied current prices, quantities, values, cost and
+PnL. Remove the parallel live-quote/current-account valuation requirement from the
+critical path; do not build a second engine to reproduce broker figures. Current
+code has one broker snapshot path, not a second live-price service to delete.
+
+Preserve ten-minute/session-aware polling, manual refresh, source/retrieval quality,
+and equal shared access. This is polling, not broker push or guaranteed instant
+trade detection. A new holding triggers bounded metadata enrichment through the
+existing broker jobs, with unavailable states where facts are absent. External
+daily history/benchmark/FX inputs remain necessary for supported historical risk,
+performance and scenarios; they do not replace the current broker snapshot.
+Reconciliation remains a control alongside broker figures. No analytics, nine-tab,
+projection or attribution requirement is silently removed; tax stays deferred.
+
 ## Requirements and destinations
 
 | ID | Requirement | Contract / delivery gate |
