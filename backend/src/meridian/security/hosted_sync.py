@@ -3,7 +3,7 @@
 import json
 from datetime import timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from meridian.adapters.trading212 import Trading212Client
@@ -143,5 +143,16 @@ async def run_sync(binding, *, api_key, api_secret, environment, scheduled=False
                             due = max(due, job.lease_until)
                         result["retry_at"] = due.isoformat()
             return result | {"session": state}
+    finally:
+        engine.dispose()
+
+
+def run_retention(binding):
+    """One fixed server-side batch; never load expired payloads into Worker memory."""
+    engine = create_binding_engine(binding, expected_role="meridian_sync_public")
+    try:
+        with engine.begin() as db:
+            db.execute(text("SET LOCAL statement_timeout = '5s'"))
+            return db.scalar(text("SELECT public.prune_broker_refresh()"))
     finally:
         engine.dispose()

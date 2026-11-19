@@ -36,6 +36,7 @@ SQL_PATHS = (
     RUNTIME_SQL_PATH,
     SNAPSHOT_SQL_PATH,
     SYNC_SQL_PATH,
+    SQL_PATH.with_name("20261119000100_refresh_retention.sql"),
 )
 NOW = datetime(2026, 1, 2, 12, tzinfo=UTC)
 _TABLES = (
@@ -101,13 +102,13 @@ def test_native_supabase_bootstrap_has_exact_schema_head_and_no_seeded_finances(
     assert set(inspect(native_engine).get_table_names()) == set(_TABLES)
     with native_engine.connect() as connection:
         context = MigrationContext.configure(connection)
-        assert context.get_current_revision() == "0007"
+        assert context.get_current_revision() == "0008"
         assert compare_metadata(context, Base.metadata) == []
         for table in _TABLES[:-1]:
             assert connection.scalar(text(f'SELECT count(*) FROM "{table}"')) == 0
         assert connection.execute(
             text("SELECT version_num FROM alembic_version")
-        ).scalars().all() == ["0007"]
+        ).scalars().all() == ["0008"]
 
 
 @pytest.mark.postgres

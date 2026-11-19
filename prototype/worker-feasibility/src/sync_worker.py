@@ -87,6 +87,20 @@ class BrokerSyncDO(DurableObject):
             elif result.get("status") in {"succeeded", "outside_session"}:
                 await self.ctx.storage.put("database-failures", 0)
                 await self.ctx.storage.put("database-not-before", 0)
+                if scheduled and now >= deadline(await self.ctx.storage.get("retention-not-before")):
+                    # One daily fixed-scope SQL call, not a payload scan in Python.
+                    try:
+                        from meridian.security.hosted_sync import run_retention
+
+                        retention = run_retention(self.env.HYPERDRIVE)
+                        complete = retention.get("status") in {"completed", "already_completed"}
+                    except Exception:
+                        complete = False
+                    # Failed cleanup cannot invalidate a successfully published snapshot.
+                    # Retry at most hourly; daily database audit also fences duplicate calls.
+                    due = (now // 86_400_000 + 1) * 86_400_000 if complete else now + 3_600_000
+                    await self.ctx.storage.put("retention-not-before", due)
+                    result["retention"] = "completed" if complete else "deferred"
             return result
 
 

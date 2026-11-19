@@ -111,3 +111,44 @@ class SyncWorkerTests(unittest.IsolatedAsyncioTestCase):
                 await restarted.execute(scheduled=True)
             self.assertEqual(run.await_count, 2)
             self.assertEqual(state["database-not-before"], 2800000)
+
+    async def test_successful_scheduled_work_runs_retention_once_per_utc_day(self):
+        module = self.load_worker()
+        state = {}
+        worker = module.BrokerSyncDO()
+        worker.ctx = SimpleNamespace(storage=self.storage(state=state))
+        worker.env = SimpleNamespace(HYPERDRIVE=object(), BROKER_API_KEY="synthetic",
+                                     BROKER_API_SECRET="synthetic", BROKER_ENVIRONMENT="demo")
+        run = AsyncMock(return_value={"status": "succeeded"})
+        retention = Mock(return_value={"status": "completed"})
+        with patch.dict("sys.modules", {"meridian.security.hosted_sync": SimpleNamespace(
+                run_sync=run, run_retention=retention)}):
+            with patch.object(module.time, "time", return_value=1000):
+                await worker.execute(scheduled=False)
+                retention.assert_not_called()
+                await worker.execute(scheduled=True)
+                await worker.execute(scheduled=True)
+                retention.assert_called_once()
+                self.assertEqual(state["retention-not-before"], 86400000)
+            with patch.object(module.time, "time", return_value=86401):
+                await worker.execute(scheduled=True)
+                self.assertEqual(retention.call_count, 2)
+
+    async def test_retention_failure_keeps_snapshot_success_and_waits_an_hour(self):
+        module = self.load_worker()
+        state = {}
+        worker = module.BrokerSyncDO()
+        worker.ctx = SimpleNamespace(storage=self.storage(state=state))
+        worker.env = SimpleNamespace(HYPERDRIVE=object(), BROKER_API_KEY="synthetic",
+                                     BROKER_API_SECRET="synthetic", BROKER_ENVIRONMENT="demo")
+        run = AsyncMock(return_value={"status": "succeeded"})
+        retention = Mock(side_effect=RuntimeError("synthetic"))
+        with patch.dict("sys.modules", {"meridian.security.hosted_sync": SimpleNamespace(
+                run_sync=run, run_retention=retention)}):
+            with patch.object(module.time, "time", return_value=1000):
+                result = await worker.execute(scheduled=True)
+                await worker.execute(scheduled=True)
+                self.assertEqual(result["status"], "succeeded")
+                self.assertEqual(result["retention"], "deferred")
+                retention.assert_called_once()
+                self.assertEqual(state["retention-not-before"], 4600000)
