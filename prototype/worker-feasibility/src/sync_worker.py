@@ -98,6 +98,8 @@ class BrokerSyncDO(DurableObject):
                         complete = False
                     # Failed cleanup cannot invalidate a successfully published snapshot.
                     # Retry at most hourly; daily database audit also fences duplicate calls.
+                    if not complete:
+                        print("broker_retention_deferred")
                     due = (now // 86_400_000 + 1) * 86_400_000 if complete else now + 3_600_000
                     await self.ctx.storage.put("retention-not-before", due)
                     result["retention"] = "completed" if complete else "deferred"

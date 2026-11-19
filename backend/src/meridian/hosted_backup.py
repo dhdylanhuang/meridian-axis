@@ -66,8 +66,13 @@ def run(args: list[str], *, data: bytes | None = None, timeout: int = 300) -> by
     try:
         result = subprocess.run(args, input=data, capture_output=True, timeout=timeout)
         if result.returncode:
+            diagnostic = (result.stdout + result.stderr).lower()
+            if b"cannot connect to the docker daemon" in diagnostic:
+                raise RecoveryError("recovery_docker_unavailable")
             raise ValueError
         return result.stdout
+    except RecoveryError:
+        raise
     except Exception:
         raise RecoveryError("recovery_command_failed") from None
 

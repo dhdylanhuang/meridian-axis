@@ -68,3 +68,6 @@ After snapshot publication, a new encrypted `0006` export including actual priva
 
 
 Retention parity `0008` adds a function without changing the twelve-table set. The backup helper accepts `0008` controls and includes the capability in schema export. Actual `0008` export/restore evidence must be recorded separately; earlier drills do not prove retention recovery. Expired intraday observations cannot be recreated from a later backup.
+
+
+Docker-dependent export prerequisite: start the installed Docker Desktop before backup. Confirm `docker version --format '{{.Server.Version}}'` returns a nonempty server version; do not trust `docker info --format ...` exit status alone, which can be zero alongside a daemon connection error. The backup helper now returns the fixed, secret-free `recovery_docker_unavailable` category for the CLI's daemon-connection failure. Start the daemon and retry the export once; do not repeat database sizing, tests, install clients or change socket configuration to diagnose that category. Backup credentials and plaintext SQL still never enter logs or disk.

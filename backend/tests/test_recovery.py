@@ -208,3 +208,21 @@ def test_native_migration_history_is_exported_explicitly(tmp_path, monkeypatch):
         for args in calls
     )
     assert any("--schema" in args and args[-1] == "public,supabase_migrations" for args in calls)
+
+
+def test_backup_docker_failure_has_actionable_secret_free_category(monkeypatch):
+    from types import SimpleNamespace
+
+    from meridian import hosted_backup
+
+    monkeypatch.setattr(
+        hosted_backup.subprocess,
+        "run",
+        lambda *a, **k: SimpleNamespace(
+            returncode=1,
+            stdout=b'{"error":{"message":"Cannot connect to the Docker daemon"}}',
+            stderr=b"synthetic-secret-must-not-leak",
+        ),
+    )
+    with pytest.raises(hosted_backup.RecoveryError, match="^recovery_docker_unavailable$"):
+        hosted_backup.run(["cli", "db", "dump"])
