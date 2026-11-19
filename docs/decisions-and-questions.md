@@ -56,6 +56,7 @@ These are architect choices made for a coherent, minimal implementation plan. Th
 | DE17 | Polling cycles retained in typed import_log and filtered separately | Preserve requested logging without drowning imports; polling |
 | DE18 | Legacy workbook facts retained, known defects excluded from active calculations | Reconcile without institutionalising errors; workbook |
 | DE19 | Historical attribution uses effective membership; current exposure uses current groups | Prevent unlabelled historical restatement; data model |
+| DE21 | Rebuildable local quantity diagnostic first; preserve signed trade observations and quarantine incompatible signs/non-trade fills; residuals stay provisional without openings/coverage | Bounded D03/C01 slice; [normalization contract](imports-and-reconciliation.md#execution-quantity-diagnostic--19-november-2026). Cash, fees and persisted ledger remain open |
 | DE20 | Qualify a thin gateway to a Python Durable Object after ordinary Python HTTP CPU exceeded the documented Free budget | Synthetic responses/CPU observed; [ADR 0003](decisions/0003-python-object-qualification.md); production database/Auth/capacity/recovery remain gates |
 
 ## Open decisions and source gaps

@@ -98,3 +98,60 @@ History jobs persist one page and its continuation per invocation. Each family r
 The adopted history cadence uses a one-hour cooldown anchored to each successful final-page attempt, advancing one family page per scheduled invocation and rotating three families. Pagination and retries may extend the actual interval. It catches late and revised rows without assuming cursor ordering or inventing date filters. The 1,000-page bound stops an unbounded traversal for review. `BrokerJobs.resume` supports trusted administrative retry or a traced restart after correcting a terminal failure. Its database transaction must use administration, since the runtime audit policy permits only ordinary sync actions.
 
 The original Excel baseline is now privately hosted as six `excel_migration` source observations. The local CLI previews by default and accepts an explicit private JSON cell mapping. Revisions preserve earlier source versions. See the workbook contract for precision, missing-cost controls and actual-source verification. Holdings CSV remains evidence-only fallback. Transaction CSV normalization/aliases require verified export headers and samples. The owner currently has transaction history only in PDF.
+
+
+## Execution quantity diagnostic — 19 November 2026
+
+Implemented bounded slice of D03/C01: `application/history_reconciliation.py` builds
+`known_trade_quantity_v1` from accepted initial capture order rows and ongoing
+order revisions. `domain/quantity_history.py` owns pure Decimal replay. This is a
+rebuildable, provisional read model; it creates no persisted ledger entries.
+
+Identity is account-scoped `fill:<fill ID>` (or `order:<order ID>` for no-fill
+observations). Distinct fills under one order remain distinct. Select the latest
+observation timestamp, then revision number; initial captures use their retrieval
+completion and revision zero, ongoing revisions use acceptance observation time.
+Same-rank conflicting payloads produce review with no quantity effect. Every
+source/revision ID, raw-row digest, order/fill ID and original execution timestamp
+remains traceable. Repeated observations contribute once; a revised fill replaces
+its previous effect, and disappearance from a later traversal is not a reversal.
+
+Only `TRADE` quantities with BUY/nonnegative or SELL/nonpositive source signs
+contribute their original signed quantity. Other sign combinations require review;
+there is no `abs()` sign repair or assumption that all provider sell observations
+follow this convention. Non-trade fill types require corporate-action review and
+contribute no invented economics. No-fill orders contribute nothing. Executions
+after the saved positions retrieval completion are excluded from that comparison.
+Price is retained as source evidence with nullable order currency; no cost, FX,
+cash or return calculation uses it.
+
+The comparison is **broker quantity minus known trade deltas**, with exact Decimal
+precision and no percentage tolerance. It includes closed/replay-only listings.
+It does not assume an opening balance: even a zero residual says only
+`matches_known_events_only`. Lifetime coverage, missing opening positions,
+separate observation times and unimplemented cash/dividend/fee economics remain
+explicit warnings. Latest ongoing order-attempt status and last completed order
+traversal are reported independently; running/failed source pages do not enter
+replay. A completed API traversal does not establish lifetime completeness.
+
+Trusted local use, from `backend` with the existing environment:
+
+```sh
+python -m meridian.reconcile_history --database /path/to/private.sqlite3 --account-id ACCOUNT_ID
+```
+
+Use an existing private local evidence database. The command opens SQLite in
+`mode=ro` with one explicit read transaction, cannot create a missing database,
+and makes no broker/hosted requests. **Its JSON contains private financial records
+and identifiers**; keep stdout/reports outside Git and public logs. The service
+requires a caller-owned consistent read transaction and trusted evidence access;
+it is not a new HTTP endpoint or BFF permission. Initial capture source digests,
+revision payload identity/digest and saved snapshot digest are checked. Each of
+the capture-row and revision reads is capped at 20,000 observations; exceeding a
+cap fails the entire report rather than silently truncating it.
+
+Remaining: verify source sign conventions against private evidence before broader
+booking; establish supported opening/coverage and corporate-action treatment;
+normalize dividend/cash/fee economics; persistence/aliases and integrated dashboard
+presentation. Cash components retain the existing broker authority and are not
+summed or reconciled by this slice. No schema, sync, retention or access change.

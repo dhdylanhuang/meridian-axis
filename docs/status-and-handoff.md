@@ -4,7 +4,39 @@ Reviewed **19 November 2026**. This file is the authoritative implementation sna
 
 ## Current work scope
 
-The owner selected a manual Excel archive instead of hosted archive infrastructure. The existing private workbook now contains an **AXIS Archive** sheet with 1,360 retained broker-refresh generations. Original eleven-sheet contents/formulas were preserved and a private pre-change copy saved. Use [the manual export command](workbook-archive.md); it is incremental, hash-checked and read-only against the source. It needs no temporary virtualenv or Docker. Export at least monthly before hosted sixty-day expiry; cleanup does not wait for a local export. No backend tests, CI, deployment or hosted policy changes were performed for this task. Two bounded offline checks and a new-sheet visual review passed. The owner requested a successor-agent prompt for transaction history/reconciliation; [the next assignment](next-milestone.md) now captures that intended scope. No feature implementation was started in this documentation check.
+The current delivery implements a **local, read-only execution quantity diagnostic**
+(method `known_trade_quantity_v1`). It normalizes accepted initial capture order
+rows and ongoing fill revisions into one effective quantity record per identity,
+preserving evidence/revision links. It compares known signed trade deltas with the
+latest saved Trading 212 positions and exposes unexplained residuals, corporate
+actions, sign conflicts and incomplete coverage. It never invents opening balances.
+Zero residuals remain provisional. Cash/dividend/fee economics, a persisted ledger,
+CSV aliases and dashboard presentation remain unfinished.
+
+Run from `backend`: `python -m meridian.reconcile_history --database /path/to/private.sqlite3 --account-id ACCOUNT_ID`.
+The JSON is private financial output; keep it outside Git/logs. SQLite is opened
+read-only in one consistent transaction. Each capture/revision read fails closed
+above 20,000 observations. See [method and boundary](imports-and-reconciliation.md#execution-quantity-diagnostic--19-november-2026).
+No hosted operation, migration, access change, deployment, polling/retention change
+or workbook access was needed. Deployed sources/native parity below remain current.
+
+New offline evidence (19 November):
+`/private/tmp/meridian-query-venv/bin/python -m pytest -q -p no:cacheprovider backend/tests/test_history_reconciliation.py`
+passed **12 tests**. Coverage includes real synthetic evidence acceptance and
+snapshot publication, repeated syncs, revised effects, running-page exclusion,
+precise residuals, signed sells, distinct fills, closed positions, future fills,
+conflicts, scope/limits, read-only CLI and digest failures. Targeted Ruff check and
+format check passed for the three new modules, domain package and new test file.
+The first nine-case run passed; after adding currency/integrity coverage the final
+twelve-case run passed. A Ruff cache write was sandbox-denied; `--no-cache` checks
+then passed. Reuse these results; no full suite, CI matrix, live probe or retention
+check was run. No real-input reconciliation or PostgreSQL execution is claimed.
+
+The manual Excel archive remains completed: the private **AXIS Archive** sheet has
+1,360 retained refresh generations, with original sheets/formulas preserved. Use
+[the manual export command](workbook-archive.md); no workbook was read or changed
+for this delivery. [Next assignment](next-milestone.md) identifies the remaining
+history/reconciliation boundary.
 
 Bounded retention and the separately authorized backup repair are **complete and deployed**. Native schema parity is `0008`; the sync Worker source is `0afd670`. Session/gateway source remains `073ffca`. Detailed broker-refresh snapshot/source pairs expire after sixty days, in one daily batch of at most 200 pairs, while the final observed snapshot of every UTC day is kept indefinitely. The global latest snapshot, all transaction/dividend/cash history, revisions, initial captures, metadata, Excel/CSV evidence, imports and prior audit are retained. Referenced or mixed-source runs are skipped. Daily observations are not approved exchange closes or implemented historical performance.
 
@@ -31,7 +63,7 @@ Backup failure diagnosis: Docker Desktop was stopped, while formatted `docker in
 
 ## History and import boundaries
 
-Orders, dividends and cash transactions advance one family page per scheduled invocation, rotating families in ten-minute slots (at most one page per family per thirty minutes). Each family uses a one-hour cooldown anchored to its successful final-page attempt. Pagination may take longer, and lifetime completeness remains unverified. Running-page checkpoints and staging survive retries. Complete acceptance appends fill/reference revisions and deduplicates repeated observations. Corporate actions retain original facts with review quality states. Normalized economic replay and calculated performance remain open.
+Orders, dividends and cash transactions advance one family page per scheduled invocation, rotating families in ten-minute slots (at most one page per family per thirty minutes). Each family uses a one-hour cooldown anchored to its successful final-page attempt. Pagination may take longer, and lifetime completeness remains unverified. Running-page checkpoints and staging survive retries. Complete acceptance appends fill/reference revisions and deduplicates repeated observations. Corporate actions retain original facts with review quality states. A bounded local quantity diagnostic now replays supported signed trade observations; persisted economic replay, cash reconciliation and calculated performance remain open.
 
 The verified holdings CSV supports preview and atomic evidence import. It retains group context and excludes Total controls from holdings. Transaction CSV formats and API/CSV aliases remain unverified. The owner currently has transaction history in PDF, including the previously inspected cash-only statement.
 

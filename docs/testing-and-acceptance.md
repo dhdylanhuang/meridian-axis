@@ -87,3 +87,15 @@ D01/D02, S02 and QA01/QA02: synthetic captures verify exact decimal retention, u
 ## Protected snapshot acceptance — 13 November 2026
 
 Source `e79fedc`: local 406 passed/71 PostgreSQL cases skipped; validation CI passed Windows/Linux and all 71 PostgreSQL cases; Worker 19 Python and 25 Node cases passed. Actual native parity `0006`, approved projection publication, both identities' HTTPS snapshot responses, denial/revocation checks and served asset hashes were independently verified. Two short-lived application test sessions used provider-admin-verified identities; no fresh password login/reset was performed. Desktop native Chrome visibly rendered the deployed signed-in holdings. Full mobile/second-user browser walkthrough remains unclaimed. The post-migration actual financial snapshot also passed an isolated local restore drill. Current [status](status-and-handoff.md) owns exact evidence and remaining gates.
+
+
+## Bounded quantity delivery — 19 November 2026
+
+`backend/tests/test_history_reconciliation.py`: **12 offline cases passed** for the
+D03/C01 execution quantity subset: capture/sync overlap, revision replacement,
+partial-run exclusion, full precision, signed sell review policy, distinct fills,
+closed positions, future fills, identity conflicts, scope/size limits, private
+read-only CLI and integrity failures. Targeted Ruff checks passed. Exact command
+and reuse instructions are in current status. This is local read-model evidence;
+API/CSV aliases, cash/dividend/fee booking, openings/corporate actions, PostgreSQL
+execution and dashboard acceptance remain open. No full-stage acceptance claimed.

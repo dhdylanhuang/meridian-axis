@@ -1,12 +1,27 @@
 # Next agent assignment: transaction history and reconciliation
 
-Reviewed **19 November 2026**. The owner requested a handoff prompt for the next agent to implement this stage. This brief records that intended assignment; it does not claim implementation has begun or activate unrelated work.
+Reviewed **19 November 2026**. The execution quantity diagnostic is implemented locally. This brief records the remaining bounded work; it does not activate unrelated platform work.
 
 ## Outcome and first slice
 
 Turn captured orders/executions, dividends, fees and cash movements into traceable economic records, then reconcile holding quantities and cash against Trading 212. Surface unexplained differences, source coverage gaps and corporate actions needing review. Preserve raw evidence and append-only provider revisions; repeated syncs must not duplicate economic effects.
 
-Start with one bounded end-to-end slice selected from the existing contracts and source shapes. State that boundary briefly before implementation. Do not try to complete every event family, import format, reconciliation screen and performance calculation in one unreviewable change. Do not invent opening balances, CSV schemas, aliases, corporate-action economics or returns. Transaction exports currently available from the owner are PDFs; CSV transaction format remains unverified.
+Completed slice: `known_trade_quantity_v1`, a trusted read-only local report over
+initial capture order evidence, accepted ongoing revisions and saved positions.
+It deduplicates fill identity, replaces revised effects, retains evidence links,
+excludes partial history runs, exposes quantity residuals/sign/corporate-action
+review and never asserts lifetime completeness. No schema or deployed runtime
+change. See [the implemented boundary](imports-and-reconciliation.md#execution-quantity-diagnostic--19-november-2026)
+and the exact **12-test** evidence in current status. Reuse those passing checks.
+
+Next useful slice: establish supported cash/dividend/fee semantics from existing
+private evidence and verified contracts, then select one family for traceable
+normalization and reconciliation. Keep real evidence out of Git. Until semantics
+and opening/coverage support booking, retain unsupported states instead of guessing.
+Dashboard integration and persisted economics need their own reviewed boundary;
+do not grant the BFF raw-history access. Do not invent opening balances, CSV
+schemas, aliases, corporate-action economics or returns. Transaction exports
+currently available from the owner are PDFs; CSV format remains unverified.
 
 ## Read selectively
 
