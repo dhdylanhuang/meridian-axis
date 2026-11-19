@@ -36,11 +36,31 @@ Coverage includes new/closed holdings, repeated and missing metadata, exact brok
 figures, manual/scheduled dispatch, successful cooldown bypass, active leases,
 retry/terminal pauses, metadata provenance/conflict/staleness, immutable snapshots,
 unheld catalogue exclusion, UI notices and removal of unused configuration.
-PostgreSQL execution and actual hosted enrichment remain unverified. This is a
-source delivery; **discovery/enrichment has not been deployed**. Existing deployed
-sources remain listed below. Next: release the reviewed Worker bundle/assets using
-the existing preservation/rollback procedure, then bounded feature verification
-when the quota incident allows it. Do not infer deployment from offline checks.
+PostgreSQL execution and actual broker enrichment remain unverified. **Source
+`e327fc9` is deployed to all three existing Workers.** Cloudflare active deployment
+annotations independently matched the full source commit for sync, session owner
+and gateway. Three nonfinancial asset reads matched local source bytes exactly,
+returned HTTP 200 and `Cache-Control: no-store`. Managed secret/Hyperdrive binding
+sets were preserved; preflight retained the existing uncached TLS origin profiles.
+Cloudflare's schedule API still reports exactly `*/10 * * * *`. No schema,
+credential, workbook or database operation was performed, and passing targeted
+evidence above was reused without rerunning tests/CI.
+
+The initial immediate static-asset check failed and its rollback completed for
+sync/gateway but not the session owner. A bounded forward release restored all
+three Workers to `e327fc9`, with source annotations, bindings, schedule and exact
+asset checks passing. The failed and successful private receipts retain prior/
+active version IDs; do not rerun the original first-use helpers or overwrite those
+receipts. The initial asset mismatch's root cause is not established. Future
+source-only releases should check active source and allow a bounded asset
+propagation retry before deciding rollback. Quota exhaustion limits live database
+verification, not authority to deploy the reviewed source.
+
+Next operational check: bounded login/cadence/actual enrichment verification when
+the quota incident allows it; actual query usage remains unverified. No financial
+endpoint or database was probed for this release. An already open client needs one
+reload to receive the updated metadata/change notices. Next feature work remains
+integrated transaction/cash reconciliation under the revised delivery order.
 
 ## Previous completed slice
 
@@ -93,7 +113,7 @@ Backup failure diagnosis: Docker Desktop was stopped, while formatted `docker in
 
 [Open Meridian](https://meridian-axis-session-gateway.meridian-worker-feasibility.workers.dev/) serves authenticated AXIS and HOLDINGS for two approved identities sharing one GBP Stocks ISA. Both users have equal application permissions. The separate [React preview](https://meridian-axis-preview.meridian-worker-feasibility.workers.dev) contains invented data.
 
-- Session/gateway source is **`073ffca`** and sync source is **`0afd670`**. Supabase native schema parity is **`0008`**, with 12 public tables and RLS enabled. Native GitHub migrations own hosted DDL.
+- Session/gateway and sync source are **`e327fc9`**. Supabase native schema parity is **`0008`**, with 12 public tables and RLS enabled. Native GitHub migrations own hosted DDL.
 - Trading 212 reported account/cash/position figures are authoritative. Exact decimal strings, separate retrieval windows, missing fields and unknown market quote age remain visible. Historical returns are unavailable.
 - Scheduled refresh targets **ten minutes during relevant regular sessions**, per the 19 November owner amendment. Cron dispatch runs in the JavaScript gateway. Python Durable Objects execute bounded work, with PostgreSQL task leases, endpoint reservations and retry state. Unknown schedule coverage permits conservative polling.
 - Manual refresh requires membership, session, Origin and CSRF checks. It queues a durable alarm promptly. Evidence, approved snapshot publication, success health and audit commit together. Failures preserve the last successful snapshot.
