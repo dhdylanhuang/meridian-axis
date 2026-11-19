@@ -2,9 +2,19 @@
 
 Reviewed **19 November 2026**. Requirements: P02, L03, O01, QA02; question Q18. Status: **measured-input sizing report; production capacity and archive implementation remain unqualified**. Automatic refresh stays at ten minutes. This assignment changes documentation only.
 
+## Minimal physical measurement — 19 November, 20:24 UTC
+
+One read-only aggregate through the existing administrative transport measured the database at **52.25 MB**, about **10.5%** of the conservative 500 MB allowance. No Hyperdrive query, financial-value readout, test suite or live refresh was needed. Table/TOAST and index totals were returned in the same query. Source records occupy 23.81 MB (1.00 MB indexes), snapshots 12.39 MB (0.37 MB indexes); imports/audit occupy 2.17 MB combined. These relation totals are components of the database baseline, not additional allocations.
+
+A limited sample of 50 refresh generations averaged **10,021 bytes** per stored source datum and **7,281 bytes** per projection, combined **17,302 bytes**. Their timestamps are 02:33–03:27 UTC on 19 November, preceding the ten-minute deployment; this does not verify subsequent refresh or login recovery. Snapshot table/TOAST/index allocation averages roughly 9.1 KB per estimated live row, so datum sizes alone understate physical cost. Statistics-based row counts and mixed source kinds do not establish an exact marginal generation cost.
+
+Replacing the earlier baseline and generic compression assumption with these measurements gives **361.14–400.02 MB** for 90 additional around-the-clock days, using the existing metadata and 50 MB growth reserves and **assumed 2–5 KB row/index overhead per generation**. No expired rows are subtracted. This is conservative about existing history but still assumes stable payload sizes and reserve adequacy.
+
+**Decision:** no immediate storage emergency or archive provisioning is needed at 52.25 MB. The modeled 90-day result remains below 500 MB but exceeds the proposed 350 MB operating ceiling. Full 90-day capacity is therefore still unqualified. Select a bounded retention/archive follow-up before committing to that retention guarantee; do not silently lower the ceiling, prune evidence or repeatedly remeasure now. Exact byte counts and relation statistics remain in the ignored private receipt. No further live checks are needed for this measurement task.
+
 ## Recommendation
 
-Keep the present PostgreSQL design until one bounded physical-storage measurement can establish whether it fits. Ten-minute polling materially changes the earlier one-minute sizing: compressed payloads may fit, but compression cannot yet be relied on. Do not provision an archive or prune evidence based on this estimate.
+Keep the present PostgreSQL runtime unchanged following the minimal measurement above. Ten-minute polling materially changes the earlier one-minute sizing: compressed payloads may fit, but compression cannot yet be relied on. Do not provision an archive or prune evidence based on this estimate.
 
 Use a **proposed 350 MB operating ceiling** against a conservative 500 MB database allowance, leaving 150 MB for unexpected growth and maintenance. This is an engineering planning threshold, not an owner requirement or provider quota reservation. If measured growth projects above the ceiling, select a separate archive implementation task. Existing historical rows must be included before deciding that any design fits.
 
@@ -105,4 +115,4 @@ The existing aggregate receipts already measured payload lengths, generic compre
 
 Current baseline and per-table heap/index/TOAST growth; representative source compression and larger payloads; retained history/revision volumes; precise source-retention policy; manual/retry excess; calendar coverage; actual dump/backup size and egress; bucket/account availability and other usage; archive CPU/memory, retrieval and key recovery remain unverified. This report cannot close Q18 or operational acceptance.
 
-After quota reset, if selected, make **one bounded aggregate measurement** of current database/table/index/TOAST sizes and a limited recent-generation sample, returning byte counts only. Compare provider disk usage and calculate physical growth over naturally occurring generations without replaying broker calls. Reuse the existing source receipts and CI. That measurement decides whether the next implementation is a small capacity monitor or the separate archive design above. No implementation task is activated by this recommendation.
+The selected **one bounded aggregate measurement** above is complete. The original proposed measurement was of current database/table/index/TOAST sizes and a limited recent-generation sample, returning byte counts only. Compare provider disk usage and calculate physical growth over naturally occurring generations without replaying broker calls. Reuse the existing source receipts and CI. The result supports no immediate storage intervention, while the 90-day safety-margin gate remains open. No implementation task is activated by this recommendation.

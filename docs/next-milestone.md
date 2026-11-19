@@ -26,4 +26,4 @@ Acceptance requires reproducible measurement commands, exact precision/provenanc
 
 Normalized economics and corporate-action review, transaction CSV aliases, groups, daily market inputs, performance and analytics remain on the development plan. Choose those through a separate bounded brief when directed. The original seven-family capture and deployed refresh already supply broker observations.
 
-The next smallest proposed action is one bounded post-reset physical-storage measurement. Archive implementation remains a separate selected task. This report changed no production data or configuration and ran no application tests or CI.
+The selected minimal physical-storage measurement is complete; see the report addendum. Current usage is 52.25 MB. The modeled 90-day safety-margin gate remains open. Archive implementation remains a separate selected task. This report changed no production data or configuration and ran no application tests or CI.
