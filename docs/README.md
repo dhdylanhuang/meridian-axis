@@ -79,3 +79,5 @@ Requirement IDs such as `D01` belong to the product matrix. Owner questions use 
 Change a contract at its authoritative home, then update its consumers and tests. Use stable requirement and question IDs. Significant changes need a decision record with rationale and affected requirements. Do not copy large definitions across documents. A new document earns its place only when it owns a distinct decision or workflow.
 
 When a source changes, retain the prior verification date and record what was rechecked. Do not silently replace historical workbook values with current broker values.
+
+[Manual workbook archive](workbook-archive.md) documents the owner-selected local XLSX export, preservation checks and sixty-day expiry boundary.
