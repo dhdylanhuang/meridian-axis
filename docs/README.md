@@ -53,7 +53,7 @@ For the next assignment, read [the proposed task brief](next-milestone.md) after
 | [Risk register](risk-register.md) | Material project risks and mitigations |
 | [Source register](source-register.md) | Primary references, verification dates and evidence limitations |
 | [Status and handoff](status-and-handoff.md) | Authoritative current implementation, evidence and work scope |
-| [Next task brief](next-milestone.md) | Completed capacity-report assignment and proposed follow-up |
+| [Next task brief](next-milestone.md) | Intended next-agent assignment, scope and reusable constraints |
 | [Storage capacity report](storage-capacity-report.md) | Measured-input 90-day budget, overhead assumptions and conditional archive proposal |
 | [Historical checkpoints](status-history.md) | Archived delivery evidence and superseded task instructions |
 | [Original brief](context/original-brief.md) | Historical brief with personal workbook filename redacted; current decisions supersede it |

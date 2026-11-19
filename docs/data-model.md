@@ -1,6 +1,6 @@
 # Data model and invariants
 
-Status, **13 November 2026:** the target logical model below includes planned entities. Native parity `0007` implements `accounts`, `account_members`, `app_sessions`, `login_rate_limits`, `import_log`, `source_records`, `audit_log`, `broker_snapshots`, `broker_sync_jobs`, `broker_rate_limits` and `broker_event_revisions`, plus `alembic_version`. Source observations and revisions book zero normalized economic events. Additional named entities remain planned unless explicitly identified as implemented. Current delivery evidence lives in [status](status-and-handoff.md).
+Status, **19 November 2026:** the target logical model below includes planned entities. Native parity `0008` implements `accounts`, `account_members`, `app_sessions`, `login_rate_limits`, `import_log`, `source_records`, `audit_log`, `broker_snapshots`, `broker_sync_jobs`, `broker_rate_limits` and `broker_event_revisions`, plus `alembic_version`. Parity `0008` adds the fixed-scope retention function without adding tables. It expires eligible detailed refresh pairs after sixty days while retaining latest/daily observations, transaction sources/revisions, imports and audit. Source observations and revisions book zero normalized economic events. Additional named entities remain planned unless explicitly identified as implemented. Current delivery evidence lives in [status](status-and-handoff.md).
 
 ## Production platform amendment
 

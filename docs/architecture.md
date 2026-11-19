@@ -2,7 +2,7 @@
 
 Status: **CONFIRMED production platform change, 11 November 2026**. The owner selected Cloudflare + Supabase, replacing production SQLite and a continuously running APScheduler process. Preserve Python/FastAPI where a measured runtime spike passes. [ADR 0001](decisions/0001-cloudflare-supabase.md) records the decision, superseded assumptions and outstanding gates.
 
-**Implemented state, 13 November 2026:** the private two-user AXIS/HOLDINGS application and bounded broker refresh are deployed at native parity `0007`. The BFF reads approved projections and refresh health. A separate restricted writer persists broker evidence and revisions. Normalized economics, broader analytics, streaming and long-term capacity remain open. [Current status](status-and-handoff.md) owns delivery evidence.
+**Implemented state, 19 November 2026:** the private two-user AXIS/HOLDINGS application and bounded broker refresh are deployed at native parity `0008`. The BFF reads approved projections and refresh health. A separate restricted writer persists broker evidence and revisions. Ten-minute refresh and bounded sixty-day detailed-observation expiry are deployed, with latest/daily observations and financial history protected. A manual local XLSX archive is implemented. Normalized economics, broader analytics, streaming and full capacity acceptance remain open. [Current status](status-and-handoff.md) owns delivery evidence.
 
 ## Choose the smallest system that can be checked
 
