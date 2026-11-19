@@ -83,3 +83,15 @@ test('repeated manual clicks queue once and do not immediately re-read the old s
  assert.equal(posts,1);assert.equal(reads,1);
  await ui.tick(60_000);assert.equal(reads,2);
 });
+
+test('failed manual request pauses further manual and saved-snapshot requests',async()=>{
+ let calls=0;
+ const ui=setup(async(path,options)=>{calls++;return options?.method==='POST'?{ok:false,status:503}:{ok:true,status:200,json:async()=>snapshot()};});
+ ui.document.cookie='__Host-meridian_csrf=synthetic';
+ ui.view.start();await new Promise(resolve=>setImmediate(resolve));
+ await ui.el('refresh-broker').listeners.click();
+ ui.advance(60_000);
+ await ui.el('refresh-broker').listeners.click();await ui.view.load();
+ assert.equal(calls,2);
+ assert.match(ui.el('refresh-status').textContent,/cooling down/);
+});

@@ -8,6 +8,10 @@
     clearTimeout(timer);
     if (active && !document.hidden) timer = setTimeout(load, Math.max(delay, nextRead - Date.now()));
   }
+  function backoff() {
+    failures++;
+    nextRead = Date.now() + Math.min(MAX_BACKOFF, INTERVAL * 2 ** Math.min(failures - 1, 3));
+  }
   function start() {
     active = true;
     if (!document.hidden) void load();
@@ -78,7 +82,7 @@
       health(data.refresh_health);
     } catch (error) {
       if (version === generation && error.name !== 'AbortError') {
-        failures++; nextRead = Date.now() + Math.min(MAX_BACKOFF, INTERVAL * 2 ** Math.min(failures - 1, 3));
+        backoff();
         el('snapshot-status').textContent = snapshot ? 'Refresh failed. Last successful snapshot remains displayed. Automatic retries are paused.' : 'The saved snapshot could not be loaded. Automatic retries are paused.';
       }
     } finally { loading = false; if (version === generation) schedule(); }
@@ -103,14 +107,14 @@
       const response = await fetch('/api/v1/portfolio/refresh', {method:'POST', credentials:'same-origin', cache:'no-store', redirect:'error', headers:{'X-CSRF-Token':csrf}});
       if (version !== generation) return;
       if ([401,403].includes(response.status)) { clear(); window.dispatchEvent(new Event('meridian-session-ended')); return; }
-      if (!response.ok) { el('refresh-status').textContent = 'Broker refresh is unavailable. Last successful snapshot remains displayed.'; return; }
+      if (!response.ok) { backoff(); schedule(); el('refresh-status').textContent = 'Broker refresh is unavailable. Last successful snapshot remains displayed. Retries are paused.'; return; }
       const result = await response.json();
       if (version !== generation) return;
       schedule(READ_COOLDOWN);
       if (result.status === 'queued') el('refresh-status').textContent = 'Broker refresh queued. This view updates automatically.';
       if (result.status === 'deferred') el('refresh-status').textContent = 'Refresh is already running or waiting for the shared rate limit.';
       if (result.status === 'failed' || result.status === 'unavailable') el('refresh-status').textContent = 'Broker refresh failed. Last successful snapshot remains displayed.';
-    } catch { if (version === generation) el('refresh-status').textContent = 'Broker refresh is unavailable. Last successful snapshot remains displayed.'; }
+    } catch { if (version === generation) { backoff(); schedule(); el('refresh-status').textContent = 'Broker refresh is unavailable. Last successful snapshot remains displayed. Retries are paused.'; } }
     finally { el('refresh-broker').disabled = false; }
   }
   for (const [tab,panel] of [['axis-tab','axis-panel'],['holdings-tab','holdings-panel']]) {
