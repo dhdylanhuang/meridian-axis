@@ -44,7 +44,7 @@ Optimise for readable financial tables, dependable imports, explainable calculat
 | K05 | Average pair correlation, eigenvalue effective bets, diversification ratio and high-correlation pairs | Correlation; Stage 4 |
 | L01 | Held instruments, benchmarks and needed FX only; ten-minute automatic interval during relevant sessions (owner amendment, 19 November 2026) | Polling; Stage 2/5 |
 | L02 | Exchange calendars, holidays, half-days, background execution and graceful shutdown | Polling; Stage 2 |
-| L03 | Intraday observations, original/GBP values, 90-day configurable retention; daily data indefinite | Polling and data model; Stage 2/5 |
+| L03 | Intraday observations and original/GBP values; 90-day target with owner-approved 60-day fallback, implemented for detailed broker refresh with indefinite daily observations; approved daily data indefinite | Polling and data model; Stage 2/5 |
 | L04 | Source, fetch/quote times, delay/stale state; last-good values on failure; SSE updates | Polling and UI; Stage 2/5 |
 | L05 | Provisional session-close candidate, daily-source reconciliation and >0.5% discrepancy log | Polling; Stage 2/5 |
 | A01 | Configurable alerts; each group drawdown >=10%; portfolio rolling two-trading-day peak-to-trough drawdown >=2%; other move/weight/VaR/data/import/thesis/grouping rules retained | Alerts; Stage 5 |

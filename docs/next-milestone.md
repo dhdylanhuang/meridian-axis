@@ -1,29 +1,7 @@
-# Storage capacity review — completed report
+# Next task selection
 
-Reviewed **19 November 2026**. The ten-minute refresh/query-reduction incident fix was deployed on 19 November at `073ffca`. Post-reset live verification remains open. Earlier minute cadence was verified on 13 November. Current application state, evidence and work scope are maintained in [status and handoff](status-and-handoff.md). The completed refresh brief is retained in [historical checkpoints](status-history.md#archived-broker-refresh-milestone-brief).
+Reviewed **19 November 2026**. The [storage report](storage-capacity-report.md), minimal physical measurement and selected bounded-retention implementation are complete. Native parity `0008` and sync source `0afd670` retain sixty days of detailed broker observations plus daily/latest snapshots indefinitely. Transaction history, imports and audit are protected. Ten-minute refresh remains enabled. [Current status](status-and-handoff.md) owns exact evidence and limits.
 
-## Candidate outcome
+No new implementation task is activated. The post-quota-reset login, automatic cadence and account query-usage check remains open; do not rerun passing tests or repeatedly probe exhausted services.
 
-**Owner-selected report completed:** [storage capacity and retention proposal](storage-capacity-report.md) records measured inputs, modeled overhead, limits and a conditional archive design. The assignment was to produce a measured-input 90-day storage budget and a concrete retention/archive proposal for the existing free Cloudflare/Supabase deployment. Related requirements are P02, L03, O01 and QA02, with open question Q18.
-
-The review should account for immutable refresh sources, approved projections, import/audit rows, indexes, history revisions and held-listing metadata. Report measured data and assumptions separately. Preserve the owner-amended ten-minute session target and the requested 90-day observations. A shorter retention period or reduced sampling requires an owner scope decision.
-
-## Read for this task
-
-1. The current status and [market-data retention contract](market-data-and-polling.md#storage-and-retention).
-2. [Free-hosting capacity context](hosting-options.md) and [hosted recovery](hosted-recovery.md).
-3. `backend/src/meridian/application/broker_sync.py`, `security/hosted_sync.py`, `persistence/models.py` and `hosted_backup.py`.
-
-The first assignment can use synthetic payloads and existing private aggregate measurements. Access to real evidence follows the established private-data boundary. A clean clone does not contain private receipts or administrative helpers.
-
-## Reviewable deliverable
-
-One public-safe capacity report should state the baseline, generation frequency, bytes per generation, row/index overhead, session/unknown-coverage assumptions and projected growth. It should compare the result with the dated free-service budget and describe retrieval, integrity, backup, key custody and restore requirements for any proposed archive.
-
-Acceptance requires reproducible measurement commands, exact precision/provenance assumptions and an explicit list of unresolved inputs. Proposed storage components and migrations need a separate implementation task with exact file ownership and tests after the approach is selected. The initial measurement task does not call for production cleanup, source deletion, schema changes or credential provisioning.
-
-## Other open work
-
-Normalized economics and corporate-action review, transaction CSV aliases, groups, daily market inputs, performance and analytics remain on the development plan. Choose those through a separate bounded brief when directed. The original seven-family capture and deployed refresh already supply broker observations.
-
-The selected minimal physical-storage measurement is complete; see the report addendum. Current usage is 52.25 MB. The modeled 90-day safety-margin gate remains open. Archive implementation remains a separate selected task. This report changed no production data or configuration and ran no application tests or CI.
+Remaining candidate deliveries include normalized ledger/cash/quantity reconciliation, history completeness and corporate-action review, verified transaction import aliases, group mapping/editing, approved daily prices/FX, historical performance and risk/analytics. Scheduled backups, independent key custody and a `0008` restore drill remain operational gaps. Select one bounded outcome before beginning. Archive infrastructure stays deferred.

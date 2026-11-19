@@ -71,3 +71,6 @@ Retention parity `0008` adds a function without changing the twelve-table set. T
 
 
 Docker-dependent export prerequisite: start the installed Docker Desktop before backup. Confirm `docker version --format '{{.Server.Version}}'` returns a nonempty server version; do not trust `docker info --format ...` exit status alone, which can be zero alongside a daemon connection error. The backup helper now returns the fixed, secret-free `recovery_docker_unavailable` category for the CLI's daemon-connection failure. Start the daemon and retry the export once; do not repeat database sizing, tests, install clients or change socket configuration to diagnose that category. Backup credentials and plaintext SQL still never enter logs or disk.
+
+
+19 November release evidence: a fresh encrypted `0007` pre-retention export passed authenticated read-back before native `0008` delivery. The existing Docker Desktop was started; no exporter replacement or client installation was needed. Retention-capability execution then removed zero pairs and the ten-minute schedule was restored. Schema `0008` export controls are supported, but no `0008` restore drill or automatic backup schedule is claimed.
