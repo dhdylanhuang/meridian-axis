@@ -51,6 +51,8 @@ Private deployment IDs, receipts, source values, credential material and recover
 
 ## Remaining delivery
 
+Owner amendment, 19 November: site availability takes priority; 60-day observation retention is approved as a fallback if 90 days cannot fit safely. The same conservative model projects 275–301 MB for 60 additional days. Ninety days remains the target and no cleanup has been implemented. Prefer evaluating this approved fallback before expanding archive infrastructure. Storage capacity does not establish runtime RAM safety; preserve bounded processing and do not claim crash prevention from disk sizing.
+
 The measured-input [storage report](storage-capacity-report.md) is complete. Physical qualification remains open: ten-minute compressed retention may fit, but around-the-clock raw retention exceeds the database allowance. Lossless archive design, scheduled retention/backups and independent key custody remain open. Replacement hosted Auth/browser recovery and active-data credential rotation also remain open.
 
 Other supported requirements include normalized ledger/cash/quantity reconciliation, verified transaction CSV aliases, group mapping/editing, daily prices/FX and approved closes, historical performance, projections, correlation/risk, remaining screens and alerts. Tax remains owner-deferred. The contracts in [the documentation index](README.md) retain those requirements.

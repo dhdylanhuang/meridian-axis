@@ -116,3 +116,10 @@ The existing aggregate receipts already measured payload lengths, generic compre
 Current baseline and per-table heap/index/TOAST growth; representative source compression and larger payloads; retained history/revision volumes; precise source-retention policy; manual/retry excess; calendar coverage; actual dump/backup size and egress; bucket/account availability and other usage; archive CPU/memory, retrieval and key recovery remain unverified. This report cannot close Q18 or operational acceptance.
 
 The selected **one bounded aggregate measurement** above is complete. It returned current database/table/index/TOAST sizes and a limited recent-generation sample as byte counts only. No broker calls were replayed. Provider dashboard accounting and future marginal growth were not separately measured. Reuse the existing source receipts and CI. The result supports no immediate storage intervention, while the 90-day safety-margin gate remains open. No implementation task is activated by this recommendation.
+
+
+## Owner-approved fallback — 19 November 2026
+
+Availability takes priority. The owner permits reducing observation retention from 90 to **60 days if necessary** to maintain safe capacity. Ninety days remains the target; this is fallback authority, not an implemented cleanup policy. With the measured baseline and the same conservative 50 MB growth reserve, 60 additional around-the-clock days project to approximately **275–301 MB**, using assumed 2–5 KB per-generation overhead. This is below the proposed 350 MB operating ceiling, subject to payload/history growth and actual provider accounting.
+
+Before expanding into archive infrastructure, consider the approved 60-day fallback through a bounded retention implementation proposal. Existing immutable evidence guards, source references and indefinite financial audit/daily-close requirements still need explicit handling; do not apply a blanket deletion rule. No pruning or runtime configuration changed with this approval. Database capacity and Worker memory are distinct: these storage estimates do not qualify peak RAM, large history traversals or archive compression memory.
