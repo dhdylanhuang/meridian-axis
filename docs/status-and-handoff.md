@@ -22,7 +22,20 @@ not a measurement of hosted database storage or remaining capacity.
 Five targeted Rust and three Node cases passed. A full-catalogue rehearsal using
 synthetic values qualified all 80 records against the generated WASM. No full
 suites, provider integration, schema changes or additional polling. Gateway
-deployment and actual publication verification are pending.
+deployed at `61ef1be`, with the sync and session owner on their existing
+sources. Exact no-store assets, hosted WASM, protected bindings and ten-minute
+Cron passed release checks.
+
+**Approved financial publication verified 20 November 2026 at 22:30:30 UTC.** The
+retained generation included a sourced classification for each of its 80
+nonzero positions. The sector residual contained fund fractions only. All 60
+direct-share classifications and all 18 fund/trust groups matched their scope,
+and gold and bonds were supported by asset evidence. Exact source-weight
+multiplication, subtotal conservation, source dates, snapshot identity and
+publication health matched. The private receipts contain counts and agreement
+flags. Individual fund residuals can include unreported countries,
+sector weights, manager-labelled Other, cash or rounding. The synthetic UI
+case exercised the drill-down.
 
 ## Direct-share classification coverage expansion
 
@@ -522,7 +535,7 @@ Backup failure diagnosis: Docker Desktop was stopped, while formatted `docker in
 
 [Open Meridian](https://meridian-axis-session-gateway.meridian-worker-feasibility.workers.dev/) serves authenticated AXIS and HOLDINGS for two approved identities sharing one GBP Stocks ISA. Both users have equal application permissions. The separate [React preview](https://meridian-axis-preview.meridian-worker-feasibility.workers.dev) contains invented data.
 
-- Gateway/sync source is **`f1de8a2`** and session owner is **`94042f2`**. Supabase native schema parity is **`0008`**, with 12 public tables and RLS enabled. Native GitHub migrations own hosted DDL.
+- Gateway source is **`61ef1be`**, sync is **`f1de8a2`** and session owner is **`94042f2`**. Supabase native schema parity is **`0008`**, with 12 public tables and RLS enabled. Native GitHub migrations own hosted DDL.
 - Trading 212 reported account/cash/position figures are authoritative. Exact decimal strings, separate retrieval windows, missing fields and unknown market quote age remain visible. Historical returns are unavailable.
 - Scheduled refresh targets **ten minutes during relevant regular sessions**, per the 19 November owner amendment. Cron dispatch runs in the JavaScript gateway. Python Durable Objects execute bounded work, with PostgreSQL task leases, endpoint reservations and retry state. Unknown schedule coverage permits conservative polling.
 - Manual refresh requires membership, session, Origin and CSRF checks. It queues a durable alarm promptly. Evidence, approved snapshot publication, success health and audit commit together. Failures preserve the last successful snapshot.
