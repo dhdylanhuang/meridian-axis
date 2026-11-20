@@ -2,6 +2,24 @@
 
 Reviewed **20 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
+## Direct-share classification coverage expansion
+
+The owner prioritised further exposure coverage before starting History.
+A data-only release updated the existing private issuer binding with eight
+reviewed direct-share classifications. The catalogue now covers thirteen
+direct-share records. The fund binding, existing Worker code, protected
+bindings, schema and ten-minute schedule were preserved. ISIN checksums,
+effective dates, binding size and acceptance of all eight additions by the
+existing WASM were checked before activation.
+
+**Approved financial publication verified 20 November 2026 at 22:10:31 UTC.** The
+source-linked sector and domicile allocations for all eight new records and the
+exact amounts and source evidence for all three views matched. Cash drill-down
+was still published and snapshot job health was clear. The receipts record only
+counts, agreement flags and release metadata. The issuer binding is close to
+its 5 KB limit. Further catalogue expansion needs a compact format or another
+private binding and should be verified on the next approved generation.
+
 ## Sourced sector and country allocations
 
 The dedicated Exposures tab shows broad equity sectors, direct-share issuer

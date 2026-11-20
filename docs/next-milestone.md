@@ -1,13 +1,22 @@
-# Next delivery: historical portfolio observations and eligible performance
+# Next delivery: complete more exposure classifications
 
 Reviewed **20 November 2026**. See [current status](status-and-handoff.md) for
 the portfolio exposure release and actual publication evidence. Reuse completed
 focused tests. If a release gate remains open, close that gate before extending
 the feature.
 
-## Next outcome
+## Current priority
 
-Show historical portfolio value and income from eligible retained observations,
+Continue increasing the share of invested value with reviewed sector and
+country classifications. Rank remaining gaps by broker value and distinguish
+direct issuers, funds and non-equity positions. Use verified identifiers,
+dated issuer or manager sources and the existing authenticated snapshot.
+Review the private binding size before another data-only release. No paid
+provider or polling changes are required for the reviewed catalogue.
+
+## Following delivery
+
+History is paused while improving exposures. When resumed, show historical portfolio value and income from eligible retained observations,
 with dates, source coverage and sampling gaps. Qualify benchmarks and calculated
 returns only where the inputs and methods in the
 [calculation contracts](calculation-contracts.md) support them. Daily retained
