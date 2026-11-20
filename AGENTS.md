@@ -8,6 +8,11 @@
 
 Current repository status: authenticated AXIS/HOLDINGS, ten-minute broker refresh and bounded sixty-day detailed-refresh retention are deployed. Native parity is `0008`; gateway/sync source is `17aa7ea`, session owner is `5cc8564`. The cash dashboard shows broker cash now and descriptive year-to-date dividend/interest/deposit/withdrawal amounts, with coverage and separate currencies. Raw event counts and component-window diagnostics no longer drive the main view; the opening-control query is disabled at runtime. Current status owns actual publication verification. Private Rust cash review is deployed through a named gateway service binding and approved snapshots; hosted nonfinancial WASM readiness is verified. Broker-led automatic discovery/enrichment is deployed; exact assets/source tags, preserved bindings and ten-minute schedule were verified without database probes. Daily observed snapshots, latest snapshot and transaction/import/audit history are retained. Post-reset login/automatic cadence and realized query use remain unverified. Trading 212 reported figures stay authoritative; status owns evidence and unresolved gates.
 
+**Current delivery:** monetary totals now have on-demand, generation-pinned
+transaction drill-down and completed-broker-history coverage (release evidence in
+current status). A private audit found no retained capture-reference gap; lifetime
+coverage is still unproven. Do not repeat validation or copy history into snapshots.
+
 **Owner acceptance amendment, 20 November 2026 (DC25):** deliver meaningful monetary
 features. Cash must show current broker cash and dated dividend/interest/deposit/
 withdrawal amounts; event counts and component-window diagnostics alone do not

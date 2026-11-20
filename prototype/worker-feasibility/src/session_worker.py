@@ -49,8 +49,9 @@ class SessionApplicationDO(DurableObject):
                 stage = "application_configuration"
 
                 async def refresh():
-                    from js import Object, Request
                     import json
+
+                    from js import Object, Request
 
                     options = Object.new()
                     options.method = "POST"
@@ -70,6 +71,22 @@ class SessionApplicationDO(DurableObject):
                         return {"status": "unavailable"}
                     return {"status": result["status"]}
 
+                async def cash_activity(value):
+                    import json
+
+                    from js import Object, Request
+
+                    options = Object.new()
+                    options.method = "POST"
+                    options.body = json.dumps(value)
+                    sync_id = self.env.SYNC.idFromName("shared-isa")
+                    response = await self.env.SYNC.get(sync_id).fetch(
+                        Request.new("https://sync.internal/cash-activity", options)
+                    )
+                    if response.status not in {200, 400, 409, 503}:
+                        return {"error": "activity_unavailable"}, 503
+                    return json.loads(await response.text()), response.status
+
                 async with hosted_application(
                     self.env.HYPERDRIVE,
                     origin=self.env.PUBLIC_ORIGIN,
@@ -77,6 +94,7 @@ class SessionApplicationDO(DurableObject):
                     publishable_key=SecretStr(self.env.SUPABASE_PUBLISHABLE_KEY),
                     login_csrf_key=SecretStr(self.env.LOGIN_CSRF_KEY),
                     refresh=refresh,
+                    cash_activity=cash_activity,
                 ) as app:
                     stage = "request_adapter"
                     return await buffered_fetch(app, request, self.env, self.ctx)

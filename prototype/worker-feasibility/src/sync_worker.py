@@ -18,6 +18,60 @@ class BrokerSyncDO(DurableObject):
         from urllib.parse import urlsplit
 
         path = urlsplit(request.url).path
+        if path == "/cash-activity" and request.method == "POST":
+            async with _LOCK:
+                engine = None
+                try:
+                    import json
+
+                    from meridian.application.cash_activity import cash_activity_page
+                    from meridian.security.hosted import create_binding_engine
+
+                    raw = await request.text()
+                    if len(raw.encode()) > 2048:
+                        return Response.json(
+                            {"error": "request_invalid"},
+                            status=400,
+                            headers={"Cache-Control": "no-store"},
+                        )
+                    if int(time.time() * 1000) < deadline(
+                        await self.ctx.storage.get("database-not-before")
+                    ):
+                        return Response.json(
+                            {"error": "activity_unavailable"},
+                            status=503,
+                            headers={"Cache-Control": "no-store"},
+                        )
+                    engine = create_binding_engine(
+                        self.env.HYPERDRIVE, expected_role="meridian_sync_public"
+                    )
+
+                    async def reconcile(encoded):
+                        return str(
+                            await self.env.RECONCILIATION.cashActivityDetails(encoded)
+                        )
+
+                    result, status = await cash_activity_page(
+                        engine, json.loads(raw), reconcile
+                    )
+                    return Response.json(
+                        result, status=status, headers={"Cache-Control": "no-store"}
+                    )
+                except ValueError:
+                    return Response.json(
+                        {"error": "request_invalid"},
+                        status=400,
+                        headers={"Cache-Control": "no-store"},
+                    )
+                except Exception:
+                    return Response.json(
+                        {"error": "activity_unavailable"},
+                        status=503,
+                        headers={"Cache-Control": "no-store"},
+                    )
+                finally:
+                    if engine is not None:
+                        engine.dispose()
         if request.method != "POST" or path not in {"/refresh", "/scheduled"}:
             return Response("Not found", status=404)
         if path == "/refresh":
@@ -94,7 +148,9 @@ class BrokerSyncDO(DurableObject):
             elif result.get("status") in {"succeeded", "outside_session"}:
                 await self.ctx.storage.put("database-failures", 0)
                 await self.ctx.storage.put("database-not-before", 0)
-                if scheduled and now >= deadline(await self.ctx.storage.get("retention-not-before")):
+                if scheduled and now >= deadline(
+                    await self.ctx.storage.get("retention-not-before")
+                ):
                     # One daily fixed-scope SQL call, not a payload scan in Python.
                     try:
                         from meridian.security.hosted_sync import run_retention

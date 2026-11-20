@@ -4,6 +4,37 @@ Reviewed **20 November 2026**. This file is the authoritative implementation sna
 
 ## Current work scope
 
+Cash total drill-down and specific broker coverage are implemented; release in
+progress. Each monetary total opens a paginated authenticated read-only view with
+payment date, issuer/type, exact amount, Trading 212 reference and collapsed
+source/revision/digest evidence. Pages reconstruct the exact approved snapshot
+inputs, excluding revisions observed after cutoff; hash mismatch returns 409.
+No full transaction list is copied into recurring snapshots. One bounded metadata
+query adds completed-traversal timestamps/pages and earliest/latest captured events.
+
+A single private coverage audit verified contiguous, terminal-complete cash and
+dividend traversals and found no retained initial-capture references absent from
+accepted revisions. No identified capture gap needs backfill. This establishes
+available broker history, not complete account lifetime or statement certification.
+Initial capture RLS remains unchanged; private audit receipt stays ignored.
+
+New focused evidence: **1 Rust, 5 Python and 4 Node cases passed**. Commands:
+- Scoped Rust toolchain: `cargo test --manifest-path rust/reconciliation/Cargo.toml --locked --quiet --test cash details_ --jobs 2`.
+- `AXIS_NODE_TEST_BINARY="$PWD/private/dev-tools/node_modules/.bin/node" /private/tmp/meridian-query-venv/bin/python -m pytest -q -p no:cacheprovider backend/tests/test_cash_activity.py` → 2 passed (pages equal saved sum, later revisions stay pinned, issuer/source validation, unknown snapshots/hashes, partial history not complete).
+- `/private/tmp/meridian-query-venv/bin/python -m pytest -q -p no:cacheprovider backend/tests/test_cash_activity_http.py prototype/worker-feasibility/tests/test_sync_worker.py::SyncWorkerTests::test_activity_page_uses_readonly_service_without_broker_execution` → 2 passed (both members, denied auth/origin/CSRF, bounded body, no transaction spans RPC, no broker execution).
+- `/private/tmp/meridian-query-venv/bin/python -m pytest -q -p no:cacheprovider prototype/worker-feasibility/tests/test_session_worker.py::SessionWorkerTests::test_activity_callback_forwards_only_to_fixed_private_sync_object` → 1 passed.
+- `private/dev-tools/node_modules/.bin/node --test --test-name-pattern='activity detail route|activity drilldown|late activity' prototype/worker-feasibility/tests/test_session_gateway.mjs prototype/worker-feasibility/tests/test_snapshot_ui.mjs` → 3 passed.
+- `private/dev-tools/node_modules/.bin/node --test --test-name-pattern='Cloudflare local' prototype/worker-feasibility/tests/test_cash_wasm.mjs` → 1 passed including new private detail RPC in real workerd.
+WASM rebuilt/package verified with existing wasm-bindgen 0.2.130; 475,779 bytes.
+Targeted Ruff/format and diff checks passed. Reuse prior economics/retention evidence;
+no full suite/CI matrix/sizing or repeated live probes. Runtime remains three Workers,
+private service binding, schema 0008, ten-minute cadence and unchanged RLS/roles.
+Release order gateway, session owner, sync; complete live UI/publication verification
+and record source tags here. Browser inventory found no existing dashboard tab;
+normal retained browser session may support post-release verification.
+
+## Previous monetary totals release
+
 Owner DC25 now requires meaningful monetary dashboard features. The prior cash
 window/count paragraph was rejected as insufficient for use. Current implementation
 replaces it with broker cash now and year-to-date dividend/distribution, interest,

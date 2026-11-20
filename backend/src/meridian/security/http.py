@@ -61,6 +61,7 @@ class SessionHttp:
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         refresh: Callable[[], Awaitable[dict]] | None = None,
+        cash_activity: Callable[[dict], Awaitable[tuple[dict, int]]] | None = None,
     ):
         if (
             not isinstance(login_csrf_key, SecretStr)
@@ -73,6 +74,7 @@ class SessionHttp:
         self.database, self.login_limiter = database, login_limiter
         self._key, self._clock = login_csrf_key, clock
         self.refresh = refresh
+        self.cash_activity = cash_activity
 
     def _now(self):
         now = self._clock()
@@ -230,7 +232,7 @@ class SessionHttp:
                     issued = self.service.issue(db, identity, now=self._now())
                 return self._issued(issued)
             token = self._cookie(request, SESSION_COOKIE)
-            if operation == "refresh":
+            if operation in {"refresh", "cash_activity"}:
                 self._origin(request)
                 with self.database() as db, db.begin():
                     self.service.authorize_mutation(
@@ -240,6 +242,22 @@ class SessionHttp:
                         origin=self.service.origin,
                         now=now,
                     )
+                if operation == "cash_activity":
+                    from meridian.application.cash_activity import activity_query
+
+                    if self._header(request, "content-type") != "application/json":
+                        raise ValueError("request_invalid")
+                    body = bytearray()
+                    async with asyncio.timeout(10):
+                        async for chunk in request.stream():
+                            if len(body) + len(chunk) > 2048:
+                                raise ValueError("request_invalid")
+                            body.extend(chunk)
+                    value = activity_query(json.loads(body, object_pairs_hook=_unique_fields))
+                    if self.cash_activity is None:
+                        return private_response({"error": "activity_unavailable"}, 503)
+                    result, status = await self.cash_activity(value)
+                    return private_response(result, status)
                 if self.refresh is None:
                     return private_response({"error": "refresh_unavailable"}, 503)
                 # Authorisation commits before the separate sync authority makes upstream calls.

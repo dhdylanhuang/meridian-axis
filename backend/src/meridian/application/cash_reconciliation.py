@@ -8,7 +8,7 @@ import re
 from sqlalchemy.orm import Session
 
 from meridian.adapters.broker_evidence import canonical
-from meridian.application.cash_history import cash_history_request
+from meridian.application.cash_history import cash_history_coverage, cash_history_request
 from meridian.application.history_evidence import ReconciliationError
 
 METHOD = "cash_reconciliation_rust_v1"
@@ -277,7 +277,11 @@ async def prepare_cash_summary(engine, *, account_id, projection, snapshot_id, r
                     max_observations=MAX_EVENTS,
                     include_captures=False,
                     reported_activity=True,
+                    pin_to_cutoff=True,
                     sign_policy="statement_checked_gbp_v1",
+                )
+                history_coverage = cash_history_coverage(
+                    db, account_id=account_id, cutoff=cutoff, observations=request["observations"]
                 )
             connection.rollback()
         encoded = canonical(request)
@@ -285,7 +289,10 @@ async def prepare_cash_summary(engine, *, account_id, projection, snapshot_id, r
             return unavailable(**fallback, availability="unsupported", reason="history_limit")
         async with asyncio.timeout(4):
             raw = await reconcile(encoded)
-        return approved_summary(raw, request, encoded)
+        return approved_summary(raw, request, encoded) | {
+            "history_coverage": history_coverage,
+            "activity_details_available": True,
+        }
     except ReconciliationError as error:
         return unavailable(
             **fallback,

@@ -48,6 +48,10 @@ def create_app(*, session_http: SessionHttp | None = None) -> FastAPI:
         async def snapshot(request: Request):
             return await session_http.handle(request, "snapshot")
 
+        @app.post("/api/v1/portfolio/cash-activity")
+        async def cash_activity(request: Request):
+            return await session_http.handle(request, "cash_activity")
+
         @app.post("/api/v1/portfolio/refresh")
         async def refresh(request: Request):
             return await session_http.handle(request, "refresh")

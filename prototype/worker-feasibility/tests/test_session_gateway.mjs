@@ -225,3 +225,15 @@ test('Rust service methods have no public HTTP route',async()=>{
  }
  assert.equal(state.requests.length,0);
 });
+
+test('activity detail route preserves origin csrf and bounded JSON body',async()=>{
+ const state=setup(),path='/api/v1/portfolio/cash-activity';
+ const payload=JSON.stringify({snapshot_id:'snapshot',input_revision:'a'.repeat(64),category:'dividends',currency:'GBP',offset:0,limit:20});
+ const response=await gateway.fetch(request(path,{body:payload}),state.env);privateResponse(response);
+ assert.equal(response.status,200);assert.equal(state.requests.length,1);assert.equal(await state.requests[0].text(),payload);
+ assert.equal(state.requests[0].headers.get('content-type'),'application/json');
+ for(const options of [{body:'x'.repeat(2049)},{body:payload,headers:{origin:'https://foreign.invalid'}},{body:payload,headers:{'x-csrf-token':'invalid'}}]){
+  const denied=await gateway.fetch(request(path,options),state.env);assert.ok([400,403,413].includes(denied.status));
+ }
+ assert.equal(state.requests.length,1);
+});

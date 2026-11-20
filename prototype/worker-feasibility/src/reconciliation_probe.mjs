@@ -6,7 +6,7 @@ import { syntheticCashRequest } from '../tests/fixtures/cash_wasm.mjs';
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (!['localhost','127.0.0.1'].includes(url.hostname) || !['/qualify','/qualify-rpc','/qualify-foreign'].includes(url.pathname)) {
+    if (!['localhost','127.0.0.1'].includes(url.hostname) || !['/qualify','/qualify-rpc','/qualify-foreign','/qualify-details'].includes(url.pathname)) {
       return new Response('Not found', {status:404});
     }
     if (request.method !== 'GET') return new Response('Method not allowed', {status:405});
@@ -17,6 +17,11 @@ export default {
       for (const row of [...input.observations,...input.opening_cash,...input.closing_cash]) row.scope=scope;
       input.broker_cash={currency:'GBP',available_to_trade:null,in_pies:null,reserved_for_orders:null,at:input.cutoff,snapshot_id:'synthetic-pending-snapshot'};
       try {
+        if(url.pathname === '/qualify-details') {
+          input.activity_since='2026-01-01T00:00:00Z';
+          input.detail_query={category:'deposits',currency:'GBP',offset:0,limit:20};
+          return new Response(await env.RECONCILIATION.cashActivityDetails(JSON.stringify(input)),{headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
+        }
         const summary=await env.RECONCILIATION.reconcileCash(JSON.stringify(input));
         return new Response(summary,{headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
       } catch {return Response.json({error:'rpc_rejected'},{status:400});}

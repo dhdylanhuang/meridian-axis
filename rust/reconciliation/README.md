@@ -167,3 +167,11 @@ FX, inferred ledger sign, tax gross/net treatment or allocating current cash to
 past flows. Empty categories are absent, not zero. Runtime uses UTC year to date;
 coverage remains incomplete/unverified. Main dashboard shows monetary amounts;
 the previous cash control window is an optional diagnostic, not feature acceptance.
+
+
+Optional `detail_query` requests category/currency/offset/limit (1–50, offset at
+most 1024). Details select the same eligible latest records as the reported total,
+sort by actual timestamp descending then family/reference, and preserve exact amount,
+original reference/type, optional issuer label, source/revision ID, revision number
+and digest. Only the requested page is returned in `reported_activity.details`;
+normal snapshot summaries omit it. Input `instrument_label` is optional and bounded.

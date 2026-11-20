@@ -20,6 +20,7 @@ FILES = (
     "application/broker_sync.py",
     "application/history_evidence.py",
     "application/cash_history.py",
+    "application/cash_activity.py",
     "application/cash_reconciliation.py",
     "application/broker_snapshot.py",
     "application/snapshot_publish.py",

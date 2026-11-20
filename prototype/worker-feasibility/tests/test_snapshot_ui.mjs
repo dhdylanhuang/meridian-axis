@@ -132,3 +132,37 @@ test('funding view retains current cash with an older or unavailable activity sn
  assert.match(text,/amounts are not available in this saved snapshot/);
  assert.doesNotMatch(text,/578|£0|sign conventions/);
 });
+
+function descendants(element){return [element,...element.children.flatMap(descendants)];}
+test('activity drilldown loads only on demand and paginates the saved total',async()=>{
+ const data=snapshot(),revision='a'.repeat(64);
+ data.cash_reconciliation={source_snapshot_id:'saved',input_revision:revision,activity_details_available:true,
+  history_coverage:{scope:'broker_available_history',families:[{family:'transactions',state:'provider_history_traversed',completed_at:'2026-01-02T10:00:00Z',earliest_observed_at:'2025-01-01T00:00:00Z'},{family:'dividends',state:'not_established'}]},
+  reported_activity:{since:'2026-01-01T00:00:00Z',cutoff:'2026-01-02T12:00:00Z',excluded_conflicts:0,totals:[{category:'cash_interest',currency:'GBP',amount:'5.25',event_count:21}]}};
+ const calls=[];
+ const ui=setup(async(url,options)=>{
+  if(url.endsWith('/snapshot')) return {ok:true,status:200,json:async()=>data};
+  const query=JSON.parse(options.body);calls.push(query);
+  assert.equal(options.headers['X-CSRF-Token'],'n'.repeat(43));
+  return {ok:true,status:200,json:async()=>({snapshot_id:'saved',input_revision:revision,category:'cash_interest',currency:'GBP',offset:query.offset,total_count:21,
+   entries:Array.from({length:query.offset===0?20:1},(_,i)=>({occurred_at:'2026-01-01T00:00:00Z',instrument_label:'<img src=x>',amount:'0.25',currency:'GBP',reference:'ref-'+(query.offset+i),family:'transactions',provider_type:'INTEREST_ON_FREE_CASH',source_id:'source-'+i,revision_id:'revision-'+i,revision:1,digest:'b'.repeat(64)}))})};
+ });
+ ui.document.cookie='__Host-meridian_csrf='+'n'.repeat(43);await ui.view.load();assert.equal(calls.length,0);
+ const root=ui.el('cash-reconciliation');assert.match(content(root),/all available broker pages fetched/);assert.match(content(root),/completed broker history traversal has not been established/);
+ await descendants(root).find(node=>node.textContent==='View transactions').listeners.click();
+ assert.equal(calls.length,1);assert.equal(calls[0].snapshot_id,'saved');assert.match(content(root),/Showing 1–20 of 21/);
+ assert.match(content(root),/ref-0/);assert.match(content(root),/SHA-256/);assert.match(content(root),/<img src=x>/);
+ await descendants(root).find(node=>node.textContent==='Next page').listeners.click();
+ assert.equal(calls[1].offset,20);assert.match(content(root),/Showing 21–21 of 21/);
+ assert.doesNotMatch(content(root),/ref-0/);
+ ui.view.clear();assert.equal(content(root),'—');
+});
+test('late activity page cannot repopulate after signout',async()=>{
+ const data=snapshot();data.cash_reconciliation={source_snapshot_id:'saved',input_revision:'a'.repeat(64),activity_details_available:true,reported_activity:{since:'2026-01-01',cutoff:'2026-01-02',totals:[{category:'deposits',currency:'GBP',amount:'1',event_count:1}]}};
+ let finish;
+ const ui=setup(async(url)=>url.endsWith('/snapshot')?{ok:true,status:200,json:async()=>data}:await new Promise(resolve=>{finish=resolve;}));
+ ui.document.cookie='';await ui.view.load();
+ const pending=descendants(ui.el('cash-reconciliation')).find(node=>node.textContent==='View transactions').listeners.click();
+ ui.view.clear();finish({ok:true,status:200,json:async()=>({entries:[{reference:'should-not-appear'}]})});await pending;
+ assert.equal(content(ui.el('cash-reconciliation')),'—');
+});

@@ -3,6 +3,7 @@ const ROUTES = new Map([
   ["/health", "GET"],
   ["/api/v1/portfolio/snapshot", "GET"],
   ["/api/v1/portfolio/refresh", "POST"],
+  ["/api/v1/portfolio/cash-activity", "POST"],
   ["/api/v1/portfolio/refresh/status", "GET"],
   ["/api/v1/session/bootstrap", "GET"],
   ["/api/v1/session/current", "GET"],
@@ -123,18 +124,19 @@ export default {
         return failure("csrf_invalid", 403);
       }
       const login = ["/api/v1/session/login", "/api/v1/session/setup"].includes(url.pathname);
-      if (login && request.headers.get("content-type") !== "application/json") {
+      const activity = url.pathname === "/api/v1/portfolio/cash-activity";
+      if ((login || activity) && request.headers.get("content-type") !== "application/json") {
         return failure("request_invalid", 400);
       }
-      const body = await boundedBody(request, login ? 8192 : 0);
+      const body = await boundedBody(request, login ? 8192 : activity ? 2048 : 0);
       const headers = new Headers({ Host: origin.host });
       for (const name of ["origin", "cookie", "x-csrf-token"]) {
         const value = request.headers.get(name);
         if (value !== null) headers.set(name, value);
       }
-      if (login) headers.set("Content-Type", "application/json");
+      if (login || activity) headers.set("Content-Type", "application/json");
       const upstream = new Request(origin.origin + url.pathname, {
-        method, headers, redirect: "manual", ...(login ? { body } : {}),
+        method, headers, redirect: "manual", ...((login || activity) ? { body } : {}),
       });
       const id = env.APP.idFromName("meridian-session-application");
       const response = await env.APP.get(id).fetch(upstream);

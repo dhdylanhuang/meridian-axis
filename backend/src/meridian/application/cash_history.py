@@ -31,6 +31,7 @@ def cash_history_request(
     observed_available_cash=False,
     sign_policy=None,
     reported_activity=False,
+    pin_to_cutoff=False,
 ):
     """Read one consistent caller-owned snapshot; never grant runtime raw access.
 
@@ -92,6 +93,7 @@ def cash_history_request(
         .where(
             BrokerEventRevision.account_id == account_id,
             BrokerEventRevision.family.in_(families),
+            (BrokerEventRevision.observed_at <= instant(cutoff)) if pin_to_cutoff else True,
             ImportRun.status == "succeeded",
         )
         .order_by(
@@ -118,6 +120,14 @@ def cash_history_request(
         occurred_at = raw["paidOn"] if family == "dividends" else raw["dateTime"]
         instant(occurred_at)
         number(raw["amount"])
+        instrument = raw.get("instrument") or {}
+        label = instrument.get("name") or instrument.get("ticker") or raw.get("ticker")
+        if label is not None and (
+            not isinstance(label, str)
+            or not 0 < len(label.encode()) <= 512
+            or any(ord(c) < 32 for c in label)
+        ):
+            raise ReconciliationError("reconciliation_instrument_invalid")
         observations.append(
             dict(
                 scope=scope,
@@ -129,6 +139,7 @@ def cash_history_request(
                 amount=str(raw["amount"]),
                 occurred_at=occurred_at,
                 **({"family": family} if reported_activity else {}),
+                **({"instrument_label": label} if reported_activity and label else {}),
                 observed_at=observed_at,
                 source_id=source_id,
                 revision_id=revision_id,
@@ -216,3 +227,49 @@ def cash_history_request(
                     base | dict(amount=cash["availableToTrade"], at=cutoff, source_id=snapshot_id)
                 ]
     return request
+
+
+def cash_history_coverage(db, *, account_id, cutoff, observations):
+    """Completed native traversal metadata, not an assertion of broker lifetime coverage."""
+    ids = [
+        select(ImportRun.id)
+        .where(
+            ImportRun.account_id == account_id,
+            ImportRun.kind == "trading212_history_" + family,
+            ImportRun.status == "succeeded",
+            ImportRun.finished_at <= instant(cutoff),
+        )
+        .order_by(ImportRun.finished_at.desc(), ImportRun.id.desc())
+        .limit(1)
+        .scalar_subquery()
+        for family in ("transactions", "dividends")
+    ]
+    runs = {
+        run.kind.removeprefix("trading212_history_"): run
+        for run in db.scalars(
+            select(ImportRun).where(ImportRun.account_id == account_id, ImportRun.id.in_(ids))
+        )
+    }
+    result = []
+    for family in ("transactions", "dividends"):
+        run = runs.get(family)
+        pages = json.loads(run.counts_json).get("pages") if run else None
+        complete = type(pages) is int and 1 <= pages <= 1000
+        dates = [
+            instant(row["occurred_at"])
+            for row in observations
+            if row.get("family", "transactions") == family
+            and instant(row["occurred_at"]) <= instant(cutoff)
+        ]
+        result.append(
+            dict(
+                family=family,
+                state="provider_history_traversed" if complete else "not_established",
+                completed_at=run.finished_at.isoformat() if complete else None,
+                source_run_id=run.id if complete else None,
+                pages=pages if complete else None,
+                earliest_observed_at=min(dates).isoformat() if dates else None,
+                latest_observed_at=max(dates).isoformat() if dates else None,
+            )
+        )
+    return dict(scope="broker_available_history", lifetime="not_established", families=result)

@@ -345,3 +345,46 @@ fn funding_totals_keep_families_currencies_revisions_and_period_separate() {
     assert!(dividend["cash_delta"].is_null());
     assert_eq!(dividend["state"], "reported_activity_only");
 }
+
+#[test]
+fn details_pages_preserve_latest_evidence_and_exact_money() {
+    let mut a = event("a", "1");
+    a["instrument_label"] = json!("Example issuer");
+    let mut revised = a.clone();
+    revised["amount"] = json!("2.00000000000000000001");
+    revised["revision"] = json!(1);
+    revised["revision_id"] = json!("revised");
+    revised["digest"] = json!("b".repeat(64));
+    let mut b = event("b", "3");
+    b["occurred_at"] = json!("2026-01-02T11:00:00+01:00");
+    let mut dividend = event("a", "99");
+    dividend["family"] = json!("dividends");
+    let mut input = request(vec![a, revised, b, dividend]);
+    input["activity_since"] = json!("2026-01-01T00:00:00Z");
+    input["detail_query"] = json!({"category":"deposits","currency":"GBP","offset":0,"limit":1});
+    let first = report(input.clone());
+    let detail = &first["reported_activity"]["details"];
+    assert_eq!(detail["total_count"], 2);
+    assert_eq!(detail["entries"].as_array().unwrap().len(), 1);
+    assert_eq!(detail["entries"][0]["reference"], "a");
+    assert_eq!(detail["entries"][0]["amount"], "2.00000000000000000001");
+    assert_eq!(detail["entries"][0]["revision_id"], "revised");
+    assert_eq!(detail["entries"][0]["instrument_label"], "Example issuer");
+    input["detail_query"]["offset"] = json!(1);
+    assert_eq!(
+        report(input.clone())["reported_activity"]["details"]["entries"][0]["reference"],
+        "b"
+    );
+    input["detail_query"]["offset"] = json!(2);
+    assert_eq!(
+        report(input.clone())["reported_activity"]["details"]["entries"],
+        json!([])
+    );
+    input["detail_query"]["limit"] = json!(51);
+    assert_eq!(
+        reconcile(serde_json::from_value(input).unwrap())
+            .unwrap_err()
+            .0,
+        "request_invalid"
+    );
+}

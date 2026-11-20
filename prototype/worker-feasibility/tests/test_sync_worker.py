@@ -183,3 +183,47 @@ class SyncWorkerTests(unittest.IsolatedAsyncioTestCase):
                 (await worker.execute(scheduled=False))["status"], "succeeded"
             )
         binding.reconcileCash.assert_awaited_once_with("synthetic-input")
+
+    async def test_activity_page_uses_readonly_service_without_broker_execution(self):
+        module = self.load_worker()
+        module.Response.json = lambda body, **options: SimpleNamespace(
+            body=body, **options
+        )
+        worker = module.BrokerSyncDO()
+        worker.ctx = SimpleNamespace(storage=self.storage())
+        binding = SimpleNamespace(cashActivityDetails=AsyncMock(return_value="result"))
+        worker.env = SimpleNamespace(HYPERDRIVE=object(), RECONCILIATION=binding)
+        worker.execute = AsyncMock(side_effect=AssertionError("No broker work"))
+        engine = Mock()
+        create = Mock(return_value=engine)
+
+        async def page(actual, value, reconcile):
+            self.assertIs(actual, engine)
+            self.assertEqual(value, {"synthetic": True})
+            self.assertEqual(await reconcile("request"), "result")
+            return {"entries": []}, 200
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "meridian.security.hosted": SimpleNamespace(
+                    create_binding_engine=create
+                ),
+                "meridian.application.cash_activity": SimpleNamespace(
+                    cash_activity_page=page
+                ),
+            },
+        ):
+            response = await worker.fetch(
+                SimpleNamespace(
+                    method="POST",
+                    url="https://sync.internal/cash-activity",
+                    text=AsyncMock(return_value='{"synthetic":true}'),
+                )
+            )
+        self.assertEqual(response.status, 200)
+        create.assert_called_once_with(
+            worker.env.HYPERDRIVE, expected_role="meridian_sync_public"
+        )
+        engine.dispose.assert_called_once()
+        worker.execute.assert_not_called()

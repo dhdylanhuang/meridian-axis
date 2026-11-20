@@ -69,6 +69,14 @@ test('Cloudflare local workerd executes the same precompiled WASM module', {time
     assert.equal(summary.source_snapshot_id,'synthetic-pending-snapshot');
     assert.equal('records' in summary,false);
     assert.equal('broker_cash' in summary,false);
+    const detailsResponse=await fetch('http://127.0.0.1:8797/qualify-details');
+    assert.equal(detailsResponse.status,200);
+    const details=await detailsResponse.json();
+    assert.equal(details.snapshot_id,'synthetic-pending-snapshot');
+    assert.equal(details.details.total_count,1);
+    assert.equal(details.details.entries[0].amount,'2.000000000000000000001');
+    assert.equal(details.details.entries[0].revision_id,'revision-1');
+    assert.equal('observations' in details,false);assert.equal('evidence' in details.details.entries[0],false);
     assert.equal((await fetch('http://127.0.0.1:8797/qualify-foreign')).status,400);
     assert.equal((await fetch('http://127.0.0.1:8797/')).status,404);
   } finally {

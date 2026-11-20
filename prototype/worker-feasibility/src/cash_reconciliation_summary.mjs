@@ -34,3 +34,18 @@ export async function summarizeCashReport(input, reportJSON, environment) {
     warnings:report.warnings,
   });
 }
+
+
+export function summarizeActivityDetails(reportJSON, environment) {
+  const report = JSON.parse(reportJSON);
+  if (!['demo','live'].includes(environment) || report.scope?.account_id !== 'shared-isa' ||
+      report.scope.environment !== environment || !report.broker_cash?.snapshot_id ||
+      report.method !== 'cash_reconciliation_rust_v1' || !report.reported_activity?.details) throw new Error('scope_mismatch');
+  const activity = report.reported_activity, details = activity.details;
+  return JSON.stringify({scope:report.scope,snapshot_id:report.broker_cash.snapshot_id,
+    since:activity.since,cutoff:activity.cutoff,details:{category:details.category,currency:details.currency,
+      offset:details.offset,limit:details.limit,total_count:details.total_count,
+      entries:details.entries.map(row=>({family:row.family,reference:row.reference,provider_type:row.provider_type,
+        amount:row.amount,currency:row.currency,occurred_at:row.occurred_at,instrument_label:row.instrument_label,
+        source_id:row.source_id,revision_id:row.revision_id,revision:row.revision,digest:row.digest}))}});
+}

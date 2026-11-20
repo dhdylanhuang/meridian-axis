@@ -266,3 +266,30 @@ unestablished rather than invented zero; existing saved snapshots still display
 current broker cash with an explicit unavailable activity state. Current cash and
 historic income/funding remain separate because receipts may already be spent.
 No schema, grant, Worker, poll, provider request or workbook change.
+
+
+## Cash total drill-down and available-history coverage — 20 November 2026
+
+`POST /api/v1/portfolio/cash-activity` accepts a saved snapshot ID/input revision,
+category, currency, offset and limit (maximum 50; browser pages 20). Existing
+session/member/origin/CSRF checks commit before forwarding to the fixed private
+sync object. It uses the existing restricted read role, accepted revisions at or
+before cutoff and the same canonical request behind the approved total. An input
+hash mismatch/unavailable snapshot is 409, never a silently changed page.
+Rust selects/sorts the latest family/reference records and returns only the page;
+Python validates each row against input source/revision/digest, amount, currency,
+date and issuer label. Raw observations/credentials remain private. The approved
+snapshot stores only totals and small coverage metadata, not repeated history.
+
+One bounded metadata statement selects the latest completed dividend/cash imports
+at cutoff. Completion derives from the verified writer's terminal-pagination atomic
+success and bounded page count, not an in-progress checkpoint. Coverage reports
+last completed traversal and earliest/latest captured dates; it certifies currently
+available broker history only. A private source-page/capture-reference audit found
+no known missing captured references at this checkpoint, so no backfill was run.
+No assertion of complete account lifetime, statement agreement or gross/net tax.
+The offline exporter retains its previous defaults; hosted requests explicitly pin
+accepted revisions to cutoff for stable drill-down. No new schema, RLS/grant,
+Worker, polling cadence, workbook or provider call. On-demand requests have a
+2-second read statement bound / 4-second private RPC bound; DB transactions close
+before RPC. Unavailable details cannot modify saved financial totals.

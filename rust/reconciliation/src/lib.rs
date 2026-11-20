@@ -37,6 +37,8 @@ pub struct Observation {
     pub scope: Scope,
     #[serde(default = "cash_family")]
     pub family: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instrument_label: Option<String>,
     pub reference: String,
     pub provider_type: String,
     pub currency: String,
@@ -100,6 +102,8 @@ pub struct Request {
     pub cash_sign_policy: Option<CashSignPolicy>,
     #[serde(default)]
     pub activity_since: Option<String>,
+    #[serde(default)]
+    pub detail_query: Option<DetailQuery>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -116,6 +120,7 @@ pub enum RecordState {
 #[derive(Debug, Serialize)]
 pub struct EconomicRecord {
     pub family: String,
+    pub instrument_label: Option<String>,
     pub reference: String,
     pub provider_type: String,
     pub currency: String,
@@ -154,6 +159,52 @@ pub struct CashComparison {
     pub excluded_movement_count: Option<usize>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct DetailQuery {
+    pub category: String,
+    pub currency: String,
+    pub offset: usize,
+    pub limit: usize,
+}
+#[derive(Debug, Serialize)]
+pub struct ActivityEntry {
+    pub family: String,
+    pub reference: String,
+    pub provider_type: String,
+    pub amount: String,
+    pub currency: String,
+    pub occurred_at: String,
+    pub instrument_label: Option<String>,
+    pub source_id: String,
+    pub revision_id: Option<String>,
+    pub revision: u32,
+    pub digest: String,
+}
+#[derive(Debug, Serialize)]
+pub struct ActivityDetails {
+    pub category: String,
+    pub currency: String,
+    pub offset: usize,
+    pub limit: usize,
+    pub total_count: usize,
+    pub entries: Vec<ActivityEntry>,
+}
+fn activity_category(row: &EconomicRecord) -> &str {
+    if row.family == "dividends" {
+        "dividends"
+    } else {
+        match row.provider_type.as_str() {
+            "DEPOSIT" => "deposits",
+            "WITHDRAW" => "withdrawals",
+            "FEE" => "fees",
+            "TRANSFER" => "transfers",
+            "INTEREST_ON_FREE_CASH" => "cash_interest",
+            "LENDING_INTEREST" => "lending_interest",
+            _ => "other",
+        }
+    }
+}
 fn cash_family() -> String {
     "transactions".to_owned()
 }
@@ -171,12 +222,15 @@ pub struct ReportedActivity {
     pub cutoff: String,
     pub totals: Vec<ActivityTotal>,
     pub excluded_conflicts: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<ActivityDetails>,
 }
 
 fn reported_activity(
     records: &[EconomicRecord],
     since: &str,
     cutoff: &str,
+    query: Option<&DetailQuery>,
 ) -> Result<ReportedActivity> {
     let start = instant(since)?;
     let end = instant(cutoff)?;
@@ -194,26 +248,92 @@ fn reported_activity(
             excluded += 1;
             continue;
         }
-        let category = if row.family == "dividends" {
-            "dividends"
-        } else {
-            match row.provider_type.as_str() {
-                "DEPOSIT" => "deposits",
-                "WITHDRAW" => "withdrawals",
-                "FEE" => "fees",
-                "TRANSFER" => "transfers",
-                "INTEREST_ON_FREE_CASH" => "cash_interest",
-                "LENDING_INTEREST" => "lending_interest",
-                _ => "other",
-            }
-        };
+        let category = activity_category(row);
         let value = totals
             .entry((row.currency.clone(), category.to_owned()))
             .or_insert((BigDecimal::from(0), 0));
         value.0 += decimal(&row.reported_amount)?;
         value.1 += 1;
     }
+    let details = if let Some(query) = query {
+        currency(&query.currency)?;
+        if query.limit == 0
+            || query.limit > 50
+            || query.offset > 1024
+            || !matches!(
+                query.category.as_str(),
+                "deposits"
+                    | "withdrawals"
+                    | "fees"
+                    | "transfers"
+                    | "cash_interest"
+                    | "lending_interest"
+                    | "dividends"
+                    | "other"
+            )
+        {
+            return Err(Error("request_invalid"));
+        }
+        let mut selected: Vec<_> = records
+            .iter()
+            .filter(|row| {
+                let at = instant(&row.occurred_at).expect("validated");
+                row.currency == query.currency
+                    && activity_category(row) == query.category
+                    && row.state != RecordState::IdentityConflictReview
+                    && at >= start
+                    && at <= end
+            })
+            .collect();
+        selected.sort_by_key(|row| {
+            (
+                std::cmp::Reverse(instant(&row.occurred_at).expect("validated")),
+                row.family.clone(),
+                row.reference.clone(),
+            )
+        });
+        let total_count = selected.len();
+        let entries = selected
+            .into_iter()
+            .skip(query.offset)
+            .take(query.limit)
+            .map(|row| {
+                let evidence = row
+                    .evidence
+                    .iter()
+                    .find(|e| {
+                        e.source_id == row.selected_source_id
+                            && e.revision_id == row.selected_revision_id
+                    })
+                    .expect("selected evidence");
+                ActivityEntry {
+                    family: row.family.clone(),
+                    reference: row.reference.clone(),
+                    provider_type: row.provider_type.clone(),
+                    amount: text(&decimal(&row.reported_amount).expect("validated")),
+                    currency: row.currency.clone(),
+                    occurred_at: row.occurred_at.clone(),
+                    instrument_label: row.instrument_label.clone(),
+                    source_id: row.selected_source_id.clone(),
+                    revision_id: row.selected_revision_id.clone(),
+                    revision: evidence.revision,
+                    digest: evidence.digest.clone(),
+                }
+            })
+            .collect();
+        Some(ActivityDetails {
+            category: query.category.clone(),
+            currency: query.currency.clone(),
+            offset: query.offset,
+            limit: query.limit,
+            total_count,
+            entries,
+        })
+    } else {
+        None
+    };
     Ok(ReportedActivity {
+        details,
         since: since.to_owned(),
         cutoff: cutoff.to_owned(),
         totals: totals
@@ -398,6 +518,11 @@ pub fn reconcile(request: Request) -> Result<Report> {
         if let SignBasis::VerifiedSignedAmount { evidence_id } = &row.sign_basis {
             identity(evidence_id)?;
         }
+        if let Some(label) = &row.instrument_label {
+            if label.is_empty() || label.len() > 512 || label.chars().any(char::is_control) {
+                return Err(Error("identity_invalid"));
+            }
+        }
         currency(&row.currency)?;
         decimal(&row.amount)?;
         instant(&row.occurred_at)?;
@@ -473,6 +598,7 @@ pub fn reconcile(request: Request) -> Result<Report> {
         }
         records.push(EconomicRecord {
             family,
+            instrument_label: current.instrument_label.clone(),
             reference,
             provider_type: current.provider_type.clone(),
             currency: current.currency.clone(),
@@ -555,7 +681,14 @@ pub fn reconcile(request: Request) -> Result<Report> {
     let activity = request
         .activity_since
         .as_ref()
-        .map(|since| reported_activity(&records, since, &request.cutoff))
+        .map(|since| {
+            reported_activity(
+                &records,
+                since,
+                &request.cutoff,
+                request.detail_query.as_ref(),
+            )
+        })
         .transpose()?;
     Ok(Report {
         reported_activity: activity,

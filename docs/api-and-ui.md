@@ -159,3 +159,17 @@ balance or verified sign convention. Optional `activity_counts` report fixed
 provider categories over effective Rust records (not repeated observations);
 Python validates their allowed keys, integer counts and sum against event count.
 Older summaries without the field remain readable. No amount totals are derived.
+
+
+## Cash total transactions
+
+Each income/funding total exposes “View transactions” and 20-row next/previous
+pages, showing date, issuer/type, exact monetary amount and broker reference.
+Collapsed source evidence preserves source ID, selected revision and digest. Only
+an explicit click fetches data. The authenticated `POST /api/v1/portfolio/cash-activity`
+uses existing cookies, exact Origin and CSRF, bounded 2 KiB JSON and no query string.
+Both existing members have equal access. Detail responses are no-store; stale or
+missing generations return 409 with a reload instruction. Late responses cannot
+repopulate after signout or snapshot replacement. Coverage shows completed broker
+traversals/earliest captured dates and explicitly limits claims to available broker
+history. Old saved summaries retain their existing totals without fake detail rows.

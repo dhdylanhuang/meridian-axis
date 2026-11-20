@@ -6,27 +6,22 @@ AXIS is one integrated dashboard. Tax remains deferred.
 
 ## Current bounded delivery
 
-Replace the cash-review paragraph with cash available now (separate broker pie/
-reserved components) and year-to-date monetary paid-dividend/distribution, cash
-interest, deposit and withdrawal totals, with fees, transfers and lending interest.
-Rust aggregates latest accepted references separately by source family/currency,
-keeps exact decimals/provider signs, excludes conflicting identities and events
-outside the UTC calendar-year period. Python reads accepted ongoing dividend/cash
-revisions and validates the approved projection. No inferred signed ledger effect,
-FX, gross/net dividend tax treatment, opening balance or partition of current cash.
-Missing categories are unestablished, not zero; initial captures/lifetime coverage
-remain incomplete. Prior component checks remain an opt-in diagnostic capability;
-the hosted adapter stops the extra opening-snapshot query.
+Step 1 adds paginated source-backed transaction drill-downs to every monetary total
+and specific available-broker-history coverage. The private audit found no retained
+capture references missing from revisions, so no blind backfill is required.
+Completed provider traversals and earliest captured dates are shown; account-lifetime
+completeness remains unproven. Current status owns tests and release verification.
 
-Deployed gateway/sync source is `17aa7ea`, session owner `5cc8564`. Actual monetary
-publication and exact agreement with accepted sources were verified at the natural
-11:50 UTC refresh. Current status owns focused checks and release/publication evidence.
-Reuse completed checks; do not repeat suites or probes on resume.
+Pages are pinned to saved total input hashes/cutoffs, preserve source revisions,
+and load only on demand behind existing member/origin/CSRF guards. The private sync
+role reads accepted evidence, Rust selects exact latest rows, and only the approved
+page is returned. No full-history copies in each snapshot; no new Worker/schema/
+role/poll or broker call. Offline exporter defaults remain unchanged.
 
 ## Remaining useful deliveries
 
-1. Establish missing history coverage/backfill so dated income/funding totals are
-   complete; add source-backed drill-down to constituent payouts and movements.
+1. Step 1 is implemented: source-backed drill-down and available-history evidence.
+   Statement/inception proof remains required before lifetime-complete claims.
 2. Explain changes in cash with verified trade/dividend/fee/FX and reservation/pie
    effects, comparable controls and a review list of specific unexplained items.
 3. Integrate quantity comparison against Trading 212, showing concrete holding

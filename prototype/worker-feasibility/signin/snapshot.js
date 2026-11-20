@@ -2,6 +2,8 @@
 (() => {
   const el = id => document.getElementById(id);
   let snapshot = null, generation = 0, controller = null;
+  const detailControllers = new Set();
+  function cancelDetails(){ for (const pending of detailControllers) pending.abort(); detailControllers.clear(); }
   let active = false, loading = false, timer = null, failures = 0, nextRead = 0, nextManual = 0;
   const INTERVAL = 600_000, MAX_BACKOFF = 3_600_000, READ_COOLDOWN = 60_000;
   function schedule(delay = INTERVAL) {
@@ -40,7 +42,17 @@
       return;
     }
     add(container, 'h3', 'Income and funding · year to date');
-    add(container, 'p', `${activity.since.slice(0,10)} to ${activity.cutoff.slice(0,10)} · captured Trading 212 activity. Historical coverage is incomplete/unverified; totals may omit earlier or missing events.`);
+    add(container, 'p', `${activity.since.slice(0,10)} to ${activity.cutoff.slice(0,10)} · Trading 212 activity.`);
+    const coverage = summary.history_coverage;
+    if (coverage?.scope === 'broker_available_history') {
+      for (const family of coverage.families) {
+        const name = family.family === 'dividends' ? 'Dividend payouts' : 'Cash movements';
+        add(container, 'p', family.state === 'provider_history_traversed'
+          ? `${name}: all available broker pages fetched as of ${family.completed_at}. Earliest captured event: ${family.earliest_observed_at || 'no events returned'}.`
+          : `${name}: completed broker history traversal has not been established.`);
+      }
+      add(container, 'p', 'Coverage is the history returned by Trading 212. Complete account-lifetime history is not established; these are not statement-certified totals.');
+    } else add(container, 'p', 'Historical coverage is incomplete/unverified; totals may omit earlier or missing events.');
     const currencies = [...new Set([data.currency, ...activity.totals.map(row=>row.currency)])];
     const labels = [['dividends','Paid dividends & distributions'],['cash_interest','Cash interest'],['deposits','Deposits'],['withdrawals','Withdrawals'],['fees','Fees'],['transfers','Transfers'],['lending_interest','Lending interest']];
     for (const currency of currencies) {
@@ -48,13 +60,58 @@
       const list = add(container, 'dl');
       for (const [category, label] of labels) {
         const row = activity.totals.find(row=>row.currency === currency && row.category === category);
-        add(list, 'dt', label); add(list, 'dd', row ? decimal(row.amount, currency) : 'Not established from captured history');
+        add(list, 'dt', label); const value = add(list, 'dd', row ? decimal(row.amount, currency) : 'Not established from captured history');
+        if (row && summary.activity_details_available) addActivityButton(value, row, summary, add, label);
       }
       const other = activity.totals.find(row=>row.currency === currency && row.category === 'other');
-      if (other) { add(list, 'dt', 'Other cash activity · review'); add(list, 'dd', decimal(other.amount, currency)); }
+      if (other) { add(list, 'dt', 'Other cash activity · review'); const value=add(list, 'dd', decimal(other.amount, currency)); if(summary.activity_details_available) addActivityButton(value, other, summary, add, 'Other activity'); }
     }
     add(container, 'p', 'Activity amounts retain Trading 212 signs and currencies. Dividend figures are reported payouts, without inferred gross/net tax treatment. Income and funding may already have been invested or spent; these totals do not describe the composition of today’s cash.');
     if (activity.excluded_conflicts) add(container, 'p', `${activity.excluded_conflicts} conflicting records excluded from these totals; review required.`);
+  }
+  function addActivityButton(parent, total, summary, add, label) {
+    const open = add(parent, 'button', 'View transactions'); open.type = 'button';
+    const box = add(parent, 'div');
+    let loadingPage = false;
+    const version = generation;
+    async function page(offset) {
+      if (loadingPage) return;
+      loadingPage = true; open.disabled = true;
+      box.replaceChildren(); add(box,'p','Loading transactions…');
+      const pending = new AbortController(); detailControllers.add(pending);
+      try {
+        const cookies = document.cookie.split(';').map(x=>x.trim()).filter(x=>x.startsWith('__Host-meridian_csrf='));
+        const csrf = cookies.length === 1 ? cookies[0].slice(cookies[0].indexOf('=')+1) : '';
+        const response = await fetch('/api/v1/portfolio/cash-activity', {method:'POST',credentials:'same-origin',cache:'no-store',redirect:'error',signal:pending.signal,
+          headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},
+          body:JSON.stringify({snapshot_id:summary.source_snapshot_id,input_revision:summary.input_revision,category:total.category,currency:total.currency,offset,limit:20})});
+        if (version !== generation) return;
+        if (response.status === 401 || response.status === 403) { clear(); window.dispatchEvent(new Event('meridian-session-ended')); return; }
+        if (!response.ok) {
+          box.replaceChildren(); add(box,'p',response.status === 409 ? 'This saved total is no longer available for drill-down. Reload the saved snapshot to continue.' : 'Transactions are unavailable. Your saved total is unchanged.'); return;
+        }
+        const data = await response.json();
+        if (version !== generation) return;
+        if (data.snapshot_id !== summary.source_snapshot_id || data.input_revision !== summary.input_revision || data.category !== total.category || data.currency !== total.currency || data.offset !== offset || data.total_count !== total.event_count) throw new Error('activity_mismatch');
+        box.replaceChildren(); add(box,'p',`${label} · ${decimal(total.amount,total.currency)} total. Showing ${offset+1}–${offset+data.entries.length} of ${data.total_count} transactions.`);
+        const scroll=add(box,'div'); scroll.className='table-scroll';
+        const table=add(scroll,'table'), head=add(table,'thead'), header=add(head,'tr');
+        for(const title of ['Date','Payment / movement','Amount','Trading 212 reference','Source evidence']) add(header,'th',title);
+        const body=add(table,'tbody');
+        for(const entry of data.entries){
+          const row=add(body,'tr'); add(row,'td',entry.occurred_at); add(row,'td',entry.instrument_label || label);
+          add(row,'td',decimal(entry.amount,entry.currency)); add(row,'td',entry.reference);
+          const evidence=add(add(row,'td'),'details'); add(evidence,'summary',`Revision ${entry.revision}`);
+          add(evidence,'p',`Trading 212 · ${entry.family} · ${entry.provider_type}`);
+          add(evidence,'p',`Source ${entry.source_id}; revision ${entry.revision_id || 'initial capture'}; SHA-256 ${entry.digest}`);
+        }
+        if(offset>0){const previous=add(box,'button','Previous page');previous.type='button';previous.addEventListener('click',()=>page(Math.max(0,offset-20)));}
+        if(offset+data.entries.length<data.total_count){const next=add(box,'button','Next page');next.type='button';next.addEventListener('click',()=>page(offset+20));}
+      } catch(error) {
+        if(version === generation && error.name !== 'AbortError'){box.replaceChildren();add(box,'p','Transactions are unavailable. Your saved total is unchanged.');}
+      } finally {detailControllers.delete(pending);loadingPage=false;open.disabled=false;}
+    }
+    open.addEventListener('click',()=>page(0));
   }
   function compare(a, b) {
     if (a == null) return b == null ? 0 : -1;
@@ -66,7 +123,7 @@
   }
   function clear() {
     active = false; clearTimeout(timer); failures = 0; nextRead = 0; nextManual = 0;
-    generation++; controller?.abort(); snapshot = null;
+    generation++; controller?.abort(); cancelDetails(); snapshot = null;
     amounts.forEach(id => el(id).textContent = '—');
     el('holdings-body').replaceChildren(); el('holding-count').textContent = '';
     if (el('cash-reconciliation')) { el('cash-reconciliation').replaceChildren(); el('cash-reconciliation').textContent = '—'; }
@@ -96,7 +153,7 @@
     if (loading || document.hidden) return;
     if (Date.now() < nextRead) { schedule(nextRead - Date.now()); return; }
     loading = true;
-    generation++; controller?.abort(); const version = generation; controller = new AbortController();
+    generation++; controller?.abort(); cancelDetails(); const version = generation; controller = new AbortController();
     el('snapshot-status').textContent = 'Loading saved broker snapshot…';
     try {
       const response = await fetch('/api/v1/portfolio/snapshot', { credentials:'same-origin', cache:'no-store', redirect:'error', signal:controller.signal });

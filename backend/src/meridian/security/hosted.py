@@ -22,7 +22,14 @@ from meridian.security.supabase_auth import SupabaseAuthClient
 
 @asynccontextmanager
 async def hosted_application(
-    binding, *, origin, project_ref, publishable_key, login_csrf_key, refresh=None
+    binding,
+    *,
+    origin,
+    project_ref,
+    publishable_key,
+    login_csrf_key,
+    refresh=None,
+    cash_activity=None,
 ):
     """Own all resources for one serialised Durable Object request.
 
@@ -46,6 +53,7 @@ async def hosted_application(
                 DatabaseLoginLimiter(database_factory, "shared-login"),
                 login_csrf_key,
                 refresh=refresh,
+                cash_activity=cash_activity,
             )
             yield create_app(session_http=handler)
     finally:
