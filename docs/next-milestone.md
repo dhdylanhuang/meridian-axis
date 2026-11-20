@@ -6,11 +6,12 @@ AXIS is one integrated dashboard. Tax remains deferred.
 
 ## Current bounded delivery
 
-Step 1 adds paginated source-backed transaction drill-downs to every monetary total
+Deployed gateway `5709f30`, session owner/sync `94042f2`. Step 1 adds paginated source-backed transaction drill-downs to every monetary total
 and specific available-broker-history coverage. The private audit found no retained
 capture references missing from revisions, so no blind backfill is required.
 Completed provider traversals and earliest captured dates are shown; account-lifetime
-completeness remains unproven. Current status owns tests and release verification.
+completeness remains unproven. The 14:10 UTC saved generation verified detail capability and source-backed coverage.
+Current status owns tests, release verification and the browser automation limitation.
 
 Pages are pinned to saved total input hashes/cutoffs, preserve source revisions,
 and load only on demand behind existing member/origin/CSRF guards. The private sync

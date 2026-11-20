@@ -4,8 +4,12 @@ Reviewed **20 November 2026**. This file is the authoritative implementation sna
 
 ## Current work scope
 
-Cash total drill-down and specific broker coverage are implemented; release in
-progress. Each monetary total opens a paginated authenticated read-only view with
+Cash total drill-down and specific broker coverage are **deployed**: gateway
+`5709f30`, session owner/sync `94042f2`. Three Worker source annotations, preserved
+secret/Hyperdrive/private bindings, exact no-store assets, WASM readiness and
+ten-minute schedule were verified. The small gateway follow-up keeps details usable
+after a failed saved-snapshot reload; only its two affected Node cases were rerun.
+The working tree/release source was reviewed and pushed. Schema stays `0008`. Each monetary total opens a paginated authenticated read-only view with
 payment date, issuer/type, exact amount, Trading 212 reference and collapsed
 source/revision/digest evidence. Pages reconstruct the exact approved snapshot
 inputs, excluding revisions observed after cutoff; hash mismatch returns 409.
@@ -29,9 +33,19 @@ WASM rebuilt/package verified with existing wasm-bindgen 0.2.130; 475,779 bytes.
 Targeted Ruff/format and diff checks passed. Reuse prior economics/retention evidence;
 no full suite/CI matrix/sizing or repeated live probes. Runtime remains three Workers,
 private service binding, schema 0008, ten-minute cadence and unchanged RLS/roles.
-Release order gateway, session owner, sync; complete live UI/publication verification
-and record source tags here. Browser inventory found no existing dashboard tab;
-normal retained browser session may support post-release verification.
+Release order was gateway, session owner, sync, followed by the isolated gateway
+retry guard. Chrome blocked browser verification because another extension UI was
+open; no settings/permissions were changed. Actual browser clicks remain unverified.
+A bounded server read first saw the 14:00 snapshot predating release. After the
+natural 14:10 refresh, one final read verified the 14:10:29 UTC generation: detail
+capability enabled, both broker histories traversed, coverage matched succeeded
+source imports/page counts, input revision present, snapshot ID/cutoff matched and
+no snapshot-job error. No financial amounts or private source IDs were printed.
+Private receipts preserve release, coverage audit and publication evidence. The
+owner reported refreshing the page; this does not itself verify a detail click.
+Implementation, deployment and server publication are complete. Reuse these passing
+checks rather than re-running them. Lifetime completeness and browser clicks remain
+explicit limitations, not claims established by this delivery.
 
 ## Previous monetary totals release
 
