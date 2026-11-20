@@ -51,7 +51,7 @@ Owner-selected first slice: pure native cash normalization/reconciliation in
 `rust/reconciliation`; Python remains responsible for broker ingestion and trusted
 accepted-evidence reads. A strict JSON boundary carries decimal strings and typed
 scope/sign/control states. No whole-app rewrite, new service or hosted interpreter
-is implied. WASM/runtime qualification precedes deployed use; current production
+is implied. Generated WASM bindings now run the same core in local workerd without a new hosted Worker. Private Python/JavaScript invocation, hosted workload qualification and approved result publication precede deployed use; current production
 remains the existing broker-led Python/JavaScript application.
 
 ## Dependency rules

@@ -1,4 +1,6 @@
 //! Pure, read-only cash reconciliation. Provider signs are never inferred.
+#[cfg(target_arch = "wasm32")]
+mod wasm;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};

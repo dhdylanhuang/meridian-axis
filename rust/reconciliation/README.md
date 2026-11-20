@@ -77,8 +77,57 @@ first build; the installed standalone tools worked with scoped
 `DEVELOPER_DIR=/Library/Developer/CommandLineTools`. No license was accepted or
 machine-wide selection/profile changed.
 
-This is a native offline core, not a deployed feature. WASM packaging/runtime
-qualification and approved dashboard publication remain the next integration
-boundary; a native executable cannot simply be copied into the current Python
-Worker. Verified sign/opening/closing evidence and remaining event families are
+This is a native offline core, not a deployed feature. WASM packaging and local Cloudflare runtime qualification are now complete (see
+below). Private Python-to-JavaScript invocation, hosted workload qualification and
+approved dashboard publication remain the next integration boundary. Verified sign/opening/closing evidence and remaining event families are
 also open. The deployed broker snapshot remains authoritative and unchanged.
+
+
+## WASM packaging and local Worker qualification
+
+The same pure core now exports `reconcile_cash_json` through wasm-bindgen 0.2.130.
+No formula is duplicated in JavaScript. WASM accepts at most **512 KiB UTF-8** and
+**1,024 observations** per invocation; excess input fails as a whole, never as a
+silently partial financial result. Native limits remain unchanged. Strings carry
+all precise values; the adapter emits only safe error categories and accepts a
+precompiled WebAssembly.Module, never caller-provided executable bytes.
+
+Reproducible commands from the repository root (Rust and Node >=22.12 required):
+
+```sh
+rustup target add wasm32-unknown-unknown  # one-time toolchain setup
+cargo build --manifest-path rust/reconciliation/Cargo.toml --target wasm32-unknown-unknown --release --lib --locked
+python rust/reconciliation/tools/package_wasm.py \
+  --wasm rust/reconciliation/target/wasm32-unknown-unknown/release/axis_reconciliation.wasm \
+  --wasm-bindgen /path/to/wasm-bindgen
+AXIS_RUST_TEST_BINARY=/path/to/native/axis-reconciliation \
+  node --test prototype/worker-feasibility/tests/test_cash_wasm.mjs
+```
+
+The generator must exactly match Cargo.lock. This delivery used the official
+prebuilt 0.2.130 Apple ARM generator, verified against its published SHA-256, under
+`/private/tmp/meridian-rust/wasm-bindgen-cli`. No compiler/tool download is needed on
+resume. Generated `.wasm`, `.mjs` and hash manifest live in the ignored
+`prototype/worker-feasibility/src/reconciliation_wasm/` directory. The release
+profile retains target-feature metadata (`strip = "debuginfo"`) needed by the
+generator. Packaged WASM size for this source is **406,813 bytes**.
+
+`src/cash_reconciliation.mjs` is a private Worker import with generated bindings;
+it is not a browser asset or HTTP route. The separate `reconciliation_probe.mjs`
+harness has no credentials/bindings and serves only one fixed invented fixture on
+localhost; its Wrangler config disables workers.dev/previews. It is not a fourth
+hosted Worker. The three existing production Workers are unchanged.
+
+New evidence: two Node WASM/parity/bounds cases passed; the local workerd case
+initially stopped because the shell's Node 20 was below Wrangler's requirement.
+The existing compatible Node at `private/dev-tools/node_modules/.bin/node` ran
+only that failed case, which passed. The test now uses its own Node interpreter
+for the Wrangler child. This establishes generated ABI and local runtime
+compatibility, not hosted CPU/memory acceptance or actual cash semantics. Earlier
+seven Rust/four Python results were reused; no full suites or hosted probes.
+
+This follows Cloudflare's [precompiled WASM module model](https://developers.cloudflare.com/workers/runtime-apis/webassembly/)
+and Rust's [wasm32-unknown-unknown target](https://doc.rust-lang.org/rustc/platform-support/wasm32-unknown-unknown.html).
+Next: qualify the private call boundary within the existing application, then
+publish an approved summary with source revision/coverage. Do not expose raw
+history to the BFF or create a public generic reconciliation endpoint.

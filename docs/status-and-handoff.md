@@ -4,6 +4,33 @@ Reviewed **20 November 2026**. This file is the authoritative implementation sna
 
 ## Current work scope
 
+**WASM qualification completed, 20 November:** the existing Rust cash core now
+builds for `wasm32-unknown-unknown` with generated, locked wasm-bindgen 0.2.130
+bindings and a private JavaScript Worker adapter. The exact-decimal financial core
+is unchanged. The package is 406,813 bytes; generated binary/glue/hash manifest are
+ignored, reproducible artifacts. No extra hosted Worker or public endpoint.
+
+Focused new evidence: `AXIS_RUST_TEST_BINARY=/private/tmp/meridian-rust-target/debug/axis-reconciliation node --test prototype/worker-feasibility/tests/test_cash_wasm.mjs`
+passed native/WASM result parity and safe bounds/error recovery (**2 cases**).
+The local workerd case stopped on Node 20, then passed on the existing compatible
+Node with `AXIS_RUST_TEST_BINARY=/private/tmp/meridian-rust-target/debug/axis-reconciliation private/dev-tools/node_modules/.bin/node --test --test-name-pattern='Cloudflare local' prototype/worker-feasibility/tests/test_cash_wasm.mjs`
+(**1 case**). It executes the imported WASM in Cloudflare's actual local workerd,
+not a mocked SDK. Cargo formatting and targeted Ruff checks passed. An initial
+strip setting hid target features; switching to `strip = "debuginfo"` removed the
+generator warning before the checked package was produced. Reuse all three new
+checks and the native/Python evidence below; no full suites, CI matrices or hosted
+broker/database probes ran.
+
+The WASM boundary rejects more than 512 KiB UTF-8 or 1,024 observations without
+partial output. [Build/run details](../rust/reconciliation/README.md#wasm-packaging-and-local-worker-qualification)
+record the already-installed temporary target/generator and reproducible commands.
+Current production remains `e327fc9`. Next is the private Python-to-JavaScript job
+call and approved summary publication, with hosted CPU/memory qualification;
+local runtime success does not claim that integration, a deployed feature, actual
+cash reconciliation or complete source semantics.
+
+## Prior native Rust core
+
 Owner-selected **Rust reconciliation experiment**, first bounded cash slice, is
 implemented natively in `rust/reconciliation`, with a read-only Python accepted-
 evidence bridge (`meridian.export_cash_history`). Typed scope/sign/control/review
@@ -27,8 +54,9 @@ these checks. No full suite, CI matrix, live broker/database probe or real finan
 input was used. Existing sync/retention/security evidence remains reusable.
 
 This slice is **native/offline, not deployed**: the agreed experiment starts with a
-pure core and synthetic tests. Next is bounded WASM/runtime integration and approved
-result publication, plus verified sign/control evidence for actual cash booking.
+pure core and synthetic tests. WASM packaging/local runtime qualification is complete above. Private job invocation
+and approved result publication, plus verified sign/control evidence for actual
+cash booking, remain.
 The native binary is not compatible with the current Worker by itself; this is a
 technical integration gate, not a missing deployment authorization. Deployed source
 remains `e327fc9`, native schema `0008`, ten-minute refresh unchanged.

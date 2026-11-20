@@ -254,3 +254,5 @@ node_modules/
 
 # Local Rust build output; Cargo.lock is retained
 /rust/reconciliation/target/
+# Reproducible generated Rust WASM and JS glue
+/prototype/worker-feasibility/src/reconciliation_wasm/
