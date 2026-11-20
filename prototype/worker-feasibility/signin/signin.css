@@ -10,3 +10,6 @@ body.signed-in main{max-width:1180px}.workspace-head{display:flex;align-items:ce
 .exposures>.holding-link{margin-top:6px}
 #holding-scope{margin:0;font-size:16px;color:#e4efdf}
 #clear-holding-scope{margin-bottom:12px}
+
+.tabs{flex-wrap:wrap}
+#holdings-body a{color:#c6eca8}

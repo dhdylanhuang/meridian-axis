@@ -96,13 +96,30 @@ Quote-currency buckets use Trading 212 instrument currency from positions, then
 available, nonconflicting held-listing metadata as a fallback. Unclassified
 quote currency is an explicit bucket. Currency buckets represent direct holdings
 by quoted currency, with no underlying currency, geographic or fund look-through
-claim. Current broker enrichment supplies zero sector or country classifications.
-Each of these dimensions shows the full known-valued holdings amount as
-unclassified, with missing values disclosed separately. A dated,
-identifier-keyed issuer-to-sector mapping with a named taxonomy and a dated
-issuer-to-country mapping with a defined country basis are required for direct
-allocations. Fund sector and country exposures require dated constituents and
-weights at a supported coverage level.
+claim. Classification extends the same approved projection with three sourced
+allocations: broad equity sectors, direct-share issuer domicile (country of
+incorporation), and underlying equity markets reported by fund managers.
+Direct shares use a reviewed principal-business sector in the broad 11-sector
+GICS naming scheme. Fund sector data is included where the manager categories
+can be used on the same broad basis. Domicile and fund markets are independent
+views because those country definitions differ. Fund market and sector estimates
+apply published weights to the full broker position value. Manager tables may
+exclude cash and derivatives under their stated basis. No residual is inferred
+from a benchmark or added to a country. Verified gold and bond positions appear
+outside the equity sector scope and do not contribute to the fund-market view.
+
+The private catalogue is keyed by the approved Trading 212 instrument ISIN.
+Position evidence takes precedence with a current broker catalogue fallback,
+and a conflicting ISIN withholds the join. A fund breakdown is eligible at most
+120 days after its evidence date; issuer classifications and non-equity evidence
+are eligible at most 550 days after that date. Future evidence is withheld.
+Reviewed dimensions accept positive decimal percentage strings summing to at
+most 100. Missing documents, unsupported funds, and any unsourced or rounding
+remainder are unclassified. Exact value times the source percentage yields the
+bucket contribution. No unclassified remainder is renormalized. Snapshot
+allocations carry source URL and date once per holding and dimension, exact
+constituent amounts, the original allocation share, and the classified and
+observed values. Quote currency remains a separate listing-only allocation.
 
 Available-to-trade, in-pies and reserved-for-orders cash each use the eligible
 portfolio denominator. Shares are independent and may overlap. Total cash

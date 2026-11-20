@@ -182,6 +182,10 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
     holdings:[{ticker:'SYNTH',quote_currency:'USD',...observed},{ticker:'MISSING',quote_currency:null,...missing}],
     quote_currencies:[{quote_currency:'USD',missing_values:0,...observed},{quote_currency:null,missing_values:1,...missing}],
     concentration:[{top:1,position_count:1,...missing}],
+    sectors:{classified:observed,observed,sources:{SYNTH:{as_of:'2026-01-01',url:'https://example.test/fact'}},
+      buckets:[{label:'Industrials',...observed,members:{SYNTH:{value,holding_pct:'50'}}}]},
+    issuer_domiciles:{classified:missing,observed,sources:{},
+      buckets:[{label:null,...observed,members:{SYNTH:{value,holding_pct:'100'},MISSING:{value:null,holding_pct:'100'}}}]},
     cash_component_pct:{availableToTrade:'0',inPies:null,reservedForOrders:null},
   };
   const ui = setup(async () => ({ok:true,status:200,json:async()=>data}));
@@ -192,14 +196,20 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
   assert.ok(find(section, '£10.000000000000000000001'));
   assert.ok(find(section, '10.1%'));
   assert.ok(find(section, 'Largest position'));
-  assert.ok(find(section, 'Unclassified sector'));
+  assert.ok(find(section, 'Equity sectors'));
+  ui.el('exposures-tab').listeners.click();
+  assert.equal(section.hidden,false);
+  find(section, 'Industrials').listeners.click();
+  const contributing = ui.el('holdings-body').children[0];
+  assert.ok(find(contributing, 'Bucket contribution: £10.000000000000000000001 · 50% of position'));
+  assert.equal(find(contributing, 'Source · 2026-01-01').href, 'https://example.test/fact');
   find(section, 'Unclassified quote currency').listeners.click();
   assert.equal(ui.el('holdings-panel').hidden,false);
   assert.equal(ui.el('holdings-body').children.length,1);
   assert.equal(ui.el('holdings-body').children[0].children[0].textContent,'Missing Wallet');
   find(section, 'USD').listeners.click();
   assert.equal(ui.el('holdings-body').children[0].children[5].textContent,'10.1%');
-  find(section, 'Unclassified country').listeners.click();
+  find(section, 'Unclassified').listeners.click();
   assert.equal(ui.el('holdings-body').children.length,2);
   ui.el('clear-holding-scope').listeners.click();
   assert.equal(ui.el('holding-scope').hidden,true);

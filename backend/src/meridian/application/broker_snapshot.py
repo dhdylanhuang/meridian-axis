@@ -55,6 +55,13 @@ def broker_snapshot(evidence: BrokerEvidence, *, metadata=None, previous=None) -
                 "isin": instrument.get("isin") or listing.get("isin"),
                 "instrument_type": listing.get("type"),
                 "quote_currency_source": quote_currency_source,
+                "classification_isin": (
+                    instrument.get("isin")
+                    if instrument.get("isin") and listing.get("isin") in (None, instrument["isin"])
+                    else listing.get("isin")
+                    if not instrument.get("isin") and state == "available"
+                    else None
+                ),
                 "metadata": {
                     "state": state,
                     "source_id": metadata["source_id"] if metadata else None,
@@ -129,6 +136,8 @@ async def prepare_exposures(projection, snapshot_id, calculate):
         "positions": [
             {
                 "ticker": row["ticker"],
+                "isin": row["classification_isin"],
+                "instrument_type": row["instrument_type"],
                 "current_value": row["current_value"],
                 "account_currency": row["account_currency"],
                 "quote_currency": (

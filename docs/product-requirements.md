@@ -141,7 +141,8 @@ establish complete lifetime coverage or authorize fabricated calculated returns.
 AXIS uses the approved Trading 212 snapshot for position ranks, portfolio and
 invested weights, largest/top-five/top-ten concentration, quote-currency
 allocations, and cash component weights. Holdings supports constituent
-drill-down from the exposure view. Sector and country remain explicitly
-unclassified until a dated issuer mapping is available. Economic currency and
-fund look-through depend on underlying evidence. This delivery advances G03 and
+drill-down from the exposure view. The Exposures tab shows sourced equity sectors, direct-share issuer domicile and
+reported fund-market look-through, with amounts, coverage and constituent sources.
+Uncovered positions and portions stay visible. Economic currency and full
+constituent overlap depend on underlying evidence. This delivery advances G03 and
 R04 within [the broker snapshot calculation contract](calculation-contracts.md#approved-broker-snapshot-exposure).

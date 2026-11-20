@@ -538,6 +538,7 @@ def test_exposures_publish_atomically_and_fail_open(setup):
     api = API()
     first = api.rows["positions"]["records"][0]
     first["instrument"].pop("currency", None)
+    first["instrument"].pop("isin", None)
     first["walletImpact"] = {"currency": "GBP", "currentValue": "12.000000000000000000001"}
     ticker = first["instrument"]["ticker"]
     missing = "SYNTH_MISSING"
@@ -555,7 +556,9 @@ def test_exposures_publish_atomically_and_fail_open(setup):
                 {
                     "requested_tickers": [ticker, missing],
                     "retrieved_at": clock[0].isoformat(),
-                    "instruments": [{"ticker": ticker, "currencyCode": "USD"}],
+                    "instruments": [
+                        {"ticker": ticker, "currencyCode": "USD", "isin": "SYNTHETIC001"}
+                    ],
                 },
             )
         )
@@ -572,6 +575,7 @@ def test_exposures_publish_atomically_and_fail_open(setup):
         assert not active
         request = json.loads(encoded)
         assert request["positions"][0]["quote_currency"] == "USD"
+        assert request["positions"][0]["isin"] == "SYNTHETIC001"
         assert "scope" not in request and "history" not in request
         result = subprocess.run(
             [
@@ -604,6 +608,8 @@ def test_exposures_publish_atomically_and_fail_open(setup):
         assert report["positions_as_of"] == initial["positions_retrieval"]["retrieval_completed_at"]
         assert report["holdings"][0]["value"] == "12.000000000000000000001"
         assert report["missing_values"] == 1
+        assert report["sectors"]["buckets"][0]["label"] is None
+        assert report["sectors"]["classified"]["value"] == "0"
         assert report["quote_currencies"][0]["quote_currency"] == "USD"
         assert report["quote_currencies"][1]["quote_currency"] is None
         assert initial["positions"][0]["quote_currency_source"] == "instrument_metadata"

@@ -128,7 +128,7 @@
     const [x,y] = parts.map(([whole, fraction='']) => BigInt(whole + fraction.padEnd(scale, '0')));
     return x < y ? -1 : x > y ? 1 : 0;
   }
-  const tabs = [['axis-tab','axis-panel'],['holdings-tab','holdings-panel']];
+  const tabs = [['axis-tab','axis-panel'],['exposures-tab','portfolio-exposures'],['holdings-tab','holdings-panel']];
   function selectTab(tab) {
     for (const [other, section] of tabs) {
       el(other).setAttribute('aria-pressed',String(other === tab));
@@ -167,6 +167,25 @@
     add(row, 'td', decimal(exposure.value, currency));
     add(row, 'td', percent(exposure.portfolio_pct));
     add(row, 'td', percent(exposure.invested_pct));
+  }
+  function renderClassification(section, dimension, title, description, data, columns) {
+    const allocation = data.exposures[dimension];
+    add(section, 'h3', title);
+    add(section, 'p', description);
+    if (!allocation?.buckets.length) {
+      add(section, 'p', allocation ? 'No holdings in this view.' : 'This saved snapshot predates sourced classifications.');
+      return;
+    }
+    add(section, 'p', `Classified: ${decimal(allocation.classified.value, data.currency)} of ${decimal(allocation.observed.value, data.currency)} in observed holdings for this view · ${percent(allocation.classified.invested_pct)} of broker investment value.`);
+    const body = exposureTable(section, ['Allocation', ...columns], title);
+    for (const bucket of allocation.buckets) {
+      const row = add(body, 'tr'), cell = add(row, 'td');
+      const label = bucket.label ?? 'Unclassified';
+      holdingLink(cell, label, {kind:'classification', dimension, key:bucket.label, label:`${title} · ${label}`});
+      const count = Object.keys(bucket.members).length;
+      add(cell, 'small', `${count} contributing ${count === 1 ? 'holding' : 'holdings'}`);
+      exposureCells(row, bucket, data.currency);
+    }
   }
   function renderExposures(data) {
     const section = el('portfolio-exposures');
@@ -229,17 +248,15 @@
       }
     } else add(section, 'p', 'No holdings to group.');
 
-    add(section, 'h3', 'Sector and country coverage');
-    add(section, 'p', 'Trading 212 positions and instrument metadata supply neither classification. Sector needs a dated issuer-to-sector mapping with a named taxonomy. Country needs a dated issuer-to-country mapping with a defined country basis. Fund look-through requires source-dated constituents and weights.');
-    if (report.holdings.length) {
-      const body = exposureTable(section, ['Classification', ...columns], 'Classification coverage');
-      for (const label of ['Unclassified sector','Unclassified country']) {
-        const row = add(body, 'tr');
-        holdingLink(add(row, 'td'), label, {kind:'unclassified', label});
-        exposureCells(row, observed, currency);
-      }
-      add(section, 'p', `Classifications supplied for 0 of ${report.holdings.length} holdings. The unclassified amounts show the compatible values available above.`);
-    }
+    renderClassification(section, 'sectors', 'Equity sectors',
+      'Direct shares use a reviewed principal-business sector. Funds use dated manager sector weights in compatible broad categories. Unclassified includes holdings or fund portions without eligible equity sector data.',
+      data, columns);
+    renderClassification(section, 'issuer_domiciles', 'Direct shares · issuer domicile',
+      'Country of incorporation from issuer filings. Coverage shows the direct-share amounts in this view.',
+      data, columns);
+    renderClassification(section, 'fund_markets', 'Funds · underlying markets',
+      'Published equity market weights from fund managers. Unclassified includes funds without an eligible breakdown and any unallocated fund weight.',
+      data, columns);
 
     add(section, 'h3', 'Reported cash components');
     const cash = exposureTable(section, ['Component', 'Value', '% of portfolio'], 'Cash component weights');
@@ -259,6 +276,7 @@
     if (el('cash-reconciliation')) { el('cash-reconciliation').replaceChildren(); el('cash-reconciliation').textContent = '—'; }
     el('snapshot-time').textContent = '—'; el('snapshot-status').textContent = ''; el('refresh-status').textContent = '';
     el('portfolio-exposures')?.replaceChildren();
+    selectTab('axis-tab');
     holdingScope = null;
     el('holding-scope').hidden = true;
     el('holding-scope').textContent = '';
@@ -272,7 +290,10 @@
     const scopeLabel = el('holding-scope');
     scopeLabel.textContent = holdingScope?.label || '';
     scopeLabel.hidden = el('clear-holding-scope').hidden = !holdingScope;
+    const classification = holdingScope?.kind === 'classification' ? report?.[holdingScope.dimension] : null;
+    const contributions = classification?.buckets.find(bucket => bucket.label === holdingScope.key)?.members;
     const inScope = row => {
+      if (holdingScope?.kind === 'classification') return Object.hasOwn(contributions || {}, row.ticker);
       if (holdingScope?.kind === 'ticker') return row.ticker === holdingScope.key;
       if (holdingScope?.kind === 'quote') return weights.get(row.ticker)?.quote_currency === holdingScope.key;
       return true;
@@ -295,7 +316,19 @@
           ? `broker catalogue, ${when(row.metadata.retrieved_at)}` : 'broker position';
         ticker.textContent += ` · Quote: ${weight.quote_currency} (${source})`;
       }
-      name.append(ticker); tr.append(name);
+      name.append(ticker);
+      if (contributions) {
+        const contribution = contributions[row.ticker];
+        add(name, 'small', `Bucket contribution: ${decimal(contribution.value, snapshot.currency)} · ${percent(contribution.holding_pct)} of position`);
+        const source = classification.sources[row.ticker];
+        if (source) {
+          const link = add(add(name, 'small'), 'a', `Source · ${source.as_of}`);
+          link.href = source.url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+        }
+      }
+      tr.append(name);
       for (const value of [decimal(row.quantity), decimal(row.current_price,row.instrument_currency), decimal(row.current_value,row.account_currency), percent(weight?.portfolio_pct), percent(weight?.invested_pct), decimal(row.total_cost,row.account_currency), decimal(row.unrealized_profit_loss,row.account_currency)]) {
         const cell = document.createElement('td'); cell.textContent = value; tr.append(cell);
       }

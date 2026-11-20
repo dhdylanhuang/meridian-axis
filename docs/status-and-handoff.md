@@ -2,7 +2,37 @@
 
 Reviewed **20 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
-## Portfolio exposure delivery
+## Sourced sector and country allocations
+
+The dedicated Exposures tab shows broad equity sectors, direct-share issuer
+domicile and fund-manager market allocations with coverage denominators,
+unclassified remainders, exact constituent contributions and dated source links.
+Verified gold and bonds appear separately within the sector view. The initial
+private seed prioritises positions by broker value and includes source coverage
+for five issuer holdings and eight funds, plus two sourced non-equity positions.
+Individual fund dimensions remain unavailable where compatible data is missing.
+The original quote-currency, concentration and cash component views stay in the
+same tab. No returns, new polling, provider subscription or database migration.
+
+The gateway uses two optional private Worker secret bindings holding manually
+reviewed inputs, `PORTFOLIO_FUND_CLASSIFICATIONS` and
+`PORTFOLIO_ISSUER_CLASSIFICATIONS`. Neither contains account values. The holding
+list and source mappings stay out of Git and assets. The release stores the
+reviewed local source privately. To update, review the issuer or fund-manager
+documents and confirm the current ISIN, publish a reviewed JSON secrets file to
+the same gateway, and verify the next approved generation. Rust validates date,
+weight and scope before calculating values. The existing sync bridge publishes
+results atomically without adding database reads. Older snapshots keep their
+original exposures. Method details are in the
+[exposure contract](calculation-contracts.md#approved-broker-snapshot-exposure).
+
+Local focused validation passed four Rust exposure cases, one Python WASM
+publication case and two Node browser-state cases. Checks cover exact allocation,
+partial/cross-dimension eligibility, stale or over-allocated evidence, metadata
+ISIN input, approved publication, and source links and drill-down. Targeted Ruff
+passed. Gateway then sync release and actual publication verification are pending.
+
+## Original portfolio exposure delivery
 
 The AXIS dashboard adds ranked positions, portfolio and invested weights,
 largest/top-five/top-ten concentration, quote-currency allocations and

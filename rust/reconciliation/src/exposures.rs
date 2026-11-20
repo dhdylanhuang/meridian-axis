@@ -1,6 +1,9 @@
 //! Point-in-time allocation of broker-reported values. No prices, FX or history.
+mod classification;
+
 use crate::{currency, decimal, identity, instant, text, Error, Result};
 use bigdecimal::BigDecimal;
+use classification::{Allocation, AllocationBuilder, Classification};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -16,6 +19,8 @@ pub struct Request {
     invested_value: Option<String>,
     cash_components: BTreeMap<String, Option<String>>,
     positions: Vec<Position>,
+    #[serde(default)]
+    classifications: BTreeMap<String, Classification>,
 }
 
 #[derive(Deserialize)]
@@ -24,6 +29,8 @@ struct Position {
     current_value: Option<String>,
     account_currency: Option<String>,
     quote_currency: Option<String>,
+    isin: Option<String>,
+    instrument_type: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -68,6 +75,9 @@ pub struct Report {
     missing_values: usize,
     holdings: Vec<Holding>,
     quote_currencies: Vec<Bucket>,
+    sectors: Allocation,
+    issuer_domiciles: Allocation,
+    fund_markets: Allocation,
     concentration: Vec<Concentration>,
     cash_component_pct: BTreeMap<String, Option<String>>,
 }
@@ -105,7 +115,8 @@ fn percent(value: &BigDecimal, denominator: &BigDecimal) -> String {
 pub fn calculate(request: Request) -> Result<Report> {
     identity(&request.snapshot_id)?;
     currency(&request.currency)?;
-    if instant(&request.account_as_of)? > instant(&request.positions_as_of)? {
+    let positions_at = instant(&request.positions_as_of)?.to_utc();
+    if instant(&request.account_as_of)? > positions_at {
         return Err(Error("exposure_observation_order"));
     }
     if request.positions.len() > 1_024 {
@@ -128,6 +139,10 @@ pub fn calculate(request: Request) -> Result<Report> {
     };
 
     let mut seen = BTreeSet::new();
+    let date = positions_at.date_naive();
+    let mut sectors = AllocationBuilder::default();
+    let mut domiciles = AllocationBuilder::default();
+    let mut fund_markets = AllocationBuilder::default();
     let mut positions = Vec::with_capacity(request.positions.len());
     for row in request.positions {
         identity(&row.ticker)?;
@@ -142,6 +157,41 @@ pub fn calculate(request: Request) -> Result<Report> {
         let quote = row
             .quote_currency
             .filter(|code| code.len() == 3 && code.bytes().all(|b| b.is_ascii_alphabetic()));
+        let classification = row
+            .isin
+            .as_ref()
+            .and_then(|isin| request.classifications.get(isin));
+        let sector = classification.and_then(|entry| entry.sector.as_ref());
+        let domicile = classification.and_then(|entry| entry.issuer_domicile.as_ref());
+        let markets = classification.and_then(|entry| entry.fund_markets.as_ref());
+        // Domiciles and fund markets use distinct population scopes. The explicit
+        // catalogue entry takes precedence over the broker's listing type.
+        let is_fund = markets.is_some()
+            || (domicile.is_none() && row.instrument_type.as_deref() == Some("ETF"));
+        let is_direct =
+            !is_fund && (domicile.is_some() || row.instrument_type.as_deref() == Some("STOCK"));
+        let outside_equity = classification
+            .and_then(|entry| entry.non_equity.as_ref())
+            .is_some_and(|evidence| {
+                sectors.add_non_equity(&row.ticker, value.as_ref(), evidence, date)
+            });
+        if outside_equity {
+            positions.push((row.ticker, quote, value));
+            continue;
+        }
+        sectors.add(
+            &row.ticker,
+            value.as_ref(),
+            sector,
+            date,
+            if is_fund { 120 } else { 550 },
+        );
+        if is_direct {
+            domiciles.add(&row.ticker, value.as_ref(), domicile, date, 550);
+        }
+        if is_fund {
+            fund_markets.add(&row.ticker, value.as_ref(), markets, date, 120);
+        }
         positions.push((row.ticker, quote, value));
     }
     positions.sort_by(|a, b| b.2.cmp(&a.2).then_with(|| a.0.cmp(&b.0)));
@@ -215,6 +265,9 @@ pub fn calculate(request: Request) -> Result<Report> {
         missing_values,
         holdings,
         quote_currencies,
+        sectors: sectors.finish(&exposure),
+        issuer_domiciles: domiciles.finish(&exposure),
+        fund_markets: fund_markets.finish(&exposure),
         concentration,
         cash_component_pct,
     })

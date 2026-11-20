@@ -108,8 +108,11 @@ Successful exposure calculation adds `exposures` to the same snapshot response.
 It contains the source snapshot identity and dates, both broker controls used as
 denominators, ranked holding weights, quote-currency buckets, coverage,
 concentration and independent cash weights. No new route or request is needed.
-AXIS links each bucket and ranked holding to the same Holdings table with a
-reversible filter. Holdings retains the original broker values alongside its
+The Exposures tab links each bucket and ranked holding to the same Holdings table
+with a reversible filter. Equity sectors, issuer domicile and fund market
+allocations add the exact bucket contribution and source date/link for each
+contributing holding. Older approved snapshots open with the original exposure
+results and a clear classification availability message. Holdings retains the original broker values alongside its
 two weight columns. Both members use the existing approved snapshot access path.
 Logout clears exposure and drill-down state.
 

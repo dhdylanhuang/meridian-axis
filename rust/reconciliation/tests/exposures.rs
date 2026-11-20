@@ -87,3 +87,71 @@ fn limits_rank_to_requested_counts_and_rounds_half_up_once() {
     assert_eq!(result["concentration"][2]["value"], "65");
     assert_eq!(result["cash_component_pct"]["reservedForOrders"], "0.01");
 }
+
+#[test]
+fn applies_dated_sources_and_preserves_fund_residual_and_missing_values() {
+    let mut request = fixture();
+    request["positions"] = json!([
+        {"ticker":"D", "isin":"DIRECT", "instrument_type":"STOCK",
+          "current_value":"40", "account_currency":"GBP"},
+        {"ticker":"E", "isin":"FUND", "instrument_type":"ETF",
+          "current_value":"150.00000000000000000001", "account_currency":"GBP"},
+        {"ticker":"G", "isin":"METAL", "instrument_type":"ETF",
+          "current_value":"35", "account_currency":"GBP"},
+        {"ticker":"S", "isin":"STALE", "instrument_type":"ETF",
+          "current_value":"1", "account_currency":"GBP"},
+        {"ticker":"X", "instrument_type":"STOCK"},
+    ]);
+    let source = json!({"as_of":"2026-01-01","url":"https://example.test/review"});
+    request["classifications"] = json!({
+        "DIRECT": {
+            "sector":{"source":source,"weights":{"Industrials":"100"}},
+            "issuer_domicile":{"source":source,"weights":{"Country A":"100"}}
+        },
+        "FUND":{
+            "sector":{"source":source,"weights":{"Industrials":"50","Utilities":"25"}},
+            "fund_markets":{"source":source,"weights":{"Country A":"60"}}
+        },
+        "METAL":{"non_equity":{"label":"gold","source":source}},
+        "STALE":{"fund_markets":{"source":{"as_of":"2024-01-01","url":"https://example.test/old"},
+            "weights":{"Country A":"100"}}}
+    });
+    let result = report(request.clone());
+    let sectors = &result["sectors"];
+    assert_eq!(sectors["classified"]["value"], "152.5000000000000000000075");
+    assert_eq!(sectors["buckets"][0]["label"], "Industrials");
+    assert_eq!(
+        sectors["buckets"][0]["members"]["E"]["value"],
+        "75.000000000000000000005"
+    );
+    assert_eq!(sectors["buckets"][0]["members"]["E"]["holding_pct"], "50");
+    assert_eq!(sectors["buckets"][1]["label"], "Utilities");
+    assert_eq!(
+        sectors["buckets"][2]["label"],
+        "Outside equity sectors · Gold"
+    );
+    assert_eq!(sectors["buckets"][3]["value"], "38.5000000000000000000025");
+    assert!(sectors["buckets"][3]["members"]["X"]["value"].is_null());
+    assert_eq!(result["issuer_domiciles"]["classified"]["value"], "40");
+    assert_eq!(
+        result["fund_markets"]["classified"]["value"],
+        "90.000000000000000000006"
+    );
+    assert_eq!(
+        result["fund_markets"]["observed"]["value"],
+        "151.00000000000000000001"
+    );
+    assert!(result["fund_markets"]["sources"]["S"].is_null());
+    assert_eq!(
+        result["fund_markets"]["sources"]["E"]["as_of"],
+        "2026-01-01"
+    );
+
+    request["classifications"]["FUND"]["fund_markets"]["weights"]["Country B"] = json!("41");
+    let overallocated = report(request);
+    assert_eq!(overallocated["fund_markets"]["classified"]["value"], "0");
+    assert_eq!(
+        overallocated["fund_markets"]["buckets"][0]["value"],
+        "151.00000000000000000001"
+    );
+}

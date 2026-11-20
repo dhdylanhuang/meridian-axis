@@ -15,10 +15,10 @@ broker snapshots are observed marks. Approved exchange closes, verified
 cash-flow inputs and benchmark series require their own evidence. Flag any
 additional provider work, infrastructure or cost before expanding scope.
 
-Sector and country exposures require dated issuer classifications keyed by a
-verified identifier, a sector taxonomy and a defined country basis. Underlying
-fund exposure requires dated constituent positions and weights. Do not derive
-these labels from the listing exchange or trading currency.
+Keep the private, dated classification catalogue current for new and existing
+holdings. Expand remaining coverage by invested value first. Manager fund
+breakdowns provide sector and market estimates. Constituent overlap and
+underlying economic currency need separate source coverage.
 
 Subsequent phases cover risk from eligible daily price/FX series, then exposure
 thresholds, material changes and supported alerts. Cash-change and holding-quantity
