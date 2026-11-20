@@ -31,7 +31,9 @@ Runtime RLS excludes initial captures; that gap is explicit, with no grant chang
 Thirteen focused Python and three Node/RPC/UI cases passed; current status records
 commands. Reuse prior core/WASM tests. No schema/new Worker/new browser poll.
 
-Source `5cc8564` is deployed to all three existing Workers. Active source tags,
+The Rust pipeline is deployed; gateway/sync source is now `f93a493`, with the
+session owner unchanged at `5cc8564`. The latest correction separates global sign
+policy gaps from record exceptions and adds validated provider-type activity counts. Active source tags,
 private binding target, preserved secret/Hyperdrive bindings, ten-minute schedule,
 exact static assets and the hosted WASM readiness header were verified. No schema
 or credential change. Actual approved publication is verified: the live snapshot has the Rust method,
@@ -53,7 +55,7 @@ module. Do not invent provider signs, corporate-action economics or returns.
 
 ## Preserve
 
-Deployed application source `5cc8564`; schema `0008`; ten-minute
+Deployed gateway/sync `f93a493`, session owner `5cc8564`; schema `0008`; ten-minute
 refresh and sixty-day detailed retention unchanged. Financial history/daily/latest
 observations stay retained. The manual XLSX archive is complete; do not touch the
 real workbook. Post-reset login/cadence/enrichment/query use remains unverified;

@@ -4,7 +4,8 @@ Reviewed **20 November 2026**. This file is the authoritative implementation sna
 
 ## Current work scope
 
-Cash review interpretation correction is ready for release: the former wording
+Cash review interpretation correction is **deployed at `f93a493` on gateway/sync**
+(session owner unchanged at `5cc8564`): the former wording
 counted the global unverified-sign prerequisite as a per-event manual-review task.
 The updated panel separates provider-type activity counts, actual detected record
 conflicts/unsupported types, and shared prerequisites. No economic sign, opening
@@ -22,8 +23,15 @@ activity-key/count validation including legacy compatibility) passed using
 `AXIS_NODE_TEST_BINARY="$PWD/private/dev-tools/node_modules/.bin/node" /private/tmp/meridian-query-venv/bin/python -m pytest -q -p no:cacheprovider backend/tests/test_cash_publication.py::test_wasm_summary_commits_atomically_without_raw_history backend/tests/test_cash_publication.py::test_activity_projection_validates_counts_and_accepts_older_results`.
 Three Node checks passed using `private/dev-tools/node_modules/.bin/node --test --test-name-pattern='Cloudflare local|approved Rust|cash review distinguishes' prototype/worker-feasibility/tests/test_cash_wasm.mjs prototype/worker-feasibility/tests/test_snapshot_ui.mjs`.
 Targeted Ruff/format passed. No Rust rebuild/full suite/CI matrix or extra live SQL.
-The source/protocol update is backwards compatible: deploy the accepting sync
-consumer before the gateway producer; the session owner needs no code deployment.
+The backwards-compatible accepting sync consumer deployed before the gateway
+producer. Both active source annotations matched `f93a493`; the session owner
+version remained unchanged. Protected secret/Hyperdrive bindings, private RPC
+binding and ten-minute schedule were preserved; three static assets matched source
+bytes, and hosted WASM health remained ready. No extra broker sync or live SQL
+verification was performed for this display/projection correction. Reload an old
+client once; category counts appear after the next successful snapshot if absent
+from an older saved generation. Actual sign/opening/trade/dividend economics remain
+unverified and balances are not claimed reconciled.
 
 ## Previous private Rust job integration
 
@@ -254,7 +262,7 @@ Backup failure diagnosis: Docker Desktop was stopped, while formatted `docker in
 
 [Open Meridian](https://meridian-axis-session-gateway.meridian-worker-feasibility.workers.dev/) serves authenticated AXIS and HOLDINGS for two approved identities sharing one GBP Stocks ISA. Both users have equal application permissions. The separate [React preview](https://meridian-axis-preview.meridian-worker-feasibility.workers.dev) contains invented data.
 
-- Session/gateway and sync source are **`5cc8564`**. Supabase native schema parity is **`0008`**, with 12 public tables and RLS enabled. Native GitHub migrations own hosted DDL.
+- Gateway/sync source is **`f93a493`**; session owner remains **`5cc8564`**. Supabase native schema parity is **`0008`**, with 12 public tables and RLS enabled. Native GitHub migrations own hosted DDL.
 - Trading 212 reported account/cash/position figures are authoritative. Exact decimal strings, separate retrieval windows, missing fields and unknown market quote age remain visible. Historical returns are unavailable.
 - Scheduled refresh targets **ten minutes during relevant regular sessions**, per the 19 November owner amendment. Cron dispatch runs in the JavaScript gateway. Python Durable Objects execute bounded work, with PostgreSQL task leases, endpoint reservations and retry state. Unknown schedule coverage permits conservative polling.
 - Manual refresh requires membership, session, Origin and CSRF checks. It queues a durable alarm promptly. Evidence, approved snapshot publication, success health and audit commit together. Failures preserve the last successful snapshot.
