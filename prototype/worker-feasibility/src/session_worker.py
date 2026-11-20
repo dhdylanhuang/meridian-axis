@@ -97,14 +97,27 @@ class SessionApplicationDO(DurableObject):
                     options.body = json.dumps(history, separators=(",", ":"))
                     sync_id = self.env.SYNC.idFromName("shared-isa")
                     response = await self.env.SYNC.get(sync_id).fetch(
-                        Request.new("https://sync.internal/observed-performance", options)
+                        Request.new(
+                            "https://sync.internal/observed-performance", options
+                        )
                     )
-                    if response.status != 200:
-                        return None
                     raw = await response.text()
                     if len(raw.encode()) > 128 * 1024:
-                        return None
-                    return json.loads(raw)
+                        return {"error": "calculation_response_invalid"}
+                    value = json.loads(raw)
+                    if (
+                        response.status == 200
+                        and value.get("method") == "modified_dietz_observed_v1"
+                    ):
+                        return value
+                    if value.get("error") in {
+                        "funding_evidence_unavailable",
+                        "calculation_timeout",
+                        "calculation_unavailable",
+                        "calculation_response_invalid",
+                    }:
+                        return value
+                    return {"error": "performance_service_unavailable"}
 
                 async with hosted_application(
                     self.env.HYPERDRIVE,

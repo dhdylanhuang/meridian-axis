@@ -16,6 +16,10 @@ MAX_PAGE_BYTES = 128 * 1024
 MAX_REQUEST_BYTES = 128 * 1024
 
 
+class PerformanceUnavailable(RuntimeError):
+    """Fixed private result codes for optional History enrichment."""
+
+
 def performance_input(db, history):
     """Use the same complete provider traversal for coverage and transactions."""
     cutoff = instant(history["as_of"])
@@ -126,23 +130,30 @@ async def performance_report(engine, history, calculate):
         or not 90 <= len(history["days"]) <= 367
     ):
         raise ValueError("performance_history_invalid")
-    with engine.connect() as connection:
-        if connection.dialect.name == "postgresql":
-            connection.exec_driver_sql("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
-            connection.exec_driver_sql("SET LOCAL statement_timeout = '2s'")
-        else:
-            connection.exec_driver_sql("BEGIN")
-        with Session(bind=connection) as db:
-            value = performance_input(db, history)
-        connection.rollback()
-    encoded = json.dumps(value, separators=(",", ":"), ensure_ascii=False)
-    if len(encoded.encode()) > MAX_REQUEST_BYTES:
-        raise ValueError("performance_input_limit")
-    async with asyncio.timeout(4):
-        result = await calculate(encoded)
+    try:
+        with engine.connect() as connection:
+            if connection.dialect.name == "postgresql":
+                connection.exec_driver_sql(
+                    "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"
+                )
+                connection.exec_driver_sql("SET LOCAL statement_timeout = '2s'")
+            else:
+                connection.exec_driver_sql("BEGIN")
+            with Session(bind=connection) as db:
+                value = performance_input(db, history)
+            connection.rollback()
+        encoded = json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+        if len(encoded.encode()) > MAX_REQUEST_BYTES:
+            raise ValueError("performance_input_limit")
+    except Exception:
+        raise PerformanceUnavailable("funding_evidence_unavailable") from None
+    try:
+        async with asyncio.timeout(4):
+            result = await calculate(encoded)
+    except TimeoutError:
+        raise PerformanceUnavailable("calculation_timeout") from None
+    except Exception:
+        raise PerformanceUnavailable("calculation_unavailable") from None
     if not isinstance(result, str) or len(result.encode()) > MAX_REQUEST_BYTES:
-        raise ValueError("performance_output_invalid")
-    decoded = json.loads(result)
-    if decoded.get("method") != "modified_dietz_observed_v1":
-        raise ValueError("performance_output_invalid")
-    return decoded
+        raise PerformanceUnavailable("calculation_response_invalid")
+    return result

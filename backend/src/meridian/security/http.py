@@ -284,12 +284,26 @@ class SessionHttp:
                         day_count=count if calculate_performance else HISTORY_DAYS,
                     )
                 report = None
+                state = "unavailable"
                 if calculate_performance is not None:
                     try:
                         async with asyncio.timeout(8):
-                            report = await calculate_performance(series)
+                            result = await calculate_performance(series)
+                        if result and result.get("method") == "modified_dietz_observed_v1":
+                            report = result
+                            state = "available"
+                        elif result and result.get("error") in {
+                            "funding_evidence_unavailable",
+                            "calculation_timeout",
+                            "calculation_unavailable",
+                            "calculation_response_invalid",
+                            "performance_service_unavailable",
+                        }:
+                            state = result["error"]
+                    except TimeoutError:
+                        state = "performance_service_timeout"
                     except Exception:
-                        report = None
+                        state = "performance_service_unavailable"
                 days = series["days"][-HISTORY_DAYS:]
                 return private_response(
                     series
@@ -297,6 +311,7 @@ class SessionHttp:
                         "start_date": days[0]["date"],
                         "days": days,
                         "performance": report,
+                        "performance_state": state,
                     }
                 )
             with self.database() as db, db.begin():

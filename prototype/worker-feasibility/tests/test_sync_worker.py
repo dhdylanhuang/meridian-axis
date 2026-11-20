@@ -241,6 +241,7 @@ class SyncWorkerTests(unittest.IsolatedAsyncioTestCase):
         module.Response.json = lambda body, **options: SimpleNamespace(
             body=body, **options
         )
+        module.Response.side_effect = lambda body, **options: SimpleNamespace(body=body, **options)
         worker = module.BrokerSyncDO()
         worker.ctx = SimpleNamespace(storage=self.storage())
         binding = SimpleNamespace(
@@ -255,7 +256,7 @@ class SyncWorkerTests(unittest.IsolatedAsyncioTestCase):
             self.assertIs(actual, engine)
             self.assertEqual(value, {"days": []})
             self.assertEqual(await calculate("invented"), "synthetic-result")
-            return {"method": "modified_dietz_observed_v1"}
+            return '{"method":"modified_dietz_observed_v1"}'
 
         with patch.dict(
             "sys.modules",
@@ -266,6 +267,7 @@ class SyncWorkerTests(unittest.IsolatedAsyncioTestCase):
                 "meridian.application.performance_evidence": SimpleNamespace(
                     performance_report=report,
                     MAX_REQUEST_BYTES=128 * 1024,
+                    PerformanceUnavailable=RuntimeError,
                 ),
             },
         ):
@@ -277,7 +279,7 @@ class SyncWorkerTests(unittest.IsolatedAsyncioTestCase):
                 )
             )
         self.assertEqual(response.status, 200)
-        self.assertEqual(response.headers, {"Cache-Control": "no-store"})
+        self.assertEqual(response.headers, {"Cache-Control": "no-store", "Content-Type":"application/json"})
         create.assert_called_once_with(
             worker.env.HYPERDRIVE, expected_role="meridian_sync_public"
         )

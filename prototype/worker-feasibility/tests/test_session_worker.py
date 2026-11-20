@@ -94,16 +94,20 @@ class SessionWorkerTests(unittest.IsolatedAsyncioTestCase):
 
         async def forward(request):
             captured.append(request)
-            return SimpleNamespace(
-                status=200, text=AsyncMock(return_value='{"entries":[]}')
+            body = (
+                '{"method":"modified_dietz_observed_v1"}'
+                if request[0].endswith("/observed-performance")
+                else '{"entries":[]}'
             )
+            return SimpleNamespace(status=200, text=AsyncMock(return_value=body))
 
         @asynccontextmanager
         async def hosted(binding, **options):
             result = await options["cash_activity"]({"snapshot_id": "saved"})
             self.assertEqual(result, ({"entries": []}, 200))
             self.assertEqual(
-                await options["performance"]({"days": []}), {"entries": []}
+                await options["performance"]({"days": []}),
+                {"method": "modified_dietz_observed_v1"},
             )
             yield object()
 

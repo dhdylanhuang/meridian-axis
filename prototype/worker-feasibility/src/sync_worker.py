@@ -37,6 +37,7 @@ class BrokerSyncDO(DurableObject):
                     if performance:
                         from meridian.application.performance_evidence import (
                             MAX_REQUEST_BYTES,
+                            PerformanceUnavailable,
                             performance_report,
                         )
 
@@ -68,11 +69,16 @@ class BrokerSyncDO(DurableObject):
                                 )
                             )
 
-                        result = await performance_report(
-                            engine, json.loads(raw), calculate
-                        )
-                        return Response.json(
-                            result, status=200, headers={"Cache-Control": "no-store"}
+                        try:
+                            result = await performance_report(engine, json.loads(raw), calculate)
+                        except PerformanceUnavailable as error:
+                            return Response.json(
+                                {"error": str(error)}, status=503,
+                                headers={"Cache-Control": "no-store"},
+                            )
+                        return Response(
+                            result, status=200,
+                            headers={"Cache-Control": "no-store", "Content-Type": "application/json"},
                         )
 
                     async def reconcile(encoded):
