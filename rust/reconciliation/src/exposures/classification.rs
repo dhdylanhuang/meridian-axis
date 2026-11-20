@@ -36,6 +36,8 @@ pub(super) struct SourcedWeights {
 struct Evidence {
     url: String,
     as_of: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    regulatory_report: Option<bool>,
 }
 
 #[derive(Serialize)]
@@ -78,6 +80,11 @@ impl Evidence {
     fn eligible(&self, date: NaiveDate, max_age: i64) -> bool {
         let Ok(source_date) = NaiveDate::parse_from_str(&self.as_of, "%Y-%m-%d") else {
             return false;
+        };
+        let max_age = if max_age == 120 && self.regulatory_report == Some(true) {
+            180
+        } else {
+            max_age
         };
         (0..=max_age).contains(&(date - source_date).num_days())
             && self.url.starts_with("https://")

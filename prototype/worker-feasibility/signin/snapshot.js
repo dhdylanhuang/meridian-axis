@@ -249,13 +249,13 @@
     } else add(section, 'p', 'No holdings to group.');
 
     renderClassification(section, 'sectors', 'Equity sectors',
-      'Direct shares use a reviewed principal-business sector. Funds use dated manager sector weights in compatible broad categories. Unclassified includes holdings or fund portions without eligible equity sector data.',
+      'Direct shares use reviewed principal-business sectors. Funds use dated manager weights. ICB and other manager-specific categories are labelled separately because their definitions differ. Unclassified includes fund portions without eligible sector data.',
       data, columns);
     renderClassification(section, 'issuer_domiciles', 'Direct shares · issuer domicile',
       'Country of incorporation from issuer filings. Coverage shows the direct-share amounts in this view.',
       data, columns);
     renderClassification(section, 'fund_markets', 'Funds · underlying markets',
-      'Published equity market weights from fund managers. Unclassified includes funds without an eligible breakdown and any unallocated fund weight.',
+      'Published market weights from fund managers. Regional figures keep their regional label wherever country detail is unavailable. Unclassified includes unallocated fund weight.',
       data, columns);
 
     add(section, 'h3', 'Reported cash components');

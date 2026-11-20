@@ -155,3 +155,28 @@ fn applies_dated_sources_and_preserves_fund_residual_and_missing_values() {
         "151.00000000000000000001"
     );
 }
+
+#[test]
+fn dated_regulatory_fund_report_can_extend_the_factsheet_window() {
+    let mut request = fixture();
+    request["positions"] = json!([{"ticker":"TRUST","isin":"FUND","instrument_type":"STOCK",
+        "current_value":"100","account_currency":"GBP"}]);
+    request["classifications"] = json!({"FUND":{"fund_markets":{
+        "source":{"as_of":"2025-08-01","url":"https://example.test/report","regulatory_report":true},
+        "weights":{"Region A":"100"}
+    }}});
+    let qualified = report(request.clone());
+    assert_eq!(qualified["fund_markets"]["classified"]["value"], "100");
+    assert!(qualified["issuer_domiciles"]["buckets"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    assert_eq!(
+        qualified["fund_markets"]["sources"]["TRUST"]["regulatory_report"],
+        true
+    );
+
+    request["classifications"]["FUND"]["fund_markets"]["source"]["regulatory_report"] =
+        json!(false);
+    assert_eq!(report(request)["fund_markets"]["classified"]["value"], "0");
+}

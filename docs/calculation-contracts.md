@@ -101,7 +101,10 @@ allocations: broad equity sectors, direct-share issuer domicile (country of
 incorporation), and underlying equity markets reported by fund managers.
 Direct shares use a reviewed principal-business sector in the broad 11-sector
 GICS naming scheme. Fund sector data is included where the manager categories
-can be used on the same broad basis. Domicile and fund markets are independent
+can be used on the same broad basis. ICB and manager-specific sector categories
+use labelled rows because they differ from GICS-style sectors. Reported regional
+weights keep their regional labels where country-level weights are unavailable.
+Domicile and fund markets are independent
 views because those country definitions differ. Fund market and sector estimates
 apply published weights to the full broker position value. Manager tables may
 exclude cash and derivatives under their stated basis. No residual is inferred
@@ -111,11 +114,17 @@ outside the equity sector scope and do not contribute to the fund-market view.
 The private catalogue is keyed by the approved Trading 212 instrument ISIN.
 Position evidence takes precedence with a current broker catalogue fallback,
 and a conflicting ISIN withholds the join. A fund breakdown is eligible at most
-120 days after its evidence date; issuer classifications and non-equity evidence
+120 days after its evidence date, or 180 days for a sourced regulatory
+annual or interim fund report. Issuer classifications and non-equity evidence
 are eligible at most 550 days after that date. Future evidence is withheld.
 Reviewed dimensions accept positive decimal percentage strings summing to at
-most 100. Missing documents, unsupported funds, and any unsourced or rounding
-remainder are unclassified. Exact value times the source percentage yields the
+most 100. Missing documents, unsupported fund portions, and any unsourced or rounding
+remainder are unclassified. Preserve published decimal weights. If a rounded
+table exceeds 100%, leave the smallest rounding-affected category in the
+residual. Partial constituent coverage uses only sourced fund weights and
+independently verified groups. Single-market equity share may use the
+manager’s identification of its single market with the observed equity
+sector subtotal. This preserves the unallocated fund portion. Exact value times the source percentage yields the
 bucket contribution. No unclassified remainder is renormalized. Snapshot
 allocations carry source URL and date once per holding and dimension, exact
 constituent amounts, the original allocation share, and the classified and

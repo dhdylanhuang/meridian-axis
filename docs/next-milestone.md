@@ -1,4 +1,4 @@
-# Next delivery: complete more exposure classifications
+# Next delivery: maintain exposure coverage
 
 Reviewed **20 November 2026**. See [current status](status-and-handoff.md) for
 the portfolio exposure release and actual publication evidence. Reuse completed
@@ -7,12 +7,11 @@ the feature.
 
 ## Current priority
 
-Continue increasing the share of invested value with reviewed sector and
-country classifications. Rank remaining gaps by broker value and distinguish
-direct issuers, funds and non-equity positions. Use verified identifiers,
-dated issuer or manager sources and the existing authenticated snapshot.
-Review the private binding size before another data-only release. No paid
-provider or polling changes are required for the reviewed catalogue.
+Maintain the reviewed classification catalogue for new positions and updated
+manager documents. Prioritise remaining partial fund weights by invested value,
+and keep their published basis and residual visible. Use verified instrument IDs
+and the existing authenticated snapshot. The expanded private input can use the
+bounded gzip binding format, with no paid provider or polling change.
 
 ## Following delivery
 

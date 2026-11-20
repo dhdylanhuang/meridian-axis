@@ -2,6 +2,28 @@
 
 Reviewed **20 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
+## Classification coverage across the held universe
+
+The reviewed catalogue extends to all 80 instruments in the audited generation:
+60 direct shares with sector and domicile, 18 equity funds and trusts with
+dated sector and market coverage, and two non-equity instruments. A named
+classification for the instrument does not imply 100% look-through. Fund
+managers’ regional and taxonomy-specific weights retain their original basis.
+Individual published percentages and coverage gaps remain inspectable.
+The source files and actual portfolio list are private.
+
+The same two gateway bindings now accept bounded gzip-encoded JSON as well as
+legacy JSON. Only held ISIN entries pass to the Rust calculator. Each bound
+value is below 5 KB. The operator retains the readable reviewed catalogue and
+the encoded deployment inputs privately. A synthetic full-catalogue comparison
+showed approximately 6 KB more per gzip-compressed allocation report. This is
+not a measurement of hosted database storage or remaining capacity.
+
+Five targeted Rust and three Node cases passed. A full-catalogue rehearsal using
+synthetic values qualified all 80 records against the generated WASM. No full
+suites, provider integration, schema changes or additional polling. Gateway
+deployment and actual publication verification are pending.
+
 ## Direct-share classification coverage expansion
 
 The owner prioritised further exposure coverage before starting History.

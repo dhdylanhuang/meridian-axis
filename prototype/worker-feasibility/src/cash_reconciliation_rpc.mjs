@@ -1,4 +1,5 @@
 import { WorkerEntrypoint } from 'cloudflare:workers';
+import { heldClassifications } from './portfolio_classification_catalog.mjs';
 import { portfolioExposuresJSON, reconcileCashJSON } from './cash_reconciliation.mjs';
 import { summarizeCashReport, summarizeActivityDetails } from './cash_reconciliation_summary.mjs';
 
@@ -7,15 +8,9 @@ export class CashReconciliation extends WorkerEntrypoint {
   async portfolioExposures(input) {
     if (typeof input !== 'string' || input.length > 512 * 1024 ||
         this.env.RECONCILIATION_ENVIRONMENT !== 'live') return portfolioExposuresJSON(input);
-    const catalogs = [this.env.PORTFOLIO_FUND_CLASSIFICATIONS, this.env.PORTFOLIO_ISSUER_CLASSIFICATIONS];
-    const classifications = Object.create(null);
-    for (const catalog of catalogs) {
-      if (!catalog || catalog.length > 5_120) continue;
-      try { Object.assign(classifications, JSON.parse(catalog)); } catch {}
-    }
     try {
       const request = JSON.parse(input);
-      request.classifications = classifications;
+      request.classifications = await heldClassifications(this.env, request.positions);
       return portfolioExposuresJSON(JSON.stringify(request));
     } catch {
       return portfolioExposuresJSON(input);
