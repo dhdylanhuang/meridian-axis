@@ -1,8 +1,39 @@
 # Current status and handoff
 
-Reviewed **19 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
+Reviewed **20 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
 ## Current work scope
+
+Owner-selected **Rust reconciliation experiment**, first bounded cash slice, is
+implemented natively in `rust/reconciliation`, with a read-only Python accepted-
+evidence bridge (`meridian.export_cash_history`). Typed scope/sign/control/review
+states and exact decimals preserve source revisions and prevent duplicate effects.
+Cash roll-forward requires explicit supported signed amounts and opening/closing
+controls. Current exported provider signs are deliberately unverified; no openings,
+cash-component totals, dividends, fill-wallet economics or returns are invented.
+See [Rust contract and local command](../rust/reconciliation/README.md).
+
+Completed checks, once per changed path:
+- `DEVELOPER_DIR=/Library/Developer/CommandLineTools CARGO_HOME=/private/tmp/meridian-rust/cargo RUSTUP_HOME=/private/tmp/meridian-rust/rustup CARGO_TARGET_DIR=/private/tmp/meridian-rust-target /private/tmp/meridian-rust/cargo/bin/cargo test --manifest-path rust/reconciliation/Cargo.toml --locked --quiet --jobs 2`: **7 passed**.
+- `AXIS_RUST_TEST_BINARY=/private/tmp/meridian-rust-target/debug/axis-reconciliation /private/tmp/meridian-query-venv/bin/python -m pytest -q -p no:cacheprovider backend/tests/test_cash_history.py`: **4 passed**, including compiled Rust end-to-end.
+- Cargo formatting and targeted Ruff check/format passed. Cargo's compile/test
+  covers the new library and native CLI; no separate duplicate compile run.
+
+The initial build failed solely because the selected full Xcode required license
+acceptance; using already-installed standalone tools through a scoped environment
+resolved it. No license/global tool selection/shell profile changed. Rust 1.100.0
+and dependencies are in the temporary paths above; Cargo.lock is committed. Reuse
+these checks. No full suite, CI matrix, live broker/database probe or real financial
+input was used. Existing sync/retention/security evidence remains reusable.
+
+This slice is **native/offline, not deployed**: the agreed experiment starts with a
+pure core and synthetic tests. Next is bounded WASM/runtime integration and approved
+result publication, plus verified sign/control evidence for actual cash booking.
+The native binary is not compatible with the current Worker by itself; this is a
+technical integration gate, not a missing deployment authorization. Deployed source
+remains `e327fc9`, native schema `0008`, ten-minute refresh unchanged.
+
+## Previous discovery/enrichment delivery
 
 The owner selected **broker-led automatic holding discovery/enrichment** next:
 orders remain in Trading 212; one integrated AXIS supports PM, trading-monitoring,

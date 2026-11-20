@@ -155,3 +155,19 @@ booking; establish supported opening/coverage and corporate-action treatment;
 normalize dividend/cash/fee economics; persistence/aliases and integrated dashboard
 presentation. Cash components retain the existing broker authority and are not
 summed or reconciled by this slice. No schema, sync, retention or access change.
+
+
+## Rust cash core — 20 November 2026
+
+The owner selected Rust for the next reconciliation experiment, with Python
+retaining ingestion and database access. The first implementation is a pure native
+cash-family core and trusted read-only evidence exporter, not a hosted ledger or
+complete cash reconciliation. [The crate contract](../rust/reconciliation/README.md)
+owns typed input/output, exact-decimal bounds, latest-revision selection, explicit
+sign/control evidence gates and local commands. The exporter preserves accepted
+source rows/revisions and leaves every provider sign unverified. Separate broker
+cash components are retained without choosing or summing a closing total.
+
+Seven focused Rust tests and four Python bridge tests passed; current status
+records exact commands and the next WASM/runtime integration boundary. No real
+financial inputs, schema/BFF permissions, deployed source or refresh policy changed.

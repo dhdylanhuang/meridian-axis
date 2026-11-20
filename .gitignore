@@ -251,3 +251,6 @@ node_modules/
 
 # Generated public backend allowlist for the locked Python Worker bundle
 /prototype/worker-feasibility/src/meridian/
+
+# Local Rust build output; Cargo.lock is retained
+/rust/reconciliation/target/

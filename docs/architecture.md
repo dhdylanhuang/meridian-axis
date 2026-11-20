@@ -45,6 +45,15 @@ flowchart LR
     STREAM --> UI
 ```
 
+## Rust reconciliation experiment — 20 November 2026
+
+Owner-selected first slice: pure native cash normalization/reconciliation in
+`rust/reconciliation`; Python remains responsible for broker ingestion and trusted
+accepted-evidence reads. A strict JSON boundary carries decimal strings and typed
+scope/sign/control states. No whole-app rewrite, new service or hosted interpreter
+is implied. WASM/runtime qualification precedes deployed use; current production
+remains the existing broker-led Python/JavaScript application.
+
 ## Dependency rules
 
 | Layer | Owns | Must not own |
