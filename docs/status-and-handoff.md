@@ -15,6 +15,22 @@ Funding evidence stays within the private sync role and the Rust WASM
 method uses the existing named service. Session authentication commits
 before the private call. There is no schema or scheduling change.
 
+Released gateway source `eee8a2f` and private owner/sync source `2b9364c`.
+The first hosted read left the report unavailable. The private transport was
+updated to pass the bounded Rust JSON directly and report fixed failure states.
+Deployed asset digests, WASM health, existing bindings, anonymous denial and
+the ten-minute schedule were verified. The final authenticated read matched the
+funding rows, coverage timestamps and eligible daily return values against
+the retained data and an independent decimal calculation. MTD and YTD were
+unavailable with missing valuations. The short-lived session was revoked and
+the publication receipt is private.
+
+Focused checks passed for Rust timing/coverage and year chaining (3), the
+generated WASM boundary (1), the History browser UI (3), and the Python
+funding adapter/session and private Worker paths. A synthetic headless Chrome
+check verified the funding marker link and expandable transaction details at
+mobile width.
+
 
 ## Observed account history
 

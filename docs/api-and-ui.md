@@ -158,8 +158,9 @@ to check the year boundary internally. The fixed sync object uses its existing
 role to read completed funding evidence in a bounded read-only transaction and
 invokes the Rust method through the private WASM service. No transaction remains
 open during that invocation. No external broker call or new public route is
-needed. A failed calculation reports performance unavailable and preserves the
-90-day account value response. See [the calculation rules](calculation-contracts.md#observed-modified-dietz).
+needed. The private service passes the bounded Rust JSON to the session
+application. A failed read reports a fixed `performance_state` and preserves
+the 90-day account value response. See [the calculation rules](calculation-contracts.md#observed-modified-dietz).
 
 ## Authenticated broker refresh — 13 November 2026
 
