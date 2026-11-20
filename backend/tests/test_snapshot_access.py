@@ -1,6 +1,8 @@
 """Synthetic snapshot publication, authorization and restricted-role reads."""
 
 import asyncio
+import hashlib
+import json
 from datetime import timedelta
 
 import httpx
@@ -19,9 +21,9 @@ from test_supabase_migration import native_engine as native_engine
 from meridian.adapters.broker_evidence import validate_capture
 from meridian.app import create_app
 from meridian.application.broker_ingestion import ingest_capture
-from meridian.application.snapshot_access import read_snapshot
+from meridian.application.snapshot_access import read_history, read_snapshot
 from meridian.application.snapshot_publish import publish_snapshot
-from meridian.persistence.models import Account, AccountMember, BrokerSnapshot
+from meridian.persistence.models import Account, AccountMember, BrokerSnapshot, ImportRun
 from meridian.security.http import SESSION_COOKIE, SessionHttp
 from meridian.security.sessions import SessionService
 from meridian.security.supabase_auth import VerifiedIdentity
@@ -111,7 +113,9 @@ def test_authenticated_snapshot_both_users_and_revocation(engine):
             transport=httpx.ASGITransport(app=app), base_url=ORIGIN
         ) as client:
             url = "/api/v1/portfolio/snapshot"
+            history_url = "/api/v1/portfolio/history"
             assert (await client.get(url)).status_code == 401
+            assert (await client.get(history_url)).status_code == 401
             for token in tokens:
                 response = await client.get(url, headers={"cookie": SESSION_COOKIE + "=" + token})
                 assert response.status_code == 200 and response.json()["basis"] == "broker_reported"
@@ -119,6 +123,16 @@ def test_authenticated_snapshot_both_users_and_revocation(engine):
                 assert response.json()["refresh_health"]["target_interval_seconds"] == 600
                 assert "checkpoint" not in response.text
                 assert "synthetic-broker" not in response.text
+                history = await client.get(
+                    history_url, headers={"cookie": SESSION_COOKIE + "=" + token}
+                )
+                assert history.status_code == 200
+                assert history.headers["cache-control"] == "no-store"
+                points = [day for day in history.json()["days"] if day["status"] == "observed"]
+                assert len(points) == 1
+                assert points[0]["total_value"] == response.json()["total_value"]
+                assert "synthetic-broker" not in history.text
+                assert "positions" not in history.text
                 assert (
                     await client.get(
                         url,
@@ -129,15 +143,25 @@ def test_authenticated_snapshot_both_users_and_revocation(engine):
                     )
                 ).status_code == 403
             assert (await client.post(url)).status_code == 405
+            assert (await client.post(history_url)).status_code == 405
             assert (
                 await client.get(
                     url + "?account=other", headers={"cookie": SESSION_COOKIE + "=" + tokens[0]}
+                )
+            ).status_code == 403
+            assert (
+                await client.get(
+                    history_url + "?account=other",
+                    headers={"cookie": SESSION_COOKIE + "=" + tokens[0]},
                 )
             ).status_code == 403
             with Session(engine) as db, db.begin():
                 db.get(AccountMember, ("shared-isa", SUBJECTS[0])).revoked_at = NOW
             assert (
                 await client.get(url, headers={"cookie": SESSION_COOKIE + "=" + tokens[0]})
+            ).status_code == 401
+            assert (
+                await client.get(history_url, headers={"cookie": SESSION_COOKIE + "=" + tokens[0]})
             ).status_code == 401
 
     asyncio.run(run())
@@ -158,8 +182,6 @@ def test_snapshot_restricted_role_select_only_and_foreign_scope(runtime):
     with Session(engine) as db, db.begin():
         snapshot = db.scalars(select(BrokerSnapshot)).one()
         # Foreign row satisfies its source/account FK but is invisible to runtime.
-        from meridian.persistence.models import ImportRun
-
         db.add(Account(id="foreign", environment="live"))
         db.flush()
         db.add(
@@ -188,6 +210,10 @@ def test_snapshot_restricted_role_select_only_and_foreign_scope(runtime):
         assert len(db.scalars(select(BrokerSnapshot)).all()) == 1
         assert read_snapshot(db, "shared-isa")["basis"] == "broker_reported"
         assert read_snapshot(db, "foreign") is None
+        assert (
+            sum(p["status"] == "observed" for p in read_history(db, "shared-isa", NOW)["days"]) == 1
+        )
+        assert all(p["status"] == "missing" for p in read_history(db, "foreign", NOW)["days"])
     for sql in [
         "SELECT * FROM source_records",
         "SELECT * FROM import_log",
@@ -255,3 +281,83 @@ def test_0005_upgrade_preserves_source_and_adds_closed_snapshot_model(postgres_s
     with Session(postgres_schema) as db:
         assert db.get(Account, "preserved").private_reference == "synthetic-private-reference"
         assert db.scalars(select(BrokerSnapshot)).all() == []
+
+
+def check_daily_selection(engine):
+    midnight = NOW.replace(hour=0)
+    earlier = midnight - timedelta(days=2)
+    oldest = midnight - timedelta(days=89)
+
+    def save(db, key, observed, amount, *, digest_matches=True):
+        captured = observed - timedelta(seconds=1)
+        payload = json.dumps(
+            {
+                "source": "trading212",
+                "basis": "broker_reported",
+                "currency": "GBP",
+                "total_value": amount,
+                "account_retrieval": {"retrieval_completed_at": captured.isoformat()},
+            }
+        )
+        db.add(
+            ImportRun(
+                id=key,
+                account_id="shared-isa",
+                kind="trading212_capture",
+                status="succeeded",
+                started_at=captured,
+            )
+        )
+        db.flush()
+        db.add(
+            BrokerSnapshot(
+                id=key,
+                account_id="shared-isa",
+                source_run_id=key,
+                observed_at=observed,
+                created_at=observed,
+                snapshot_json=payload,
+                digest=hashlib.sha256(payload.encode()).hexdigest() if digest_matches else "a" * 64,
+            )
+        )
+
+    exact = "9007199254740993.123456789"
+    with Session(engine) as db, db.begin():
+        if db.get(Account, "shared-isa") is None:
+            db.add(Account(id="shared-isa", environment="live"))
+            db.flush()
+        save(db, "too-old", oldest - timedelta(microseconds=1), "9")
+        save(db, "first-day", oldest, "10")
+        save(db, "valid", earlier, "12")
+        save(db, "tampered", earlier + timedelta(hours=1), "13", digest_matches=False)
+        save(db, "first-today", midnight, "14")
+        save(db, "same-a", NOW, "15")
+        save(db, "same-z", NOW, exact)
+        save(db, "future", NOW + timedelta(microseconds=1), "99")
+    with Session(engine) as db:
+        history = read_history(db, "shared-isa", NOW)
+    assert len(history["days"]) == 90
+    assert history["start_date"] == oldest.date().isoformat()
+    assert history["end_date"] == midnight.date().isoformat()
+    assert history["days"][0]["total_value"] == "10"
+    assert history["days"][-3] == {"date": earlier.date().isoformat(), "status": "unavailable"}
+    assert history["days"][-2] == {
+        "date": (midnight - timedelta(days=1)).date().isoformat(),
+        "status": "missing",
+    }
+    assert history["days"][-1] == {
+        "date": midnight.date().isoformat(),
+        "status": "observed",
+        "total_value": exact,
+        "captured_at": (NOW - timedelta(seconds=1)).isoformat(),
+        "observed_at": NOW.isoformat(),
+    }
+
+
+def test_history_selects_latest_per_utc_day_and_preserves_gaps(engine):
+    check_daily_selection(engine)
+
+
+@pytest.mark.postgres
+def test_history_postgres_daily_selection_and_compact_projection(postgres_engine):
+    check_daily_selection(postgres_engine)

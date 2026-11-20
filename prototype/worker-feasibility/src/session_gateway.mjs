@@ -2,6 +2,7 @@
 const ROUTES = new Map([
   ["/health", "GET"],
   ["/api/v1/portfolio/snapshot", "GET"],
+  ["/api/v1/portfolio/history", "GET"],
   ["/api/v1/portfolio/refresh", "POST"],
   ["/api/v1/portfolio/cash-activity", "POST"],
   ["/api/v1/portfolio/refresh/status", "GET"],

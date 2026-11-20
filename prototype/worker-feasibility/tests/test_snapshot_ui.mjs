@@ -217,3 +217,53 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
   assert.equal(section.children.length,0);
   assert.equal(ui.el('holdings-body').children.length,0);
 });
+
+test('History renders exact daily values, breaks the line across gaps, and clears on sign-out',async()=>{
+ const days=Array.from({length:90},(_,index)=>({date:new Date(Date.UTC(2026,0,1+index)).toISOString().slice(0,10),status:'missing'}));
+ for (const index of [86,87,89]) Object.assign(days[index],{
+   status:'observed', total_value:index === 89 ? '9007199254740993.123456789' : String(100+index),
+   observed_at:days[index].date+'T11:22:34+00:00',captured_at:days[index].date+'T11:22:33+00:00'
+ });
+ const data={source:'trading212',basis:'broker_reported',currency:'GBP',as_of:days[89].date+'T12:00:00+00:00',start_date:days[0].date,end_date:days[89].date,days};
+ let reads=0, lines=0, fail=false;
+ const ui=setup(async(path,options)=>{
+   reads++;
+   assert.equal(path,'/api/v1/portfolio/history');
+   assert.equal(options.cache,'no-store');
+   return fail ? {ok:false,status:503} : {ok:true,status:200,json:async()=>data};
+ });
+ const ctx=new Proxy({}, {get(_,key){return key === 'lineTo' ? ()=>lines++ : ()=>{};}});
+ ui.el('history-chart').getContext=()=>ctx;
+ ui.el('history-tab').listeners.click();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(reads,1);
+ assert.equal(lines,1);
+ assert.match(ui.el('history-status').textContent,/3 of 90 days observed · 87 missing/);
+ assert.match(ui.el('history-point').textContent,/£9,007,199,254,740,993.123456789.*11:22:33 UTC.*11:22:34 UTC/);
+ assert.equal(ui.el('history-body').children.length,90);
+ assert.equal(ui.el('history-body').children[1].children[1].textContent,'No saved snapshot');
+ ui.el('history-chart').listeners.keydown({key:'ArrowLeft',preventDefault(){}});
+ assert.match(ui.el('history-point').textContent,/No saved snapshot/);
+ ui.el('axis-tab').listeners.click();
+ ui.el('history-tab').listeners.click();
+ assert.equal(reads,1);
+ fail=true;
+ await ui.el('reload-history').listeners.click();
+ assert.match(ui.el('history-status').textContent,/Reload failed/);
+ assert.equal(ui.el('history-body').children.length,90);
+ ui.view.clear();
+ assert.equal(ui.el('history-body').children.length,0);
+ assert.equal(ui.el('history-point').textContent,'');
+ assert.equal(ui.el('history-results').hidden,true);
+});
+
+test('late History reads cannot repopulate a signed-out dashboard',async()=>{
+ let finish;
+ const ui=setup(()=>new Promise(resolve=>finish=resolve));
+ const load=ui.el('reload-history').listeners.click();
+ ui.view.clear();
+ finish({ok:true,status:200,json:async()=>{assert.fail('stale response should be ignored');}});
+ await load;
+ assert.equal(ui.el('history-status').textContent,'');
+ assert.equal(ui.el('history-results').hidden,true);
+});

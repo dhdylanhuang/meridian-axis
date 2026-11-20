@@ -264,12 +264,16 @@ class SessionHttp:
                 result = await self.refresh()
                 return private_response(result, 200 if result.get("status") == "succeeded" else 202)
             with self.database() as db, db.begin():
-                if operation in {"current", "snapshot", "refresh_status"}:
+                if operation in {"current", "snapshot", "history", "refresh_status"}:
                     principal = self.service.authenticate(db, token, now=now)
                     if operation == "refresh_status":
                         from meridian.application.refresh_status import refresh_status
 
                         return private_response(refresh_status(db, principal.account_id, now))
+                    if operation == "history":
+                        from meridian.application.snapshot_access import read_history
+
+                        return private_response(read_history(db, principal.account_id, now))
                     if operation == "snapshot":
                         from meridian.application.refresh_status import refresh_status
                         from meridian.application.snapshot_access import read_snapshot

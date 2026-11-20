@@ -3,6 +3,7 @@
   const el = id => document.getElementById(id);
   let snapshot = null, generation = 0, controller = null;
   let holdingScope = null;
+  let history = null, historyRequest = null, historyIndex = 0;
   const detailControllers = new Set();
   const add = (parent, tag, text) => {
     const node = document.createElement(tag);
@@ -128,11 +129,132 @@
     const [x,y] = parts.map(([whole, fraction='']) => BigInt(whole + fraction.padEnd(scale, '0')));
     return x < y ? -1 : x > y ? 1 : 0;
   }
-  const tabs = [['axis-tab','axis-panel'],['exposures-tab','portfolio-exposures'],['holdings-tab','holdings-panel']];
+  const tabs = [['axis-tab','axis-panel'],['exposures-tab','portfolio-exposures'],['holdings-tab','holdings-panel'],['history-tab','history-panel']];
   function selectTab(tab) {
     for (const [other, section] of tabs) {
       el(other).setAttribute('aria-pressed',String(other === tab));
       el(section).hidden = other !== tab;
+    }
+    if (tab === 'history-tab' && !history) void loadHistory();
+  }
+  const historyLabel = point => point.status === 'missing' ? 'No saved snapshot' : 'Saved snapshot unavailable';
+  const utcStamp = value => value.replace('T', ' ').replace(/\+00:00$/, '');
+  const historyAmount = point => decimal(point.total_value, 'GBP');
+  const plot = {left: 175, right: 942, top: 24, bottom: 218};
+  const plotX = index => plot.left + (plot.right - plot.left) * index / (history.days.length - 1);
+  function drawHistory() {
+    const ctx = el('history-chart').getContext?.('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, 960, 264);
+    ctx.font = '13px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#9eaea8';
+    const points = history.days;
+    for (const index of [0, 22, 44, 67, 89]) {
+      ctx.fillText(points[index].date.slice(5), plotX(index), 252);
+    }
+    const observed = points.filter(point => point.status === 'observed');
+    if (observed.length) {
+      const scale = Math.max(...observed.map(point => point.total_value.split('.')[1]?.length || 0));
+      const values = observed.map(point => {
+        const [whole, fraction = ''] = point.total_value.split('.');
+        return BigInt(whole + fraction.padEnd(scale, '0'));
+      });
+      const min = values.reduce((a,b) => a < b ? a : b);
+      const max = values.reduce((a,b) => a > b ? a : b);
+      ctx.textAlign = 'right';
+      for (const [value, y] of min === max ? [[min, 121]] : [[max, plot.top], [min, plot.bottom]]) {
+        const point = observed[values.indexOf(value)];
+        ctx.fillText(historyAmount(point), plot.left - 10, y + 4, plot.left - 14);
+        ctx.fillStyle = '#334741';
+        ctx.fillRect(plot.left, y, plot.right - plot.left, 1);
+        ctx.fillStyle = '#9eaea8';
+      }
+      let valueIndex = 0;
+      let previous = null;
+      for (const [index, point] of points.entries()) {
+        if (point.status !== 'observed') { previous = null; continue; }
+        const value = values[valueIndex++];
+        const y = min === max ? 121 : plot.bottom - Number((value - min) * 10000n / (max - min)) / 10000 * (plot.bottom - plot.top);
+        const x = plotX(index);
+        ctx.fillStyle = '#91e5bc';
+        if (previous) {
+          ctx.strokeStyle = ctx.fillStyle;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(...previous);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.arc(x, y, index === historyIndex ? 5 : 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        previous = [x,y];
+      }
+    }
+    for (const [index, point] of points.entries()) {
+      ctx.fillStyle = point.status === 'observed' ? '#91e5bc' : point.status === 'missing' ? '#586a63' : '#e9b879';
+      ctx.fillRect(plotX(index) - 2, 229, 4, 4);
+    }
+    ctx.fillStyle = '#ecf8ee';
+    ctx.fillRect(plotX(historyIndex) - 1, 223, 2, 15);
+  }
+  function inspectDay(index) {
+    historyIndex = Math.max(0, Math.min(history.days.length - 1, index));
+    const point = history.days[historyIndex];
+    const day = point.date === history.end_date ? point.date + ' (today so far)' : point.date;
+    el('history-point').textContent = point.status === 'observed'
+      ? `${day} UTC · ${historyAmount(point)} · Account captured ${utcStamp(point.captured_at)} UTC · Snapshot observed ${utcStamp(point.observed_at)} UTC`
+      : `${day} UTC · ${historyLabel(point)}`;
+    drawHistory();
+  }
+  function renderHistory(data) {
+    history = data;
+    const body = document.createDocumentFragment();
+    let observed = 0, missing = 0, unavailable = 0;
+    for (const point of [...data.days].reverse()) {
+      const row = add(body, 'tr');
+      add(row, 'th', point.date + (point.date === data.end_date ? ' (today so far)' : '')).setAttribute('scope', 'row');
+      if (point.status === 'observed') {
+        observed++;
+        add(row, 'td', historyAmount(point));
+        add(row, 'td', utcStamp(point.captured_at));
+        add(row, 'td', utcStamp(point.observed_at));
+      } else {
+        if (point.status === 'missing') missing++; else unavailable++;
+        add(row, 'td', historyLabel(point)).setAttribute('colspan', '3');
+      }
+    }
+    el('history-body').replaceChildren(body);
+    el('history-results').hidden = false;
+    el('history-status').textContent = `${data.start_date} to ${data.end_date} UTC · ${observed} of ${data.days.length} days observed · ${missing} missing${unavailable ? ' · ' + unavailable + ' unavailable' : ''}. Read at ${utcStamp(data.as_of)} UTC.`;
+    const latest = data.days.findLastIndex(point => point.status === 'observed');
+    inspectDay(latest === -1 ? data.days.length - 1 : latest);
+  }
+  async function loadHistory() {
+    if (historyRequest) return;
+    const request = new AbortController();
+    historyRequest = request;
+    el('reload-history').disabled = true;
+    el('history-status').textContent = 'Loading saved daily values…';
+    try {
+      const response = await fetch('/api/v1/portfolio/history', {credentials:'same-origin', cache:'no-store', redirect:'error', signal:request.signal});
+      if (historyRequest !== request) return;
+      if ([401,403].includes(response.status)) { clear(); window.dispatchEvent(new Event('meridian-session-ended')); return; }
+      if (!response.ok) throw new Error('unavailable');
+      const data = await response.json();
+      if (historyRequest !== request) return;
+      if (data.source !== 'trading212' || data.basis !== 'broker_reported' || data.currency !== 'GBP' || data.days?.length !== 90) throw new Error('invalid');
+      renderHistory(data);
+    } catch {
+      if (historyRequest === request) {
+        el('history-status').textContent = history ? 'Reload failed. Showing the previously loaded observations.' : 'Saved history could not be loaded. Use Reload history to try again.';
+      }
+    } finally {
+      if (historyRequest === request) {
+        historyRequest = null;
+        el('reload-history').disabled = false;
+      }
     }
   }
   function showHoldings(scope) {
@@ -276,6 +398,14 @@
     if (el('cash-reconciliation')) { el('cash-reconciliation').replaceChildren(); el('cash-reconciliation').textContent = '—'; }
     el('snapshot-time').textContent = '—'; el('snapshot-status').textContent = ''; el('refresh-status').textContent = '';
     el('portfolio-exposures')?.replaceChildren();
+    historyRequest?.abort(); historyRequest = null; history = null;
+    el('history-body').replaceChildren();
+    el('history-point').textContent = '';
+    el('history-status').textContent = '';
+    el('history-chart').getContext?.('2d')?.clearRect(0, 0, 960, 264);
+    el('history-details').open = false;
+    el('history-results').hidden = true;
+    el('reload-history').disabled = false;
     selectTab('axis-tab');
     holdingScope = null;
     el('holding-scope').hidden = true;
@@ -405,6 +535,18 @@
   el('clear-holding-scope').addEventListener('click', () => showHoldings(null));
   el('holding-search').addEventListener('input',renderHoldings); el('holding-sort').addEventListener('change',renderHoldings);
   el('reload-snapshot').addEventListener('click',load);
+  el('reload-history').addEventListener('click',loadHistory);
+  el('history-chart').addEventListener('click', event => {
+    if (!history) return;
+    const chart = el('history-chart');
+    const pixel = event.offsetX * chart.width / chart.clientWidth;
+    inspectDay(Math.round((pixel - plot.left) * (history.days.length - 1) / (plot.right - plot.left)));
+  });
+  el('history-chart').addEventListener('keydown', event => {
+    if (!history || !['ArrowLeft','ArrowRight'].includes(event.key)) return;
+    event.preventDefault();
+    inspectDay(historyIndex + (event.key === 'ArrowLeft' ? -1 : 1));
+  });
   el('refresh-broker').addEventListener('click',refreshBroker);
   document.addEventListener('visibilitychange', () => {
     clearTimeout(timer);

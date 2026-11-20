@@ -119,6 +119,29 @@ Logout clears exposure and drill-down state.
 
 AXIS shows reported account figures and HOLDINGS supplies search and exact-decimal sorting. Monetary values are formatted from strings without JavaScript Number coercion. Values are not summed to replace the broker total. The browser retrieves the last successfully published snapshot every ten minutes while visible. Snapshot JSON includes browser-safe `refresh_health`, so the client makes one authenticated request per read. Scheduled jobs refresh Trading 212 separately during relevant sessions. The Reload saved snapshot control reads approved storage with a one-minute browser cooldown, and Refresh Trading 212 queues authenticated broker work with a shared one-minute signal cooldown and the persisted ten-minute snapshot eligibility. Hidden tabs pause polling. Transient failures back off from ten minutes to one hour; failed reads preserve last-good figures. Sign-out, expired sessions and denied reads clear financial DOM/state; in-flight responses cannot repopulate it after clearing. The existing synthetic React preview remains separate.
 
+## Observed account history
+
+`GET /api/v1/portfolio/history` uses the same shared account, membership
+checks, fixed authority and no-store response policy as the approved snapshot
+route. Queries and account selectors are rejected. The response gives source,
+basis, currency (GBP), UTC `as_of`, `start_date`, `end_date` and 90 ordered
+`days`, including today through `as_of`.
+
+For each UTC date, the final approved snapshot is the row with the greatest
+`observed_at`, with descending snapshot ID breaking ties, consistent with
+daily retention. An `observed` day includes exact decimal-string
+`total_value`, `captured_at` from account-summary retrieval completion and
+`observed_at` from the overall snapshot capture. A `missing` day has no saved
+row. An `unavailable` day has a saved row that failed integrity or field
+validation. Gaps remain empty. The account value includes funding effects and
+is an observed mark. Transaction totals and their detail reads retain their
+own coverage periods and sources.
+
+The History tab loads once on demand and reloads on request without broker
+calls. The chart connects adjacent observed days. The daily table and chart
+selection give the original amount and capture times. Sign-out clears the
+response and invalidates in-flight reads.
+
 ## Authenticated broker refresh — 13 November 2026
 
 | Route | Deployed contract |

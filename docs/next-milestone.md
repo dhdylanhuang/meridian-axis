@@ -1,4 +1,4 @@
-# Next delivery: maintain exposure coverage
+# Current delivery and next priorities
 
 Reviewed **20 November 2026**. See [current status](status-and-handoff.md) for
 the portfolio exposure release and actual publication evidence. Reuse completed
@@ -13,15 +13,21 @@ and keep their published basis and residual visible. Use verified instrument IDs
 and the existing authenticated snapshot. The expanded private input can use the
 bounded gzip binding format, with no paid provider or polling change.
 
+## Observed account history
+
+History shows the last retained Trading 212 snapshot for each of 90 UTC days,
+with exact GBP values, capture times and explicit gaps. Today is in progress.
+The cash, income and funding totals and their transaction drill-down remain
+accessible in the same workspace. Confirm live publication before extending
+the series. See [the history contract](api-and-ui.md#observed-account-history).
+
 ## Following delivery
 
-History is paused while improving exposures. When resumed, show historical portfolio value and income from eligible retained observations,
-with dates, source coverage and sampling gaps. Qualify benchmarks and calculated
-returns only where the inputs and methods in the
-[calculation contracts](calculation-contracts.md) support them. Daily retained
-broker snapshots are observed marks. Approved exchange closes, verified
-cash-flow inputs and benchmark series require their own evidence. Flag any
-additional provider work, infrastructure or cost before expanding scope.
+Qualify benchmarks and calculated returns where the inputs and methods in the
+[calculation contracts](calculation-contracts.md) support them. Approved
+exchange closes, verified cash-flow inputs and benchmark series require their
+own evidence. Flag additional provider work, infrastructure or cost before
+expanding scope.
 
 Keep the private, dated classification catalogue current for new and existing
 holdings. Expand remaining coverage by invested value first. Manager fund

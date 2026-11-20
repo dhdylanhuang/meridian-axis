@@ -44,6 +44,10 @@ def create_app(*, session_http: SessionHttp | None = None) -> FastAPI:
     if session_http is not None:
         app.include_router(session_http.router())
 
+        @app.get("/api/v1/portfolio/history")
+        async def history(request: Request):
+            return await session_http.handle(request, "history")
+
         @app.get("/api/v1/portfolio/snapshot")
         async def snapshot(request: Request):
             return await session_http.handle(request, "snapshot")

@@ -2,6 +2,22 @@
 
 Reviewed **20 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
+## Observed account history
+
+The History tab reads the last approved Trading 212 snapshot for each of 90 UTC
+days and shows exact GBP values, account capture and snapshot observation times,
+coverage and gaps. The current UTC date is provisional. Cash, income and
+funding drill-down remains available below the chart. See the
+[API contract](api-and-ui.md#observed-account-history).
+
+The session owner reuses its existing snapshot read grant and account scope.
+The query bounds selection with the account and observation index and projects
+only the approved daily account fields across Hyperdrive. This is a SQL and
+Python integration read of saved broker values, so it uses the existing
+Python session boundary. JavaScript positions pixels and formats exact values.
+Schema 0008 and the existing refresh and retention schedules apply.
+
+
 ## Classification coverage across the held universe
 
 The reviewed catalogue extends to all 80 instruments in the audited generation:
