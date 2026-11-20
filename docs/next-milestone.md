@@ -18,7 +18,9 @@ Missing categories are unestablished, not zero; initial captures/lifetime covera
 remain incomplete. Prior component checks remain an opt-in diagnostic capability;
 the hosted adapter stops the extra opening-snapshot query.
 
-Current status owns focused checks, deployed source and actual publication evidence.
+Deployed gateway/sync source is `17aa7ea`, session owner `5cc8564`. Actual monetary
+publication and exact agreement with accepted sources were verified at the natural
+11:50 UTC refresh. Current status owns focused checks and release/publication evidence.
 Reuse completed checks; do not repeat suites or probes on resume.
 
 ## Remaining useful deliveries

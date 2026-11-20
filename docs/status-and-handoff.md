@@ -11,7 +11,21 @@ deposit/withdrawal, fee/transfer/lending totals, separately by currency. Origina
 signed amounts are descriptive source totals, not a reconstruction or partition of
 current cash. Runtime stops the opening-control query and includes accepted ongoing
 dividend revisions under existing RLS. Missing categories/coverage stay explicit.
-**Implemented; commit/release and real approved publication verification pending.**
+**Deployed at gateway/sync source `17aa7ea`**, session owner unchanged at `5cc8564`.
+Reviewed source was committed/pushed; gateway producer deployed before opted-in sync.
+Both active annotations match source; three no-store static assets match exact source
+bytes and hosted WASM is ready. Protected secret/Hyperdrive/private RPC bindings,
+restricted origin roles/TLS/cache settings and ten-minute schedule are preserved.
+No schema/grant/new Worker. **Real monetary publication verified** at the natural
+20 November 11:50 UTC refresh (snapshot cutoff 11:50:30 UTC). One read-only query
+independently summed latest accepted completed dividend/cash revisions over the
+published period and compared exact per-category/currency amounts and counts.
+Published amounts matched accepted sources; cash-interest, dividend/distribution,
+deposit, withdrawal, fee and transfer totals were present in the primary currency.
+Money stayed strings; input revision, snapshot identity and cutoff matched, with no
+snapshot-job error. No balances, financial amounts or private identifiers printed
+or committed. Private receipt preserves agreement flags. This verifies actual
+publication, not lifetime completeness or reconstructed cash economics.
 
 Focused checks passed: one Rust `funding_` case (exact arithmetic, family identity,
 latest revisions/repeated observations, currency/date boundaries/conflicts and no
@@ -26,9 +40,8 @@ Targeted Ruff format/check passed. Commands:
 - `private/dev-tools/node_modules/.bin/node --test --test-name-pattern='funding view' prototype/worker-feasibility/tests/test_snapshot_ui.mjs` → 2 passed.
 No full suites, CI matrix, prior retention checks, sizing or live financial inputs.
 Reuse passing evidence. Deploy compatible gateway producer then opted-in sync;
-existing session owner unchanged. Verify actual new approved monetary totals after
-an eligible refresh separately from static/health checks, in one bounded metadata
-read with no amounts/identifiers in public output. Do not repeat probes while idle.
+existing session owner unchanged. The single bounded actual monetary-publication
+check above passed. Reuse this evidence; do not rerun it or prior checks on resume.
 
 ## Previous component-window delivery (not monetary dashboard acceptance)
 
