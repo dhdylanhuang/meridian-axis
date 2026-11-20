@@ -147,3 +147,15 @@ are unverified; it explicitly says balances are not reconciled. Failed/unsupport
 review leaves broker figures available. Older snapshots/pages remain compatible.
 `/health` retains ordinary liveness and adds a fixed synthetic WASM readiness header
 (`X-Meridian-Reconciliation`); this reads no financial data and accepts no input.
+
+
+### Cash review interpretation correction — 20 November 2026
+
+`unverified_sign_review` is a shared cash-sign policy prerequisite, not proof that
+each observed event is an individual exception. The panel now separates captured
+cash activity from detected record conflicts/unsupported types, and lists missing
+opening/sign/trade/dividend coverage separately. It does not imply a reconciled
+balance or verified sign convention. Optional `activity_counts` report fixed
+provider categories over effective Rust records (not repeated observations);
+Python validates their allowed keys, integer counts and sum against event count.
+Older summaries without the field remain readable. No amount totals are derived.

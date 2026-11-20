@@ -4,6 +4,29 @@ Reviewed **20 November 2026**. This file is the authoritative implementation sna
 
 ## Current work scope
 
+Cash review interpretation correction is ready for release: the former wording
+counted the global unverified-sign prerequisite as a per-event manual-review task.
+The updated panel separates provider-type activity counts, actual detected record
+conflicts/unsupported types, and shared prerequisites. No economic sign, opening
+balance or cash reconciliation result has been fabricated. The Rust core is
+unchanged. Existing role/coverage/size gates remain.
+
+Read-only inspection of retained encrypted evidence and the source contract did
+not establish independent sign verification. Current [provider field documentation](https://docs.trading212.com/api/historical-events/transactions.md)
+describes amounts/types without an explicit sign convention; pattern observations
+alone are not sufficient. No financial values, source rows or private identifiers
+were copied into Git; no live broker call or workbook/PDF modification occurred.
+
+Focused evidence: two Python checks (the real WASM publication boundary and
+activity-key/count validation including legacy compatibility) passed using
+`AXIS_NODE_TEST_BINARY="$PWD/private/dev-tools/node_modules/.bin/node" /private/tmp/meridian-query-venv/bin/python -m pytest -q -p no:cacheprovider backend/tests/test_cash_publication.py::test_wasm_summary_commits_atomically_without_raw_history backend/tests/test_cash_publication.py::test_activity_projection_validates_counts_and_accepts_older_results`.
+Three Node checks passed using `private/dev-tools/node_modules/.bin/node --test --test-name-pattern='Cloudflare local|approved Rust|cash review distinguishes' prototype/worker-feasibility/tests/test_cash_wasm.mjs prototype/worker-feasibility/tests/test_snapshot_ui.mjs`.
+Targeted Ruff/format passed. No Rust rebuild/full suite/CI matrix or extra live SQL.
+The source/protocol update is backwards compatible: deploy the accepting sync
+consumer before the gateway producer; the session owner needs no code deployment.
+
+## Previous private Rust job integration
+
 Private Rust job integration is **deployed at source `5cc8564`** to the existing
 three Workers. The existing
 sync DO calls the gateway's named `CashReconciliation` service entrypoint; approved

@@ -109,9 +109,21 @@ test('new-holding notice and metadata limitations render through the existing sn
 });
 
 test('approved Rust review shows incomplete cash coverage and clears private state',async()=>{
- const data=snapshot();data.cash_reconciliation={availability:'provisional',event_count:3,review_counts:{unverified_sign_review:3}};
+ const data=snapshot();data.cash_reconciliation={availability:'provisional',event_count:3,review_counts:{unverified_sign_review:3},activity_counts:{DEPOSIT:1,INTEREST_ON_FREE_CASH:2}};
  const ui=setup(async()=>({ok:true,status:200,json:async()=>data}));await ui.view.load();
- assert.match(ui.el('cash-reconciliation').textContent,/3 events; 3 require review/);
+ assert.match(ui.el('cash-reconciliation').textContent,/3 cash events captured/);
+ assert.match(ui.el('cash-reconciliation').textContent,/1 deposit · 2 cash-interest payments/);
+ assert.match(ui.el('cash-reconciliation').textContent,/No record conflicts/);
+ assert.doesNotMatch(ui.el('cash-reconciliation').textContent,/3 require review/);
  assert.match(ui.el('cash-reconciliation').textContent,/Balances are not reconciled/);
  ui.view.clear();assert.equal(ui.el('cash-reconciliation').textContent,'—');
+});
+
+
+test('cash review distinguishes actual exceptions and supports older approved snapshots',async()=>{
+ const data=snapshot();data.cash_reconciliation={availability:'provisional',event_count:4,review_counts:{unverified_sign_review:2,identity_conflict_review:1,unsupported_type_review:1}};
+ const ui=setup(async()=>({ok:true,status:200,json:async()=>data}));await ui.view.load();
+ assert.match(ui.el('cash-reconciliation').textContent,/1 record conflict; 1 unsupported cash type require investigation/);
+ assert.match(ui.el('cash-reconciliation').textContent,/Activity breakdown will appear/);
+ assert.doesNotMatch(ui.el('cash-reconciliation').textContent,/4 require review/);
 });

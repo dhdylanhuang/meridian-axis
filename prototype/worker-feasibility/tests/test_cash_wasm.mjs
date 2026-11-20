@@ -63,6 +63,7 @@ test('Cloudflare local workerd executes the same precompiled WASM module', {time
     const summary=await rpc.json();
     assert.equal(summary.method,'cash_reconciliation_rust_v1');
     assert.equal(summary.event_count,2);
+    assert.deepEqual(summary.activity_counts,{DEPOSIT:1,FEE:1});
     assert.equal(summary.observation_count,3);
     assert.equal(summary.input_revision.length,64);
     assert.equal(summary.source_snapshot_id,'synthetic-pending-snapshot');

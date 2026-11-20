@@ -13,6 +13,15 @@ from meridian.application.history_evidence import ReconciliationError
 METHOD = "cash_reconciliation_rust_v1"
 MAX_BYTES = 512 * 1024
 MAX_EVENTS = 1024
+CASH_TYPES = {
+    "DEPOSIT",
+    "WITHDRAW",
+    "FEE",
+    "TRANSFER",
+    "INTEREST_ON_FREE_CASH",
+    "LENDING_INTEREST",
+    "OTHER",
+}
 REVIEW_STATES = {"unverified_sign_review", "identity_conflict_review", "unsupported_type_review"}
 WARNINGS = {
     "lifetime_coverage_unverified",
@@ -76,7 +85,7 @@ def approved_summary(raw, request, encoded):
     }
     if (
         not isinstance(result, dict)
-        or set(result) != expected
+        or set(result) not in (expected, expected | {"activity_counts"})
         or (
             result["method"] != METHOD
             or result["scope"] != request["scope"]
@@ -89,6 +98,13 @@ def approved_summary(raw, request, encoded):
         raise ValueError("reconciliation_result_mismatch")
     events, observations = _count(result["event_count"]), _count(result["observation_count"])
     if events > observations or observations != len(request["observations"]):
+        raise ValueError("reconciliation_result_invalid")
+    activity = result.get("activity_counts")
+    if activity is not None and (
+        not isinstance(activity, dict)
+        or set(activity) - CASH_TYPES
+        or sum(_count(value) for value in activity.values()) != events
+    ):
         raise ValueError("reconciliation_result_invalid")
     reviews = result["review_counts"]
     if (
@@ -116,7 +132,10 @@ def approved_summary(raw, request, encoded):
         # The production adapter supplies no verified controls: a numeric residual
         # here would fabricate economics even if it arrived via a trusted binding.
         raise ValueError("reconciliation_result_invalid")
-    return {key: result[key] for key in expected - {"scope"}} | {"coverage": COVERAGE}
+    return {key: result[key] for key in expected - {"scope"}} | {
+        "coverage": COVERAGE,
+        "activity_counts": activity,
+    }
 
 
 async def prepare_cash_summary(engine, *, account_id, projection, snapshot_id, reconcile):

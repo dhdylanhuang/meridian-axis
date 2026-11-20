@@ -90,7 +90,14 @@
       if (cashReviewElement) cashReviewElement.textContent = !cashReview ? 'Not available in this saved snapshot.'
         : cashReview.availability === 'failed' ? 'Cash history review failed. Broker figures remain displayed; balances are not reconciled.'
         : cashReview.availability === 'unsupported' ? (cashReview.reason === 'history_limit' ? 'Cash history exceeds the bounded review limit. Balances are not reconciled.' : 'Cash history review is unavailable. Balances are not reconciled.')
-        : `Rust cash review: ${cashReview.event_count} events; ${Object.values(cashReview.review_counts || {}).reduce((n,v)=>n+v,0)} require review. Ongoing cash history only; opening cash and sign rules are unverified. Balances are not reconciled.`;
+        : (() => {
+          const labels = {DEPOSIT:['deposit','deposits'],WITHDRAW:['withdrawal','withdrawals'],FEE:['fee','fees'],TRANSFER:['transfer','transfers'],INTEREST_ON_FREE_CASH:['cash-interest payment','cash-interest payments'],LENDING_INTEREST:['lending-interest payment','lending-interest payments'],OTHER:['other cash event','other cash events']};
+          const activity = Object.entries(labels).filter(([kind])=>cashReview.activity_counts?.[kind] > 0).map(([kind,label])=>`${cashReview.activity_counts[kind]} ${label[cashReview.activity_counts[kind] === 1 ? 0 : 1]}`).join(' · ');
+          const conflicts = cashReview.review_counts?.identity_conflict_review || 0;
+          const unsupported = cashReview.review_counts?.unsupported_type_review || 0;
+          const exceptions = conflicts || unsupported ? `${conflicts} record conflict${conflicts === 1 ? '' : 's'}; ${unsupported} unsupported cash type${unsupported === 1 ? '' : 's'} require investigation.` : 'No record conflicts or unsupported cash types detected by current checks.';
+          return `${cashReview.event_count} cash events captured. ${activity ? activity + '. ' : 'Activity breakdown will appear after the next successful broker refresh. '}${exceptions} Shared prerequisites remain: verify opening cash and cash-sign conventions, and include trade/dividend cash. Balances are not reconciled.`;
+        })();
       health(data.refresh_health);
     } catch (error) {
       if (version === generation && error.name !== 'AbortError') {

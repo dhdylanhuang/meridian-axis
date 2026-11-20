@@ -68,6 +68,7 @@ def test_wasm_summary_commits_atomically_without_raw_history(driver):
         assert summary["event_count"] == 1
         assert summary["observation_count"] == 1  # runtime deliberately excludes capture rows
         assert summary["review_counts"] == {"unverified_sign_review": 1}
+        assert summary["activity_counts"] == {"WITHDRAW": 1}
         assert summary["cash"][0]["unexplained_difference"] is None
         assert summary["coverage"]["initial_capture"] == "not_included_runtime"
         assert "records" not in summary and "scope" not in summary
@@ -125,3 +126,39 @@ def test_missing_engine_is_explicit_and_does_not_read_history(driver):
     )
     assert result["availability"] == "unsupported"
     assert result["reason"] == "engine_not_configured"
+
+
+def test_activity_projection_validates_counts_and_accepts_older_results():
+    import hashlib
+
+    from meridian.application.cash_reconciliation import approved_summary
+
+    request = {
+        "scope": {"account_id": "shared-isa", "environment": "live"},
+        "cutoff": "2026-01-01T00:00:00Z",
+        "broker_cash": {"snapshot_id": "pending", "currency": "GBP"},
+        "observations": [{"currency": "GBP"}],
+    }
+    encoded = json.dumps(request)
+    result = {
+        "method": "cash_reconciliation_rust_v1",
+        "scope": request["scope"],
+        "availability": "provisional",
+        "as_of": request["cutoff"],
+        "source_snapshot_id": "pending",
+        "input_revision": hashlib.sha256(encoded.encode()).hexdigest(),
+        "event_count": 1,
+        "observation_count": 1,
+        "review_counts": {"unverified_sign_review": 1},
+        "cash": [{"currency": "GBP", "state": "insufficient_data", "unexplained_difference": None}],
+        "warnings": ["cash_signs_unverified"],
+    }
+    assert approved_summary(json.dumps(result), request, encoded)["activity_counts"] is None
+    result["activity_counts"] = {"DEPOSIT": 1}
+    assert approved_summary(json.dumps(result), request, encoded)["activity_counts"] == {
+        "DEPOSIT": 1
+    }
+    for wrong in [{"DEPOSIT": 2}, {"private-provider-description": 1}, {"DEPOSIT": True}]:
+        result["activity_counts"] = wrong
+        with pytest.raises(ValueError, match="reconciliation_result_invalid"):
+            approved_summary(json.dumps(result), request, encoded)
