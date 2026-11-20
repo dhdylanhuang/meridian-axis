@@ -37,6 +37,7 @@
     generation++; controller?.abort(); snapshot = null;
     amounts.forEach(id => el(id).textContent = '—');
     el('holdings-body').replaceChildren(); el('holding-count').textContent = '';
+    if (el('cash-reconciliation')) el('cash-reconciliation').textContent = '—';
     el('snapshot-time').textContent = '—'; el('snapshot-status').textContent = ''; el('refresh-status').textContent = '';
     el('holding-search').value = ''; el('refresh-broker').disabled = false; document.body.classList.remove('snapshot-ready');
   }
@@ -84,6 +85,12 @@
       el('snapshot-status').textContent = additions.length || closures.length ? `Since previous saved snapshot: ${additions.length} holdings added, ${closures.length} no longer held. These are position observations, not execution confirmations.` : '';
       document.body.classList.add('snapshot-ready'); renderHoldings();
       failures = 0; nextRead = Date.now() + READ_COOLDOWN;
+      const cashReview = data.cash_reconciliation;
+      const cashReviewElement = el('cash-reconciliation');
+      if (cashReviewElement) cashReviewElement.textContent = !cashReview ? 'Not available in this saved snapshot.'
+        : cashReview.availability === 'failed' ? 'Cash history review failed. Broker figures remain displayed; balances are not reconciled.'
+        : cashReview.availability === 'unsupported' ? (cashReview.reason === 'history_limit' ? 'Cash history exceeds the bounded review limit. Balances are not reconciled.' : 'Cash history review is unavailable. Balances are not reconciled.')
+        : `Rust cash review: ${cashReview.event_count} events; ${Object.values(cashReview.review_counts || {}).reduce((n,v)=>n+v,0)} require review. Ongoing cash history only; opening cash and sign rules are unverified. Balances are not reconciled.`;
       health(data.refresh_health);
     } catch (error) {
       if (version === generation && error.name !== 'AbortError') {

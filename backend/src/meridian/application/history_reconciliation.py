@@ -6,6 +6,8 @@ import json
 from sqlalchemy import select
 
 from meridian.adapters.broker_evidence import canonical, identifier, instant, number
+from meridian.application.history_evidence import MAX_OBSERVATIONS, ReconciliationError
+from meridian.application.history_evidence import _bounded as _read_bounded
 from meridian.domain.quantity_history import QuantityRecord, reconcile_quantities
 from meridian.persistence.models import (
     Account,
@@ -15,18 +17,9 @@ from meridian.persistence.models import (
     SourceRecord,
 )
 
-MAX_OBSERVATIONS = 20_000
-
-
-class ReconciliationError(ValueError):
-    """Safe failure code; never interpolate private source content."""
-
 
 def _bounded(db, query):
-    rows = db.scalars(query.limit(MAX_OBSERVATIONS + 1)).all()
-    if len(rows) > MAX_OBSERVATIONS:
-        raise ReconciliationError("reconciliation_observation_limit")
-    return rows
+    return _read_bounded(db, query, limit=MAX_OBSERVATIONS)
 
 
 def _record(raw, *, source_id, observed_at, revision_id=None, revision=0):

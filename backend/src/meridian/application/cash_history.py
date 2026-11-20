@@ -6,7 +6,7 @@ import json
 from sqlalchemy import select
 
 from meridian.adapters.broker_evidence import canonical, identifier, instant, number
-from meridian.application.history_reconciliation import (
+from meridian.application.history_evidence import (
     MAX_OBSERVATIONS,
     ReconciliationError,
     _bounded,
@@ -20,7 +20,15 @@ from meridian.persistence.models import (
 )
 
 
-def cash_history_request(db, *, account_id):
+def cash_history_request(
+    db,
+    *,
+    account_id,
+    projection=None,
+    snapshot_id=None,
+    max_observations=MAX_OBSERVATIONS,
+    include_captures=True,
+):
     """Read one consistent caller-owned snapshot; never grant runtime raw access.
 
     Initial capture and accepted revision payloads remain evidence. Every exported
@@ -31,17 +39,21 @@ def cash_history_request(db, *, account_id):
     account = db.get(Account, account_id)
     if account is None or account.broker != "trading212":
         raise ReconciliationError("reconciliation_account_invalid")
-    snapshot = db.scalar(
-        select(BrokerSnapshot)
-        .where(BrokerSnapshot.account_id == account_id)
-        .order_by(BrokerSnapshot.observed_at.desc(), BrokerSnapshot.id.desc())
-        .limit(1)
-    )
-    if snapshot is None:
-        raise ReconciliationError("reconciliation_snapshot_unavailable")
-    if hashlib.sha256(snapshot.snapshot_json.encode()).hexdigest() != snapshot.digest:
-        raise ReconciliationError("reconciliation_snapshot_integrity_invalid")
-    projection = json.loads(snapshot.snapshot_json)
+    if projection is None:
+        snapshot = db.scalar(
+            select(BrokerSnapshot)
+            .where(BrokerSnapshot.account_id == account_id)
+            .order_by(BrokerSnapshot.observed_at.desc(), BrokerSnapshot.id.desc())
+            .limit(1)
+        )
+        if snapshot is None:
+            raise ReconciliationError("reconciliation_snapshot_unavailable")
+        if hashlib.sha256(snapshot.snapshot_json.encode()).hexdigest() != snapshot.digest:
+            raise ReconciliationError("reconciliation_snapshot_integrity_invalid")
+        projection = json.loads(snapshot.snapshot_json)
+        snapshot_id = snapshot.id
+    elif not isinstance(snapshot_id, str) or not snapshot_id:
+        raise ReconciliationError("reconciliation_snapshot_scope_invalid")
     if (
         projection.get("source") != "trading212"
         or projection.get("basis") != "broker_reported"
@@ -51,16 +63,22 @@ def cash_history_request(db, *, account_id):
     scope = {"account_id": account_id, "environment": account.environment}
     cutoff = projection["account_retrieval"]["retrieval_completed_at"]
     instant(cutoff)
-    captures = _bounded(
-        db,
-        select(SourceRecord)
-        .join(ImportRun, SourceRecord.run_id == ImportRun.id)
-        .where(
-            SourceRecord.account_id == account_id,
-            SourceRecord.kind == "trading212_transactions",
-            SourceRecord.schema_version == "trading212_capture_v1",
-            ImportRun.status == "succeeded",
-        ),
+    captures = (
+        _bounded(
+            db,
+            select(SourceRecord)
+            .join(ImportRun, SourceRecord.run_id == ImportRun.id)
+            .where(
+                SourceRecord.account_id == account_id,
+                SourceRecord.kind == "trading212_transactions",
+                SourceRecord.schema_version == "trading212_capture_v1",
+                ImportRun.status == "succeeded",
+            )
+            .order_by(SourceRecord.id),
+            limit=max_observations,
+        )
+        if include_captures
+        else []
     )
     revisions = _bounded(
         db,
@@ -71,9 +89,13 @@ def cash_history_request(db, *, account_id):
             BrokerEventRevision.account_id == account_id,
             BrokerEventRevision.family == "transactions",
             ImportRun.status == "succeeded",
+        )
+        .order_by(
+            BrokerEventRevision.observed_at, BrokerEventRevision.revision, BrokerEventRevision.id
         ),
+        limit=max_observations,
     )
-    if len(captures) + len(revisions) > MAX_OBSERVATIONS:
+    if len(captures) + len(revisions) > max_observations:
         raise ReconciliationError("reconciliation_observation_limit")
     observations = []
 
@@ -135,6 +157,6 @@ def cash_history_request(db, *, account_id):
             in_pies=cash.get("inPies"),
             reserved_for_orders=cash.get("reservedForOrders"),
             at=cutoff,
-            snapshot_id=snapshot.id,
+            snapshot_id=snapshot_id,
         ),
     )

@@ -43,7 +43,9 @@ def metadata_time(payload):
     return instant(payload["retrieved_at"])
 
 
-async def run_sync(binding, *, api_key, api_secret, environment, scheduled=False):
+async def run_sync(
+    binding, *, api_key, api_secret, environment, scheduled=False, reconcile_cash=None
+):
     engine = create_binding_engine(binding, expected_role="meridian_sync_public")
     try:
         with Session(engine) as db:
@@ -64,7 +66,15 @@ async def run_sync(binding, *, api_key, api_secret, environment, scheduled=False
             reserve_request=jobs.reserve,
             observe_response=jobs.observe,
         ) as api:
-            service = BrokerSync(engine, "shared-isa", environment, reference, api, jobs=jobs)
+            service = BrokerSync(
+                engine,
+                "shared-isa",
+                environment,
+                reference,
+                api,
+                jobs=jobs,
+                cash_reconciler=reconcile_cash,
+            )
             state = session_state(engine, "shared-isa", jobs.clock()) if scheduled else "manual"
             result = await service.refresh() if state != "closed" else {"status": "outside_session"}
             if scheduled:

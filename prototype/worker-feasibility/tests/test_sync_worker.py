@@ -152,3 +152,34 @@ class SyncWorkerTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(result["retention"], "deferred")
                 retention.assert_called_once()
                 self.assertEqual(state["retention-not-before"], 4600000)
+
+    async def test_private_rust_binding_is_passed_to_python_job(self):
+        module = self.load_worker()
+        worker = module.BrokerSyncDO()
+        worker.ctx = SimpleNamespace(storage=self.storage())
+        binding = SimpleNamespace(
+            reconcileCash=AsyncMock(return_value='{"method":"synthetic"}')
+        )
+        worker.env = SimpleNamespace(
+            HYPERDRIVE=object(),
+            BROKER_API_KEY="synthetic",
+            BROKER_API_SECRET="synthetic",
+            BROKER_ENVIRONMENT="demo",
+            RECONCILIATION=binding,
+        )
+
+        async def run(_binding, **kwargs):
+            self.assertEqual(
+                await kwargs["reconcile_cash"]("synthetic-input"),
+                '{"method":"synthetic"}',
+            )
+            return {"status": "succeeded"}
+
+        with patch.dict(
+            "sys.modules",
+            {"meridian.security.hosted_sync": SimpleNamespace(run_sync=run)},
+        ):
+            self.assertEqual(
+                (await worker.execute(scheduled=False))["status"], "succeeded"
+            )
+        binding.reconcileCash.assert_awaited_once_with("synthetic-input")

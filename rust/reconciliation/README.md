@@ -131,3 +131,21 @@ and Rust's [wasm32-unknown-unknown target](https://doc.rust-lang.org/rustc/platf
 Next: qualify the private call boundary within the existing application, then
 publish an approved summary with source revision/coverage. Do not expose raw
 history to the BFF or create a public generic reconciliation endpoint.
+
+
+## Application integration
+
+The existing gateway now exports a private named `CashReconciliation` service
+entrypoint; the sync Python DO calls it through a service binding. The gateway
+returns only a whitelisted summary, and Python validates its input revision,
+snapshot identity and coverage before atomic snapshot publication. The browser
+receives approved review counts/states, never raw Rust observations. No formula
+has moved into JavaScript; no schema/grant or fourth Worker is needed.
+
+Runtime preparation deliberately includes only ongoing cash revisions allowed by
+the existing sync RLS. Initial captures remain excluded and visibly flagged; the
+trusted local exporter keeps its broader evidence. Unverified signs and missing
+opening/closing controls mean actual balances stay unreconciled. Limits and private
+transport failures produce explicit unavailable states without replacing broker
+figures. The fixed nonfinancial health self-check is separate from cash evidence.
+Release and exact focused integration checks belong in current status.

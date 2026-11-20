@@ -171,3 +171,33 @@ cash components are retained without choosing or summing a closing total.
 Seven focused Rust tests and four Python bridge tests passed; current status
 records exact commands and the next WASM/runtime integration boundary. No real
 financial inputs, schema/BFF permissions, deployed source or refresh policy changed.
+
+
+## Private Rust job integration — 20 November 2026
+
+The Python refresh prepares cash evidence for the current pending broker snapshot
+and calls the gateway's named `CashReconciliation` entrypoint through the sync
+Worker's `RECONCILIATION` service binding. The gateway runs the qualified WASM and
+returns a whitelisted summary. Python checks scope/as-of, pending snapshot identity,
+exact input SHA-256, count/coverage shape and absence of invented residuals before
+publication. Rust financial rules are unchanged; JavaScript only projects results.
+
+Evidence reads use a short consistent read transaction (Postgres repeatable-read /
+read-only with a two-second statement bound); it closes before the four-second RPC
+window. At most 1,024 observations / 512 KiB are admitted. Excess is unsupported,
+never silently truncated. Final snapshot, broker evidence, audit and job success
+commit together under the existing fenced lease. Rust/transport/validation failure
+publishes an explicit unavailable review alongside valid broker figures; failed
+broker refresh still preserves the prior complete snapshot.
+
+**Runtime coverage:** the existing restricted sync role can read ongoing cash
+revisions, but cannot read initial capture imports. Runtime preparation deliberately
+excludes captures and records `initial_capture=not_included_runtime`; offline trusted
+export retains them. No RLS/grant is expanded. Sign basis remains unverified and
+opening/closing controls remain absent, so this delivery exposes review/coverage,
+not a reconciled cash balance or calculated return. Newly accepted history after a
+snapshot is considered by the next successful refresh.
+
+No new Worker, database table, schema writer, browser request or sync schedule.
+The extra account/cash reads are bounded once per successful refresh; actual query
+usage remains an operational verification item, not a claimed measurement.

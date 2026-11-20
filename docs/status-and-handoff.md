@@ -4,6 +4,41 @@ Reviewed **20 November 2026**. This file is the authoritative implementation sna
 
 ## Current work scope
 
+Private Rust job integration is implemented and ready for release. The existing
+sync DO calls the gateway's named `CashReconciliation` service entrypoint; approved
+review summaries commit with broker snapshots and appear in the existing AXIS view.
+No fourth Worker, schema/migration, grant or extra browser poll. RPC occurs outside
+SQL transactions and cannot replace broker financial figures. Engine/limit/response
+failures produce an unavailable review; failed broker refresh preserves the prior
+complete snapshot. A fixed `/health` readiness header qualifies hosted WASM without
+financial reads. Native/Rust arithmetic is unchanged.
+
+Runtime uses ongoing cash revisions only: fixed-scope sync RLS excludes initial
+captures, which remain available to the offline trusted exporter. Summary coverage
+states this exclusion, unknown lifetime/signs and missing openings. No balances are
+claimed reconciled. Limits stay 1,024 observations / 512 KiB with no truncation.
+See [integration contract](imports-and-reconciliation.md#private-rust-job-integration--20-november-2026).
+
+New focused checks: **13 Python cases passed** for atomic approved publication,
+released transactions before RPC, failure/limit isolation, existing export behavior,
+shared-helper compatibility, the Worker binding callback and bundle allowlist.
+Command: `AXIS_NODE_TEST_BINARY="$PWD/private/dev-tools/node_modules/.bin/node" AXIS_RUST_TEST_BINARY=/private/tmp/meridian-rust-target/debug/axis-reconciliation /private/tmp/meridian-query-venv/bin/python -m pytest -q -p no:cacheprovider backend/tests/test_cash_publication.py backend/tests/test_cash_history.py backend/tests/test_history_reconciliation.py::test_scope_missing_snapshot_and_observation_limit_fail_closed prototype/worker-feasibility/tests/test_sync_worker.py::SyncWorkerTests::test_private_rust_binding_is_passed_to_python_job prototype/worker-feasibility/tests/test_application_bundle.py`.
+**3 Node cases passed** using `private/dev-tools/node_modules/.bin/node --test --test-name-pattern='Cloudflare local|approved Rust|Rust service' prototype/worker-feasibility/tests/test_cash_wasm.mjs prototype/worker-feasibility/tests/test_snapshot_ui.mjs prototype/worker-feasibility/tests/test_session_gateway.mjs`.
+These include actual local workerd RPC, foreign-scope rejection, whitelisted output,
+public-route denial and review rendering. Targeted backend Ruff/format passed;
+prototype Python passed E/F/I/UP/B at the existing 100-column scope. Broader prototype
+lint reports pre-existing blind-exception/nested-with style; no unrelated cleanup.
+Earlier native seven Rust/four bridge and WASM evidence were reused. No full suite,
+CI matrix, retention test, sizing or repeated live probe was run.
+
+Release pending: deploy gateway named entrypoint **before** the sync binding, then
+preserve existing secrets/Hyperdrive/ten-minute Cron and check exact assets plus the
+nonfinancial WASM health header. Existing authority covers deployment; no new
+permission is needed. Actual broker-history publication and maximum hosted workload
+remain to be verified separately and boundedly.
+
+## Prior WASM qualification
+
 **WASM qualification completed, 20 November:** the existing Rust cash core now
 builds for `wasm32-unknown-unknown` with generated, locked wasm-bindgen 0.2.130
 bindings and a private JavaScript Worker adapter. The exact-decimal financial core

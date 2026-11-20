@@ -13,6 +13,7 @@ from meridian.adapters.broker_evidence import EvidenceError, canonical, identifi
 from meridian.adapters.trading212 import PREFIX, BrokerError
 from meridian.application.broker_jobs import BrokerJobs
 from meridian.application.broker_snapshot import broker_snapshot
+from meridian.application.cash_reconciliation import prepare_cash_summary
 from meridian.application.snapshot_publish import publish_snapshot
 from meridian.persistence.models import (
     Account,
@@ -54,10 +55,21 @@ def source_record(account_id, run_id, number, kind, payload):
 
 
 class BrokerSync:
-    def __init__(self, engine, account_id, environment, expected_reference, api, *, jobs=None):
+    def __init__(
+        self,
+        engine,
+        account_id,
+        environment,
+        expected_reference,
+        api,
+        *,
+        jobs=None,
+        cash_reconciler=None,
+    ):
         self.engine, self.account_id = engine, account_id
         self.environment, self.reference, self.api = environment, expected_reference, api
         self.jobs = jobs or BrokerJobs(engine, account_id)
+        self.cash_reconciler = cash_reconciler
         if api.environment != environment:
             raise BrokerError("account_identity_mismatch")
         with Session(engine) as db:
@@ -148,7 +160,15 @@ class BrokerSync:
             evidence = validate_refresh(canonical(document).encode())
             if evidence.broker_reference != self.reference:
                 raise BrokerError("account_identity_mismatch")
-            broker_snapshot(evidence)
+            projection = broker_snapshot(evidence)
+            snapshot_id = uuid4().hex
+            reconciliation = await prepare_cash_summary(
+                self.engine,
+                account_id=self.account_id,
+                projection=projection,
+                snapshot_id=snapshot_id,
+                reconcile=self.cash_reconciler,
+            )
             with Session(self.engine) as db, db.begin():
                 job = self.jobs.owned(db, task, token)
                 self.scope(db)
@@ -165,6 +185,8 @@ class BrokerSync:
                     evidence=evidence,
                     now=self.jobs.clock(),
                     actor="broker-sync",
+                    snapshot_id=snapshot_id,
+                    reconciliation=reconciliation,
                 )
                 self.jobs.succeed(job, interval=600)
             return {"status": "succeeded"}

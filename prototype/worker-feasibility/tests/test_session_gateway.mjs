@@ -217,3 +217,11 @@ test('production template schedules only one refresh per ten-minute slot',()=>{
  const config=JSON.parse(fs.readFileSync(new URL('../wrangler.session-gateway.template.json',import.meta.url),'utf8'));
  assert.deepEqual(config.triggers.crons,['*/10 * * * *']);
 });
+
+test('Rust service methods have no public HTTP route',async()=>{
+ const state=setup();
+ for(const route of ['/reconcileCash','/api/v1/reconciliation','/qualify-rpc']){
+  assert.equal((await gateway.fetch(request(route,{method:'GET'}),state.env)).status,404);
+ }
+ assert.equal(state.requests.length,0);
+});

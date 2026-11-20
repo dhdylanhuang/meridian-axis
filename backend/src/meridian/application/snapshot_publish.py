@@ -15,7 +15,17 @@ from meridian.application.snapshot_access import MAX_SNAPSHOT_BYTES
 from meridian.persistence.models import Account, AuditRecord, BrokerSnapshot, ImportRun
 
 
-def publish_snapshot(db, *, account_id, run_id, evidence, now=None, actor="administration"):
+def publish_snapshot(
+    db,
+    *,
+    account_id,
+    run_id,
+    evidence,
+    now=None,
+    actor="administration",
+    snapshot_id=None,
+    reconciliation=None,
+):
     now = now or datetime.now(UTC)
     account = db.get(Account, account_id)
     run = db.get(ImportRun, run_id)
@@ -47,19 +57,23 @@ def publish_snapshot(db, *, account_id, run_id, evidence, now=None, actor="admin
         .order_by(BrokerSnapshot.observed_at.desc(), BrokerSnapshot.id.desc())
         .limit(1)
     )
-    payload = canonical(
-        broker_snapshot(
-            evidence,
-            metadata={"source_id": metadata.id, "payload": json.loads(metadata.payload_json)}
-            if metadata
-            else None,
-            previous=json.loads(previous.snapshot_json) if previous else None,
-        )
+    projection = broker_snapshot(
+        evidence,
+        metadata={"source_id": metadata.id, "payload": json.loads(metadata.payload_json)}
+        if metadata
+        else None,
+        previous=json.loads(previous.snapshot_json) if previous else None,
     )
+    snapshot_id = snapshot_id or uuid4().hex
+    if reconciliation is not None:
+        if reconciliation.get("source_snapshot_id") != snapshot_id:
+            raise ValueError("reconciliation_snapshot_mismatch")
+        projection["cash_reconciliation"] = reconciliation
+    payload = canonical(projection)
     if len(payload.encode()) > MAX_SNAPSHOT_BYTES:
         raise ValueError("snapshot_size_limit")
     snapshot = BrokerSnapshot(
-        id=uuid4().hex,
+        id=snapshot_id,
         account_id=account_id,
         source_run_id=run_id,
         observed_at=observed,

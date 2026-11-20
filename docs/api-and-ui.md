@@ -131,3 +131,19 @@ are observed position-set changes, not order/fill confirmations, and can age out
 of the latest view on the next refresh; immutable evidence/history retains its
 existing retention policy. Newly fetched metadata appears in the next successful
 snapshot. Old saved snapshots without these fields remain readable.
+
+
+### Approved Rust cash review — 20 November 2026
+
+`cash_reconciliation` is an optional approved snapshot summary: method,
+availability/reason, cash as-of, source snapshot ID, input revision, event/observation
+counts, review-state counts, per-currency insufficient-control states, warnings and
+coverage. Raw observations, references, amounts, evidence payloads and private scope
+are not returned by this projection. The BFF keeps its existing snapshot-only grant.
+The private WASM entrypoint is a named service binding, not a public HTTP route.
+
+The existing AXIS view shows a cash-history review panel. Provider signs/openings
+are unverified; it explicitly says balances are not reconciled. Failed/unsupported
+review leaves broker figures available. Older snapshots/pages remain compatible.
+`/health` retains ordinary liveness and adds a fixed synthetic WASM readiness header
+(`X-Meridian-Reconciliation`); this reads no financial data and accepts no input.

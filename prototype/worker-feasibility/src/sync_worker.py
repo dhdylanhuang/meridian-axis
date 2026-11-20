@@ -2,6 +2,7 @@
 
 import asyncio
 import time
+
 from workers import DurableObject, Response, WorkerEntrypoint
 
 _LOCK = asyncio.Lock()
@@ -62,12 +63,18 @@ class BrokerSyncDO(DurableObject):
             try:
                 from meridian.security.hosted_sync import run_sync
 
+                binding = getattr(self.env, "RECONCILIATION", None)
+
+                async def reconcile_cash(encoded):
+                    return str(await binding.reconcileCash(encoded))
+
                 result = await run_sync(
                     self.env.HYPERDRIVE,
                     api_key=self.env.BROKER_API_KEY,
                     api_secret=self.env.BROKER_API_SECRET,
                     environment=self.env.BROKER_ENVIRONMENT,
                     scheduled=scheduled,
+                    reconcile_cash=reconcile_cash if binding else None,
                 )
             except Exception:
                 result = {"status": "unavailable"}

@@ -107,3 +107,11 @@ test('new-holding notice and metadata limitations render through the existing sn
  assert.equal(ui.el('holdings-body').children[0].children[2].textContent,'12.34 USD');
  ui.view.clear();assert.equal(ui.el('snapshot-status').textContent,'');
 });
+
+test('approved Rust review shows incomplete cash coverage and clears private state',async()=>{
+ const data=snapshot();data.cash_reconciliation={availability:'provisional',event_count:3,review_counts:{unverified_sign_review:3}};
+ const ui=setup(async()=>({ok:true,status:200,json:async()=>data}));await ui.view.load();
+ assert.match(ui.el('cash-reconciliation').textContent,/3 events; 3 require review/);
+ assert.match(ui.el('cash-reconciliation').textContent,/Balances are not reconciled/);
+ ui.view.clear();assert.equal(ui.el('cash-reconciliation').textContent,'—');
+});

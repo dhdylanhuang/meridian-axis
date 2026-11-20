@@ -5,5 +5,7 @@
   "compatibility_date": "2026-11-11",
   "workers_dev": false,
   "preview_urls": false,
-  "send_metrics": false
+  "send_metrics": false,
+  "vars": {"RECONCILIATION_ENVIRONMENT":"demo"},
+  "services": [{"binding":"RECONCILIATION","service":"meridian-axis-reconciliation-local","entrypoint":"CashReconciliation"}]
 }

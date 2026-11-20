@@ -138,3 +138,13 @@ Supabase Free lacks automatic database backups. A production gate must prove pri
 The former recommendation to keep production SQLite until scaling pressure is **superseded by the owner's hosted-platform decision**, rather than by an observed SQLite performance failure. Tailscale/Cloudflare Tunnel remain documented historical alternatives, not the selected hosted topology.
 
 Sources: [Cloudflare FastAPI](https://developers.cloudflare.com/workers/languages/python/packages/fastapi/), [Python Hyperdrive and SQLAlchemy limits](https://developers.cloudflare.com/hyperdrive/examples/python-workers/), [Supabase Cron](https://supabase.com/docs/guides/cron), [Supabase free backup guidance](https://supabase.com/docs/guides/platform/backups). The [hosting review](hosting-options.md) owns dated quota details. Current hosted snapshot/refresh tests are recorded in the authoritative status document. Broader planned workloads retain their own qualification gates.
+
+
+## Private Rust job call
+
+The sync Python Durable Object uses one named service binding back to the existing
+JavaScript gateway's `CashReconciliation` entrypoint. Rust/WASM returns calculation
+results; JavaScript/Python whitelist a small approved summary for the existing
+atomic snapshot publication. No raw history is exposed to the browser/BFF, no
+transaction spans RPC, and no fourth Worker or schema/grant change is introduced.
+The default public gateway routes stay separate from the named RPC entrypoint.

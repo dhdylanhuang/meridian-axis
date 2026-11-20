@@ -58,6 +58,17 @@ test('Cloudflare local workerd executes the same precompiled WASM module', {time
     assert.equal(response.status,200);
     assert.equal(response.headers.get('cache-control'),'no-store');
     assert.deepEqual(await response.json(),{method:'cash_reconciliation_rust_v1',exact_cash_match:true,revisions_counted_once:true,remains_provisional:true});
+    const rpc=await fetch('http://127.0.0.1:8797/qualify-rpc');
+    assert.equal(rpc.status,200);
+    const summary=await rpc.json();
+    assert.equal(summary.method,'cash_reconciliation_rust_v1');
+    assert.equal(summary.event_count,2);
+    assert.equal(summary.observation_count,3);
+    assert.equal(summary.input_revision.length,64);
+    assert.equal(summary.source_snapshot_id,'synthetic-pending-snapshot');
+    assert.equal('records' in summary,false);
+    assert.equal('broker_cash' in summary,false);
+    assert.equal((await fetch('http://127.0.0.1:8797/qualify-foreign')).status,400);
     assert.equal((await fetch('http://127.0.0.1:8797/')).status,404);
   } finally {
     try {process.kill(-child.pid,'SIGTERM');} catch {}

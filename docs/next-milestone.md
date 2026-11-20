@@ -21,15 +21,22 @@ Two parity/bounds cases plus the targeted local-runtime case passed. Native seve
 Rust/four Python results were reused. Inputs over 512 KiB or 1,024 observations are
 rejected, not truncated. No production change or additional hosted Worker.
 
-## Next bounded work
+## Integrated source and release
 
-Qualify the private Python-to-JavaScript invocation within the existing application,
-then publish an approved result summary. The module runs in local workerd; hosted
-CPU/memory and end-to-end persistence/publication remain unverified. Preserve Python ingestion/persistence and the one
-broker snapshot authority; no second sync engine, database grant or general-purpose
-execution endpoint. Publish approved derived summaries, not raw evidence, to the
-private dashboard. Keep verification bounded and record the result, input revision,
-coverage and remaining limitations.
+Python-to-JavaScript service invocation, strict approved projection and atomic
+snapshot publication are implemented. A named entrypoint on the existing gateway
+runs WASM; the sync Worker calls it privately. The AXIS view shows review/coverage
+and explicitly unreconciled cash, with fail-open preservation of broker figures.
+Runtime RLS excludes initial captures; that gap is explicit, with no grant change.
+Thirteen focused Python and three Node/RPC/UI cases passed; current status records
+commands. Reuse prior core/WASM tests. No schema/new Worker/new browser poll.
+
+Next: deploy gateway entrypoint before sync's new service binding, preserve existing
+bindings/Cron, and verify exact assets and the fixed nonfinancial WASM health header.
+Then boundedly verify actual approved summary publication without dumping financial
+rows. Do not repeat prior suites or create a public compute endpoint. Existing
+release authority persists. Full-bound hosted CPU/memory remains an open workload
+gate; failures must leave broker publication available.
 
 Actual cash economics separately require evidence for signed amounts and comparable
 opening/closing controls. Current exports leave these unverified/missing. Dividends,
