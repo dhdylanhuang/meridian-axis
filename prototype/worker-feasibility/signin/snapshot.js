@@ -73,8 +73,8 @@
     const open = add(parent, 'button', 'View transactions'); open.type = 'button';
     const box = add(parent, 'div');
     let loadingPage = false;
-    const version = generation;
     async function page(offset) {
+      const version = generation;
       if (loadingPage) return;
       loadingPage = true; open.disabled = true;
       box.replaceChildren(); add(box,'p','Loading transactions…');
