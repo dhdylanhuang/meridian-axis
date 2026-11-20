@@ -17,6 +17,24 @@ Python integration read of saved broker values, so it uses the existing
 Python session boundary. JavaScript positions pixels and formats exact values.
 Schema 0008 and the existing refresh and retention schedules apply.
 
+Gateway and session owner source `b23acfc` were deployed on 20 November 2026.
+The sync release, protected bindings and ten-minute schedule were verified.
+All four served asset digests matched. The new route returned 401 with
+`no-store` without a session. One bounded live check with a short-lived
+approved session reproduced all 90 UTC date outcomes and exact observed GBP
+amounts and timestamps from retained data. The session was revoked after
+verification. The private runtime holds the release and coverage receipts.
+
+Focused validation on 20 November:
+
+- `pytest -q -p no:cacheprovider backend/tests/test_snapshot_access.py` ran
+  as separate SQLite and disposable loopback PostgreSQL selections, with
+  4 and 5 passes respectively. The tests cover UTC boundaries, deterministic
+  last capture, future exclusion, exact decimals, gaps, integrity and access.
+- `node --test prototype/worker-feasibility/tests/test_{snapshot_ui,session_gateway}.mjs`
+  passed 34 checks. A synthetic headless Chrome smoke check also verified
+  mobile-width layout, canvas rendering and the exact daily table.
+
 
 ## Classification coverage across the held universe
 

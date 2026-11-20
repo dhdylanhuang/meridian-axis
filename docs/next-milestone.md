@@ -18,8 +18,8 @@ bounded gzip binding format, with no paid provider or polling change.
 History shows the last retained Trading 212 snapshot for each of 90 UTC days,
 with exact GBP values, capture times and explicit gaps. Today is in progress.
 The cash, income and funding totals and their transaction drill-down remain
-accessible in the same workspace. Confirm live publication before extending
-the series. See [the history contract](api-and-ui.md#observed-account-history).
+accessible in the same workspace. Live publication has been verified. See
+[the history contract](api-and-ui.md#observed-account-history).
 
 ## Following delivery
 
