@@ -4,7 +4,8 @@ Reviewed **20 November 2026**. This file is the authoritative implementation sna
 
 ## Current work scope
 
-Private Rust job integration is implemented and ready for release. The existing
+Private Rust job integration is **deployed at source `5cc8564`** to the existing
+three Workers. The existing
 sync DO calls the gateway's named `CashReconciliation` service entrypoint; approved
 review summaries commit with broker snapshots and appear in the existing AXIS view.
 No fourth Worker, schema/migration, grant or extra browser poll. RPC occurs outside
@@ -31,11 +32,34 @@ lint reports pre-existing blind-exception/nested-with style; no unrelated cleanu
 Earlier native seven Rust/four bridge and WASM evidence were reused. No full suite,
 CI matrix, retention test, sizing or repeated live probe was run.
 
-Release pending: deploy gateway named entrypoint **before** the sync binding, then
-preserve existing secrets/Hyperdrive/ten-minute Cron and check exact assets plus the
-nonfinancial WASM health header. Existing authority covers deployment; no new
-permission is needed. Actual broker-history publication and maximum hosted workload
-remain to be verified separately and boundedly.
+Release verification: gateway entrypoint deployed before its caller, followed by
+session owner and sync. All three active deployment annotations matched `5cc8564`.
+Existing managed secret/Hyperdrive binding sets and uncached TLS origin profiles
+were preserved. The sync's new private `RECONCILIATION` binding independently matched
+the gateway and `CashReconciliation` entrypoint. Cloudflare still reports exactly
+`*/10 * * * *`. Three static assets matched source bytes with no-store headers;
+`/health` returned the hosted `rust-wasm-ready` header after executing the fixed
+nonfinancial self-check. No schema, credential, workbook or financial-input write.
+Private version/rollback/artifact receipts remain ignored. Existing deployed source
+labels below are current; earlier releases retain their original dated evidence.
+
+Actual publication verified after the next scheduled slot: a narrowly selected
+read returned `cash_reconciliation_rust_v1`, provisional availability, a present
+input revision, matching approved snapshot identity and no refresh error. The
+post-release job-attempt flag was true. This confirms the deployed private Rust
+calculation/projection and atomic approved publication, not verified cash signs or
+reconciled balances. No balances, amounts, references, actual hashes or transaction
+rows were retrieved by the verification query. An earlier read found the old
+snapshot; the post-cycle query needed one schema correction because UTC timestamps
+are stored as TEXT (cast before comparing to timestamptz). No app fix/retest was
+needed. There was no database polling or forced extra broker refresh.
+
+Source `5cc8564` remains deployed; native parity is `0008`. Reload an older open
+client once for the new cash-history review panel. Full-bound hosted CPU/memory,
+password-login recovery, measured automatic cadence intervals and actual query use
+remain unverified; a successful current refresh does not establish those separate
+gates. The next feature boundary is supported sign/opening/closing evidence and
+additional event families, preserving review-only semantics until verified.
 
 ## Prior WASM qualification
 
@@ -207,7 +231,7 @@ Backup failure diagnosis: Docker Desktop was stopped, while formatted `docker in
 
 [Open Meridian](https://meridian-axis-session-gateway.meridian-worker-feasibility.workers.dev/) serves authenticated AXIS and HOLDINGS for two approved identities sharing one GBP Stocks ISA. Both users have equal application permissions. The separate [React preview](https://meridian-axis-preview.meridian-worker-feasibility.workers.dev) contains invented data.
 
-- Session/gateway and sync source are **`e327fc9`**. Supabase native schema parity is **`0008`**, with 12 public tables and RLS enabled. Native GitHub migrations own hosted DDL.
+- Session/gateway and sync source are **`5cc8564`**. Supabase native schema parity is **`0008`**, with 12 public tables and RLS enabled. Native GitHub migrations own hosted DDL.
 - Trading 212 reported account/cash/position figures are authoritative. Exact decimal strings, separate retrieval windows, missing fields and unknown market quote age remain visible. Historical returns are unavailable.
 - Scheduled refresh targets **ten minutes during relevant regular sessions**, per the 19 November owner amendment. Cron dispatch runs in the JavaScript gateway. Python Durable Objects execute bounded work, with PostgreSQL task leases, endpoint reservations and retry state. Unknown schedule coverage permits conservative polling.
 - Manual refresh requires membership, session, Origin and CSRF checks. It queues a durable alarm promptly. Evidence, approved snapshot publication, success health and audit commit together. Failures preserve the last successful snapshot.

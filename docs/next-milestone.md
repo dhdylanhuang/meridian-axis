@@ -31,12 +31,19 @@ Runtime RLS excludes initial captures; that gap is explicit, with no grant chang
 Thirteen focused Python and three Node/RPC/UI cases passed; current status records
 commands. Reuse prior core/WASM tests. No schema/new Worker/new browser poll.
 
-Next: deploy gateway entrypoint before sync's new service binding, preserve existing
-bindings/Cron, and verify exact assets and the fixed nonfinancial WASM health header.
-Then boundedly verify actual approved summary publication without dumping financial
-rows. Do not repeat prior suites or create a public compute endpoint. Existing
-release authority persists. Full-bound hosted CPU/memory remains an open workload
-gate; failures must leave broker publication available.
+Source `5cc8564` is deployed to all three existing Workers. Active source tags,
+private binding target, preserved secret/Hyperdrive bindings, ten-minute schedule,
+exact static assets and the hosted WASM readiness header were verified. No schema
+or credential change. Actual approved publication is verified: the live snapshot has the Rust method,
+provisional state, input revision and matching snapshot identity with no refresh
+error. Current status records the bounded checks; do not restart them.
+Full-bound hosted CPU/memory remains an open workload gate; failures leave broker
+publication available. Do not repeat prior suites or expose a public compute API.
+
+Next useful feature work is verified sign/control evidence for actual cash
+reconciliation, then bounded additional event families. Maintain the private Rust
+call and approved summary boundary; never convert review-only amounts to booked
+cash merely because a provider type looks directional.
 
 Actual cash economics separately require evidence for signed amounts and comparable
 opening/closing controls. Current exports leave these unverified/missing. Dividends,
@@ -46,7 +53,7 @@ module. Do not invent provider signs, corporate-action economics or returns.
 
 ## Preserve
 
-Deployed broker discovery/enrichment source `e327fc9`; schema `0008`; ten-minute
+Deployed application source `5cc8564`; schema `0008`; ten-minute
 refresh and sixty-day detailed retention unchanged. Financial history/daily/latest
 observations stay retained. The manual XLSX archive is complete; do not touch the
 real workbook. Post-reset login/cadence/enrichment/query use remains unverified;
