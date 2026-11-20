@@ -40,10 +40,22 @@ Focused evidence passed using invented positions:
 - Targeted backend Ruff check and format passed. No test matrix, retention run,
   workbook access, sizing query or additional provider integration.
 
-Release is pending gateway then sync, with the session owner left on the
-previous release. Verify actual approved publication from the next successful
-refresh with a single bounded read of dates and agreement flags. Asset and WASM
-health checks alone do not establish financial publication.
+Gateway and sync are **deployed at `fb7cc8f`**. The session owner remains
+at `94042f2`. Gateway was deployed first and the sync consumer second.
+Active annotations, four exact no-store assets, hosted WASM readiness,
+preserved secret/Hyperdrive/private bindings and the ten-minute Cron were
+verified. Native schema remains `0008`.
+
+**Actual approved publication verified** on 20 November at **16:30:30 UTC**
+after the scheduled refresh. One bounded read-only check tied the approved
+generation to the succeeded Trading 212 import and both retrieval cutoffs.
+The broker denominators, position amounts and percentages, rank, measured
+coverage, quote buckets, concentration amounts and independent cash component
+weights agreed with the source or independently recomputed results. Cash
+drill-down was still published and snapshot health reported no error. The
+private receipts contain only release metadata and agreement flags. No real
+financial values or source identifiers were printed. Browser interaction
+was exercised with synthetic data. Reuse this evidence on resume.
 
 ## Completed cash total drill-down delivery
 
@@ -427,7 +439,7 @@ Backup failure diagnosis: Docker Desktop was stopped, while formatted `docker in
 
 [Open Meridian](https://meridian-axis-session-gateway.meridian-worker-feasibility.workers.dev/) serves authenticated AXIS and HOLDINGS for two approved identities sharing one GBP Stocks ISA. Both users have equal application permissions. The separate [React preview](https://meridian-axis-preview.meridian-worker-feasibility.workers.dev) contains invented data.
 
-- Gateway/sync source is **`f93a493`**; session owner remains **`5cc8564`**. Supabase native schema parity is **`0008`**, with 12 public tables and RLS enabled. Native GitHub migrations own hosted DDL.
+- Gateway/sync source is **`fb7cc8f`** and session owner is **`94042f2`**. Supabase native schema parity is **`0008`**, with 12 public tables and RLS enabled. Native GitHub migrations own hosted DDL.
 - Trading 212 reported account/cash/position figures are authoritative. Exact decimal strings, separate retrieval windows, missing fields and unknown market quote age remain visible. Historical returns are unavailable.
 - Scheduled refresh targets **ten minutes during relevant regular sessions**, per the 19 November owner amendment. Cron dispatch runs in the JavaScript gateway. Python Durable Objects execute bounded work, with PostgreSQL task leases, endpoint reservations and retry state. Unknown schedule coverage permits conservative polling.
 - Manual refresh requires membership, session, Origin and CSRF checks. It queues a durable alarm promptly. Evidence, approved snapshot publication, success health and audit commit together. Failures preserve the last successful snapshot.
