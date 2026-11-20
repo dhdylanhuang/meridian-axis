@@ -154,3 +154,16 @@ opening/closing controls mean actual balances stay unreconciled. Limits and priv
 transport failures produce explicit unavailable states without replacing broker
 figures. The fixed nonfinancial health self-check is separate from cash evidence.
 Release and exact focused integration checks belong in current status.
+
+
+## Descriptive income/funding report
+
+Optional `activity_since` requests exact source-reported category totals through
+cutoff, inclusive. `Observation.family` defaults to `transactions`; `dividends`
+has its own reference namespace. Latest selection/conflicts retain all evidence.
+Dividend records are `reported_activity_only` and never contribute cash deltas.
+`reported_activity` groups original signed amounts by currency/category, without
+FX, inferred ledger sign, tax gross/net treatment or allocating current cash to
+past flows. Empty categories are absent, not zero. Runtime uses UTC year to date;
+coverage remains incomplete/unverified. Main dashboard shows monetary amounts;
+the previous cash control window is an optional diagnostic, not feature acceptance.

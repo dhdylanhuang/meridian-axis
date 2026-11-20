@@ -24,6 +24,38 @@
     const formatted = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (fraction === undefined ? '' : '.' + fraction);
     return (negative ? '−' : '') + (currency === 'GBP' ? '£' : '') + formatted + (currency && currency !== 'GBP' ? ' ' + currency : '');
   }
+  function renderCash(data) {
+    const container = el('cash-reconciliation');
+    if (!container) return;
+    container.replaceChildren();
+    const add = (parent, tag, text) => { const node = document.createElement(tag); if (text != null) node.textContent = text; parent.append(node); return node; };
+    const current = add(container, 'dl');
+    for (const [label, key] of [['Cash available to trade now','availableToTrade'],['Cash in pies','inPies'],['Reserved for orders','reservedForOrders']]) {
+      add(current, 'dt', label); add(current, 'dd', decimal(data.cash_components?.[key], data.currency));
+    }
+    add(container, 'p', `Trading 212 cash as of ${data.account_retrieval.retrieval_completed_at}. Components are shown separately.`);
+    const summary = data.cash_reconciliation, activity = summary?.reported_activity;
+    if (!activity) {
+      add(container, 'p', 'Dividend, interest, deposit and withdrawal amounts are not available in this saved snapshot. Cash above is broker-reported; no activity totals have been assumed.');
+      return;
+    }
+    add(container, 'h3', 'Income and funding · year to date');
+    add(container, 'p', `${activity.since.slice(0,10)} to ${activity.cutoff.slice(0,10)} · captured Trading 212 activity. Historical coverage is incomplete/unverified; totals may omit earlier or missing events.`);
+    const currencies = [...new Set([data.currency, ...activity.totals.map(row=>row.currency)])];
+    const labels = [['dividends','Paid dividends & distributions'],['cash_interest','Cash interest'],['deposits','Deposits'],['withdrawals','Withdrawals'],['fees','Fees'],['transfers','Transfers'],['lending_interest','Lending interest']];
+    for (const currency of currencies) {
+      add(container, 'h3', currency);
+      const list = add(container, 'dl');
+      for (const [category, label] of labels) {
+        const row = activity.totals.find(row=>row.currency === currency && row.category === category);
+        add(list, 'dt', label); add(list, 'dd', row ? decimal(row.amount, currency) : 'Not established from captured history');
+      }
+      const other = activity.totals.find(row=>row.currency === currency && row.category === 'other');
+      if (other) { add(list, 'dt', 'Other cash activity · review'); add(list, 'dd', decimal(other.amount, currency)); }
+    }
+    add(container, 'p', 'Activity amounts retain Trading 212 signs and currencies. Dividend figures are reported payouts, without inferred gross/net tax treatment. Income and funding may already have been invested or spent; these totals do not describe the composition of today’s cash.');
+    if (activity.excluded_conflicts) add(container, 'p', `${activity.excluded_conflicts} conflicting records excluded from these totals; review required.`);
+  }
   function compare(a, b) {
     if (a == null) return b == null ? 0 : -1;
     if (b == null) return 1;
@@ -37,7 +69,7 @@
     generation++; controller?.abort(); snapshot = null;
     amounts.forEach(id => el(id).textContent = '—');
     el('holdings-body').replaceChildren(); el('holding-count').textContent = '';
-    if (el('cash-reconciliation')) el('cash-reconciliation').textContent = '—';
+    if (el('cash-reconciliation')) { el('cash-reconciliation').replaceChildren(); el('cash-reconciliation').textContent = '—'; }
     el('snapshot-time').textContent = '—'; el('snapshot-status').textContent = ''; el('refresh-status').textContent = '';
     el('holding-search').value = ''; el('refresh-broker').disabled = false; document.body.classList.remove('snapshot-ready');
   }
@@ -85,22 +117,7 @@
       el('snapshot-status').textContent = additions.length || closures.length ? `Since previous saved snapshot: ${additions.length} holdings added, ${closures.length} no longer held. These are position observations, not execution confirmations.` : '';
       document.body.classList.add('snapshot-ready'); renderHoldings();
       failures = 0; nextRead = Date.now() + READ_COOLDOWN;
-      const cashReview = data.cash_reconciliation;
-      const cashReviewElement = el('cash-reconciliation');
-      if (cashReviewElement) cashReviewElement.textContent = !cashReview ? 'Not available in this saved snapshot.'
-        : cashReview.availability === 'failed' ? 'Cash history review failed. Broker figures remain displayed; balances are not reconciled.'
-        : cashReview.availability === 'unsupported' ? (cashReview.reason === 'history_limit' ? 'Cash history exceeds the bounded review limit. Balances are not reconciled.' : 'Cash history review is unavailable. Balances are not reconciled.')
-        : (() => {
-          const labels = {DEPOSIT:['deposit','deposits'],WITHDRAW:['withdrawal','withdrawals'],FEE:['fee','fees'],TRANSFER:['transfer','transfers'],INTEREST_ON_FREE_CASH:['cash-interest payment','cash-interest payments'],LENDING_INTEREST:['lending-interest payment','lending-interest payments'],OTHER:['other cash event','other cash events']};
-          const activity = Object.entries(labels).filter(([kind])=>cashReview.activity_counts?.[kind] > 0).map(([kind,label])=>`${cashReview.activity_counts[kind]} ${label[cashReview.activity_counts[kind] === 1 ? 0 : 1]}`).join(' · ');
-          const conflicts = cashReview.review_counts?.identity_conflict_review || 0;
-          const unsupported = cashReview.review_counts?.unsupported_type_review || 0;
-          const exceptions = conflicts || unsupported ? `${conflicts} record conflict${conflicts === 1 ? '' : 's'}; ${unsupported} unsupported cash type${unsupported === 1 ? '' : 's'} require investigation.` : 'No record conflicts or unsupported cash types detected by current checks.';
-          const window = cashReview.cash?.find(row=>row.basis === 'broker_available_to_trade');
-          const windowText = window ? ` Available-to-trade cash check (${window.currency}), ${window.window_start} to ${window.cutoff}: opening ${window.opening_balance}; supported movements ${window.known_signed_movements}; expected ${window.replayed_cash}; reported closing ${window.closing_balance}; unexplained difference ${window.unexplained_difference}. ${window.included_movement_count} supported and ${window.excluded_movement_count} excluded cash events in this window. This component check excludes trade/dividend cash and reservation/pie changes; a zero difference does not establish complete reconciliation.` : ' An opening observation is not available for a dated cash check.';
-          const policy = cashReview.cash_sign_policy === 'statement_checked_gbp_v1' ? ' Statement-verified sign rules cover positive GBP cash interest and signed GBP transfers only.' : ' Cash-sign conventions remain unverified.';
-          return `${cashReview.event_count} cash events captured. ${activity ? activity + '. ' : 'Activity breakdown will appear after the next successful broker refresh. '}${exceptions}${policy}${windowText} Full cash balances are not reconciled.`;
-        })();
+      renderCash(data);
       health(data.refresh_health);
     } catch (error) {
       if (version === generation && error.name !== 'AbortError') {

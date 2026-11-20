@@ -32,6 +32,7 @@ Baseline: 11 November 2026. This register distinguishes explicit owner requireme
 | DC23 | Broker-led automatic holding discovery/enrichment; Trading 212 supplies current prices and broker figures while order execution stays there. Remove duplicate live-pricing/current-account reconstruction from the delivery path; retain historical inputs and derived analytics. | Explicit owner direction, 19 November 2026; [requirements amendment](product-requirements.md#broker-led-monitoring-amendment--19-november-2026) |
 
 | DC24 | Begin transaction/cash reconciliation in Rust as a bounded pure-core experiment; retain Python ingestion/database access and limit validation to changed behavior. | Explicit owner direction, 20 November 2026; [Rust boundary](../rust/reconciliation/README.md) |
+| DC25 | Deliver useful monetary dashboard outcomes: current cash plus dated dividend/interest/deposit/withdrawal amounts. Counts and component-window diagnostics alone are not feature acceptance. Distinguish activity from the composition of current cash and verify approved publication. | Explicit owner direction, 20 November 2026 |
 
 Owner clarification: AXIS remains a unified operating dashboard with the existing shared access model. Separate role-based screens or permissions are not required for the current scope. Future workflow suggestions remain proposals until selected.
 

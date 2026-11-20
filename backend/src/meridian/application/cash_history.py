@@ -30,6 +30,7 @@ def cash_history_request(
     include_captures=True,
     observed_available_cash=False,
     sign_policy=None,
+    reported_activity=False,
 ):
     """Read one consistent caller-owned snapshot; never grant runtime raw access.
 
@@ -82,6 +83,7 @@ def cash_history_request(
         if include_captures
         else []
     )
+    families = ["transactions", "dividends"] if reported_activity else ["transactions"]
     revisions = _bounded(
         db,
         select(BrokerEventRevision)
@@ -89,7 +91,7 @@ def cash_history_request(
         .join(ImportRun, SourceRecord.run_id == ImportRun.id)
         .where(
             BrokerEventRevision.account_id == account_id,
-            BrokerEventRevision.family == "transactions",
+            BrokerEventRevision.family.in_(families),
             ImportRun.status == "succeeded",
         )
         .order_by(
@@ -101,20 +103,32 @@ def cash_history_request(
         raise ReconciliationError("reconciliation_observation_limit")
     observations = []
 
-    def append(raw, source_id, observed_at, revision_id=None, revision=0, digest=None):
+    def append(
+        raw,
+        source_id,
+        observed_at,
+        revision_id=None,
+        revision=0,
+        digest=None,
+        family="transactions",
+    ):
         encoded_digest = hashlib.sha256(canonical(raw).encode()).hexdigest()
         if digest is not None and digest != encoded_digest:
             raise ReconciliationError("reconciliation_revision_integrity_invalid")
-        instant(raw["dateTime"])
+        occurred_at = raw["paidOn"] if family == "dividends" else raw["dateTime"]
+        instant(occurred_at)
         number(raw["amount"])
         observations.append(
             dict(
                 scope=scope,
                 reference=identifier(raw["reference"]),
-                provider_type=identifier(raw["type"]),
+                provider_type=identifier(
+                    raw.get("type", "UNSPECIFIED") if family == "dividends" else raw["type"]
+                ),
                 currency=identifier(raw["currency"]),
                 amount=str(raw["amount"]),
-                occurred_at=raw["dateTime"],
+                occurred_at=occurred_at,
+                **({"family": family} if reported_activity else {}),
                 observed_at=observed_at,
                 source_id=source_id,
                 revision_id=revision_id,
@@ -144,6 +158,7 @@ def cash_history_request(
             revision.id,
             revision.revision,
             revision.digest,
+            family=revision.family,
         )
     cash = projection["cash_components"]
     request = dict(
@@ -163,6 +178,12 @@ def cash_history_request(
         ),
     )
 
+    if reported_activity:
+        request["activity_since"] = (
+            instant(cutoff)
+            .replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            .isoformat()
+        )
     if sign_policy is not None:
         request["cash_sign_policy"] = sign_policy
     if observed_available_cash:

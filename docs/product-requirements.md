@@ -105,3 +105,15 @@ The owner confirms one ISA and defers the tax engine from the initial release. T
 ## Broker figures clarification — 12 November 2026
 
 For the first financial snapshot, use Trading 212 reported account total/cash and per-position value/cost/PnL as authoritative source figures. Do not substitute reconstructed totals. Full ledger reconciliation is not a gate for displaying that broker snapshot. Keep source/as-of labels, exact decimals, missing states, account identity checks, immutable evidence and duplicate/atomicity controls. Calculated performance, risk and other analytics retain separate method/input labels; broker PnL is management reporting and is not HMRC output. See DC21/DC22 and the imports contract.
+
+
+## Meaningful monetary dashboard delivery — 20 November 2026
+
+CONFIRMED owner direction: future deliveries must answer a useful PM/risk/trading/
+treasury question. Event counts and unexplained component windows alone do not
+satisfy dashboard acceptance. The cash view must show cash available now and dated
+monetary dividend payouts, interest, deposits and withdrawals, with fees/transfers
+alongside. Report cash and activity separately: money received may already have
+been invested/spent. State source, currency, period and missing historical coverage;
+never claim those totals partition current cash. Keep technical counts out of the
+main view. Acceptance includes real approved publication, not just static assets.

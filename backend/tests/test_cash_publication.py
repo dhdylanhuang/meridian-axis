@@ -222,6 +222,23 @@ def test_delivery_available_cash_window_and_projection_validation(driver):
         summary = read_snapshot(db, "shared-isa")["cash_reconciliation"]
     assert summary["availability"] == "provisional"
     assert summary["cash_sign_policy"] == "statement_checked_gbp_v1"
+    # The old component check remains an explicit adapter capability, not a runtime query.
+    from meridian.adapters.broker_evidence import canonical
+    from meridian.application.cash_history import cash_history_request
+
+    with Session(service.engine) as db:
+        projection = read_snapshot(db, "shared-isa")
+        request = cash_history_request(
+            db,
+            account_id="shared-isa",
+            projection=projection,
+            snapshot_id="window-control-test",
+            include_captures=False,
+            observed_available_cash=True,
+            sign_policy="statement_checked_gbp_v1",
+        )
+    encoded = canonical(request)
+    summary = approved_summary(asyncio.run(rpc(encoded)), request, encoded)
     window = summary["cash"][0]
     assert window["basis"] == "broker_available_to_trade"
     assert window["opening_source_snapshot_id"] == prior_id
@@ -247,3 +264,52 @@ def test_delivery_available_cash_window_and_projection_validation(driver):
     raw["cash_sign_policy"] = "invented-policy"
     with pytest.raises(ValueError):
         approved_summary(json.dumps(raw), request, captured["encoded"])
+
+
+@pytest.mark.skipif(not os.environ.get("AXIS_NODE_TEST_BINARY"), reason="qualified WASM required")
+def test_funding_totals_publish_dividends_and_cash_without_source_rows(driver):
+    from meridian.application.cash_reconciliation import approved_summary
+
+    service, clock = driver
+    service.api.pages = [(service.api.rows["dividends"]["records"], None)]
+    assert asyncio.run(service.history_page("dividends"))["status"] == "succeeded"
+    captured = {}
+
+    async def rpc(encoded):
+        script = (
+            Path(__file__).resolve().parents[2]
+            / "prototype/worker-feasibility/tests/cash_summary_cli.mjs"
+        )
+        raw = subprocess.run(
+            [os.environ["AXIS_NODE_TEST_BINARY"], str(script)],
+            input=encoded,
+            text=True,
+            capture_output=True,
+            timeout=5,
+            check=True,
+        ).stdout
+        captured.update(encoded=encoded, raw=raw)
+        return raw
+
+    service.cash_reconciler = rpc
+    assert asyncio.run(service.refresh())["status"] == "succeeded"
+    with Session(service.engine) as db:
+        summary = read_snapshot(db, "shared-isa")["cash_reconciliation"]
+    assert summary["event_count"] == 2  # equal references in different source families
+    assert summary["coverage"]["families"] == ["cash_transactions", "paid_dividends"]
+    activity = summary["reported_activity"]
+    assert activity["since"] == "2026-01-01T00:00:00+00:00"
+    assert {(r["category"], r["amount"]) for r in activity["totals"]} == {
+        ("withdrawals", "-0.1"),
+        ("dividends", "0.0123456789012345678901"),
+    }
+    assert all(row["unexplained_difference"] is None for row in summary["cash"])
+    request = json.loads(captured["encoded"])
+    assert request["opening_cash"] == []
+    assert {r["family"] for r in request["observations"]} == {"transactions", "dividends"}
+    assert "shared-ref" not in json.dumps(summary)
+    for category, amount in [("unapproved", "1"), ("dividends", 1), ("dividends", "NaN")]:
+        wrong = json.loads(captured["raw"])
+        wrong["reported_activity"]["totals"][0].update(category=category, amount=amount)
+        with pytest.raises(ValueError):
+            approved_summary(json.dumps(wrong), request, captured["encoded"])

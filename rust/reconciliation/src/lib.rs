@@ -35,6 +35,8 @@ pub enum SignBasis {
 #[serde(deny_unknown_fields)]
 pub struct Observation {
     pub scope: Scope,
+    #[serde(default = "cash_family")]
+    pub family: String,
     pub reference: String,
     pub provider_type: String,
     pub currency: String,
@@ -96,6 +98,8 @@ pub struct Request {
     pub broker_cash: Option<BrokerCash>,
     #[serde(default)]
     pub cash_sign_policy: Option<CashSignPolicy>,
+    #[serde(default)]
+    pub activity_since: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -106,10 +110,12 @@ pub enum RecordState {
     UnsupportedTypeReview,
     IdentityConflictReview,
     AfterCutoff,
+    ReportedActivityOnly,
 }
 
 #[derive(Debug, Serialize)]
 pub struct EconomicRecord {
+    pub family: String,
     pub reference: String,
     pub provider_type: String,
     pub currency: String,
@@ -148,6 +154,83 @@ pub struct CashComparison {
     pub excluded_movement_count: Option<usize>,
 }
 
+fn cash_family() -> String {
+    "transactions".to_owned()
+}
+
+#[derive(Debug, Serialize)]
+pub struct ActivityTotal {
+    pub currency: String,
+    pub category: String,
+    pub amount: String,
+    pub event_count: usize,
+}
+#[derive(Debug, Serialize)]
+pub struct ReportedActivity {
+    pub since: String,
+    pub cutoff: String,
+    pub totals: Vec<ActivityTotal>,
+    pub excluded_conflicts: usize,
+}
+
+fn reported_activity(
+    records: &[EconomicRecord],
+    since: &str,
+    cutoff: &str,
+) -> Result<ReportedActivity> {
+    let start = instant(since)?;
+    let end = instant(cutoff)?;
+    if start > end {
+        return Err(Error("balance_cutoff_invalid"));
+    }
+    let mut totals: BTreeMap<(String, String), (BigDecimal, usize)> = BTreeMap::new();
+    let mut excluded = 0;
+    for row in records {
+        let at = instant(&row.occurred_at)?;
+        if at < start || at > end {
+            continue;
+        }
+        if row.state == RecordState::IdentityConflictReview {
+            excluded += 1;
+            continue;
+        }
+        let category = if row.family == "dividends" {
+            "dividends"
+        } else {
+            match row.provider_type.as_str() {
+                "DEPOSIT" => "deposits",
+                "WITHDRAW" => "withdrawals",
+                "FEE" => "fees",
+                "TRANSFER" => "transfers",
+                "INTEREST_ON_FREE_CASH" => "cash_interest",
+                "LENDING_INTEREST" => "lending_interest",
+                _ => "other",
+            }
+        };
+        let value = totals
+            .entry((row.currency.clone(), category.to_owned()))
+            .or_insert((BigDecimal::from(0), 0));
+        value.0 += decimal(&row.reported_amount)?;
+        value.1 += 1;
+    }
+    Ok(ReportedActivity {
+        since: since.to_owned(),
+        cutoff: cutoff.to_owned(),
+        totals: totals
+            .into_iter()
+            .map(
+                |((currency, category), (amount, event_count))| ActivityTotal {
+                    currency,
+                    category,
+                    amount: text(&amount),
+                    event_count,
+                },
+            )
+            .collect(),
+        excluded_conflicts: excluded,
+    })
+}
+
 #[derive(Debug, Serialize)]
 pub struct Report {
     pub method: &'static str,
@@ -159,6 +242,8 @@ pub struct Report {
     pub cash: Vec<CashComparison>,
     pub broker_cash: Option<BrokerCash>,
     pub warnings: BTreeSet<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reported_activity: Option<ReportedActivity>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cash_sign_policy: Option<CashSignPolicy>,
 }
@@ -235,6 +320,9 @@ fn balances<'a>(
 }
 
 fn effective_sign_basis(row: &Observation, request: &Request) -> SignBasis {
+    if row.family == "dividends" {
+        return SignBasis::Unverified;
+    }
     if row.sign_basis != SignBasis::Unverified {
         return row.sign_basis.clone();
     }
@@ -291,9 +379,11 @@ pub fn reconcile(request: Request) -> Result<Report> {
         }
         currencies.insert(broker.currency.clone());
     }
-    let mut grouped: BTreeMap<String, Vec<&Observation>> = BTreeMap::new();
+    let mut grouped: BTreeMap<(String, String), Vec<&Observation>> = BTreeMap::new();
     for row in &request.observations {
-        if row.scope != request.scope {
+        if row.scope != request.scope
+            || !matches!(row.family.as_str(), "transactions" | "dividends")
+        {
             return Err(Error("scope_mismatch"));
         }
         for value in [&row.reference, &row.provider_type, &row.source_id] {
@@ -313,7 +403,10 @@ pub fn reconcile(request: Request) -> Result<Report> {
         instant(&row.occurred_at)?;
         instant(&row.observed_at)?;
         currencies.insert(row.currency.clone());
-        grouped.entry(row.reference.clone()).or_default().push(row);
+        grouped
+            .entry((row.family.clone(), row.reference.clone()))
+            .or_default()
+            .push(row);
     }
     if currencies.len() > 128 {
         return Err(Error("currency_limit"));
@@ -327,7 +420,7 @@ pub fn reconcile(request: Request) -> Result<Report> {
         warnings.insert("broker_cash_components_not_a_comparable_total");
     }
     let mut records = Vec::new();
-    for (reference, mut observations) in grouped {
+    for ((family, reference), mut observations) in grouped {
         // Parsing above validates all timestamps; sort by actual instants, not offset text.
         observations.sort_by_key(|r| {
             (
@@ -354,6 +447,8 @@ pub fn reconcile(request: Request) -> Result<Report> {
             RecordState::IdentityConflictReview
         } else if instant(&current.occurred_at)? > cutoff {
             RecordState::AfterCutoff
+        } else if family == "dividends" {
+            RecordState::ReportedActivityOnly
         } else if !supported(&current.provider_type) {
             RecordState::UnsupportedTypeReview
         } else if matches!(sign_basis, SignBasis::Unverified) {
@@ -377,6 +472,7 @@ pub fn reconcile(request: Request) -> Result<Report> {
             warnings.insert("transfer_boundary_not_classified");
         }
         records.push(EconomicRecord {
+            family,
             reference,
             provider_type: current.provider_type.clone(),
             currency: current.currency.clone(),
@@ -411,7 +507,10 @@ pub fn reconcile(request: Request) -> Result<Report> {
         }
         let mut total = BigDecimal::from(0);
         let (mut included, mut excluded) = (0, 0);
-        for record in records.iter().filter(|r| r.currency == currency) {
+        for record in records
+            .iter()
+            .filter(|r| r.currency == currency && r.family == "transactions")
+        {
             let at = instant(&record.occurred_at).expect("validated");
             let in_window = at <= cutoff
                 && opening
@@ -453,7 +552,13 @@ pub fn reconcile(request: Request) -> Result<Report> {
             excluded_movement_count: available_component.then_some(excluded),
         });
     }
+    let activity = request
+        .activity_since
+        .as_ref()
+        .map(|since| reported_activity(&records, since, &request.cutoff))
+        .transpose()?;
     Ok(Report {
+        reported_activity: activity,
         method: "cash_reconciliation_rust_v1",
         availability: "provisional",
         scope: request.scope,

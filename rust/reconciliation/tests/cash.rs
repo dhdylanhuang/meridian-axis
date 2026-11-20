@@ -280,3 +280,68 @@ fn delivery_observed_available_cash_window_reports_exact_residual_and_exclusions
         .unwrap()
         .contains(&json!("available_cash_component_not_total_cash")));
 }
+
+#[test]
+fn funding_totals_keep_families_currencies_revisions_and_period_separate() {
+    let old = event("same", "1");
+    let mut revised = old.clone();
+    revised["amount"] = json!("10.0000000000000000001");
+    revised["revision"] = json!(1);
+    revised["digest"] = json!("b".repeat(64));
+    let mut dividend = event("same", "0.01234567890123456789");
+    dividend["family"] = json!("dividends");
+    dividend["provider_type"] = json!("ORDINARY");
+    let mut withdrawal = event("withdrawal", "-4");
+    withdrawal["provider_type"] = json!("WITHDRAW");
+    withdrawal["sign_basis"] = json!({"state":"unverified"});
+    let mut interest = event("interest", "0.25");
+    interest["provider_type"] = json!("INTEREST_ON_FREE_CASH");
+    let mut prior_year = event("old", "999");
+    prior_year["occurred_at"] = json!("2025-12-31T23:59:59Z");
+    let mut future = event("future", "888");
+    future["occurred_at"] = json!("2026-01-04T00:00:00Z");
+    let mut usd = event("usd", "7");
+    usd["currency"] = json!("USD");
+    let conflict = event("conflict", "3");
+    let mut other_conflict = conflict.clone();
+    other_conflict["amount"] = json!("5");
+    let mut input = request(vec![
+        old,
+        revised.clone(),
+        revised,
+        dividend,
+        withdrawal,
+        interest,
+        prior_year,
+        future,
+        usd,
+        conflict,
+        other_conflict,
+    ]);
+    input["activity_since"] = json!("2026-01-01T00:00:00Z");
+    let result = report(input);
+    let totals = result["reported_activity"]["totals"].as_array().unwrap();
+    let amount = |currency: &str, category: &str| {
+        totals
+            .iter()
+            .find(|r| r["currency"] == currency && r["category"] == category)
+            .unwrap()
+    };
+    assert_eq!(
+        amount("GBP", "deposits")["amount"],
+        "10.0000000000000000001"
+    );
+    assert_eq!(amount("GBP", "deposits")["event_count"], 1);
+    assert_eq!(
+        amount("GBP", "dividends")["amount"],
+        "0.01234567890123456789"
+    );
+    assert_eq!(amount("GBP", "withdrawals")["amount"], "-4");
+    assert_eq!(amount("GBP", "cash_interest")["amount"], "0.25");
+    assert_eq!(amount("USD", "deposits")["amount"], "7");
+    assert_eq!(result["reported_activity"]["excluded_conflicts"], 1);
+    let records = result["records"].as_array().unwrap();
+    let dividend = records.iter().find(|r| r["family"] == "dividends").unwrap();
+    assert!(dividend["cash_delta"].is_null());
+    assert_eq!(dividend["state"], "reported_activity_only");
+}

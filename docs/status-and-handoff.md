@@ -4,6 +4,34 @@ Reviewed **20 November 2026**. This file is the authoritative implementation sna
 
 ## Current work scope
 
+Owner DC25 now requires meaningful monetary dashboard features. The prior cash
+window/count paragraph was rejected as insufficient for use. Current implementation
+replaces it with broker cash now and year-to-date dividend/distribution, interest,
+deposit/withdrawal, fee/transfer/lending totals, separately by currency. Original
+signed amounts are descriptive source totals, not a reconstruction or partition of
+current cash. Runtime stops the opening-control query and includes accepted ongoing
+dividend revisions under existing RLS. Missing categories/coverage stay explicit.
+**Implemented; commit/release and real approved publication verification pending.**
+
+Focused checks passed: one Rust `funding_` case (exact arithmetic, family identity,
+latest revisions/repeated observations, currency/date boundaries/conflicts and no
+dividend cash booking); three Python publication cases (new dividend/cash monetary
+projection with strict amount/category validation, prior component opt-in diagnostic,
+unchanged fail-open/atomic source publication); two Node `funding view` cases (amounts,
+current cash, old summaries, absent categories/coverage, conflict exclusion and clear).
+WASM rebuilt with existing Rust toolchain / wasm-bindgen 0.2.130; artifact 444,470 bytes.
+Targeted Ruff format/check passed. Commands:
+- Scoped Rust toolchain: `cargo test --manifest-path rust/reconciliation/Cargo.toml --locked --quiet --test cash funding_ --jobs 2`.
+- `AXIS_NODE_TEST_BINARY="$PWD/private/dev-tools/node_modules/.bin/node" /private/tmp/meridian-query-venv/bin/python -m pytest -q -p no:cacheprovider backend/tests/test_cash_publication.py::test_funding_totals_publish_dividends_and_cash_without_source_rows backend/tests/test_cash_publication.py::test_delivery_available_cash_window_and_projection_validation backend/tests/test_cash_publication.py::test_wasm_summary_commits_atomically_without_raw_history` → 3 passed.
+- `private/dev-tools/node_modules/.bin/node --test --test-name-pattern='funding view' prototype/worker-feasibility/tests/test_snapshot_ui.mjs` → 2 passed.
+No full suites, CI matrix, prior retention checks, sizing or live financial inputs.
+Reuse passing evidence. Deploy compatible gateway producer then opted-in sync;
+existing session owner unchanged. Verify actual new approved monetary totals after
+an eligible refresh separately from static/health checks, in one bounded metadata
+read with no amounts/identifiers in public output. Do not repeat probes while idle.
+
+## Previous component-window delivery (not monetary dashboard acceptance)
+
 Observed cash component window is **deployed at gateway/sync source `27da2f3`**
 (session owner unchanged at `5cc8564`).
 The private ISA transactions statement independently corroborated account identity

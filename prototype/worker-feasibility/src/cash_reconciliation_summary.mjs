@@ -7,7 +7,7 @@ export async function summarizeCashReport(input, reportJSON, environment) {
   const review_counts = {}, activity_counts = {};
   const cashTypes = new Set(['DEPOSIT','WITHDRAW','FEE','TRANSFER','INTEREST_ON_FREE_CASH','LENDING_INTEREST']);
   for (const row of report.records) {
-    const kind = cashTypes.has(row.provider_type) ? row.provider_type : 'OTHER';
+    const kind = row.family === 'dividends' ? 'DIVIDEND' : cashTypes.has(row.provider_type) ? row.provider_type : 'OTHER';
     activity_counts[kind] = (activity_counts[kind] || 0) + 1;
     if (['unverified_sign_review','identity_conflict_review','unsupported_type_review'].includes(row.state)) {
       review_counts[row.state] = (review_counts[row.state] || 0) + 1;
@@ -28,6 +28,9 @@ export async function summarizeCashReport(input, reportJSON, environment) {
         included_movement_count:row.included_movement_count, excluded_movement_count:row.excluded_movement_count,
       } : {})})),
     ...(report.cash_sign_policy ? {cash_sign_policy:report.cash_sign_policy} : {}),
+    ...(report.reported_activity ? {reported_activity:{since:report.reported_activity.since,
+      cutoff:report.reported_activity.cutoff, excluded_conflicts:report.reported_activity.excluded_conflicts,
+      totals:report.reported_activity.totals.map(row=>({currency:row.currency,category:row.category,amount:row.amount,event_count:row.event_count}))}} : {}),
     warnings:report.warnings,
   });
 }

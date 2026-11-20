@@ -108,33 +108,27 @@ test('new-holding notice and metadata limitations render through the existing sn
  ui.view.clear();assert.equal(ui.el('snapshot-status').textContent,'');
 });
 
-test('approved Rust review shows incomplete cash coverage and clears private state',async()=>{
- const data=snapshot();data.cash_reconciliation={availability:'provisional',event_count:3,review_counts:{unverified_sign_review:3},activity_counts:{DEPOSIT:1,INTEREST_ON_FREE_CASH:2}};
+
+function content(element){return [element.textContent,...element.children.map(content)].join(' ');}
+test('funding view shows monetary categories separately from current cash and clears them',async()=>{
+ const data=snapshot();data.cash_reconciliation={reported_activity:{since:'2026-01-01T00:00:00Z',cutoff:'2026-01-02T12:00:00Z',excluded_conflicts:1,totals:[{category:'dividends',currency:'GBP',amount:'0.01234567890123456789',event_count:1},{category:'cash_interest',currency:'GBP',amount:'0.25',event_count:2},{category:'deposits',currency:'GBP',amount:'100',event_count:1},{category:'withdrawals',currency:'GBP',amount:'-4',event_count:1},{category:'deposits',currency:'USD',amount:'7',event_count:1}]}};
  const ui=setup(async()=>({ok:true,status:200,json:async()=>data}));await ui.view.load();
- assert.match(ui.el('cash-reconciliation').textContent,/3 cash events captured/);
- assert.match(ui.el('cash-reconciliation').textContent,/1 deposit · 2 cash-interest payments/);
- assert.match(ui.el('cash-reconciliation').textContent,/No record conflicts/);
- assert.doesNotMatch(ui.el('cash-reconciliation').textContent,/3 require review/);
- assert.match(ui.el('cash-reconciliation').textContent,/Full cash balances are not reconciled/);
- ui.view.clear();assert.equal(ui.el('cash-reconciliation').textContent,'—');
+ const text=content(ui.el('cash-reconciliation'));
+ assert.match(text,/Cash available to trade now £7/);
+ assert.match(text,/Paid dividends & distributions £0.01234567890123456789/);
+ assert.match(text,/Cash interest £0.25/); assert.match(text,/Deposits £100/);
+ assert.match(text,/Withdrawals −£4/); assert.match(text,/Deposits 7 USD/);
+ assert.match(text,/Fees Not established/);assert.match(text,/Historical coverage is incomplete/);
+ assert.match(text,/do not describe the composition of today’s cash/);
+ assert.match(text,/1 conflicting records excluded/);
+ assert.doesNotMatch(text,/578|cash events captured|unexplained difference/);
+ ui.view.clear();assert.equal(content(ui.el('cash-reconciliation')),'—');
 });
-
-
-test('cash review distinguishes actual exceptions and supports older approved snapshots',async()=>{
- const data=snapshot();data.cash_reconciliation={availability:'provisional',event_count:4,review_counts:{unverified_sign_review:2,identity_conflict_review:1,unsupported_type_review:1}};
+test('funding view retains current cash with an older or unavailable activity snapshot',async()=>{
+ const data=snapshot();data.cash_reconciliation={availability:'provisional',event_count:578,activity_counts:{DEPOSIT:9}};
  const ui=setup(async()=>({ok:true,status:200,json:async()=>data}));await ui.view.load();
- assert.match(ui.el('cash-reconciliation').textContent,/1 record conflict; 1 unsupported cash type require investigation/);
- assert.match(ui.el('cash-reconciliation').textContent,/Activity breakdown will appear/);
- assert.doesNotMatch(ui.el('cash-reconciliation').textContent,/4 require review/);
-});
-
-
-test('delivery cash window shows sourced controls and explicit residual limitations',async()=>{
- const data=snapshot();data.cash_reconciliation={availability:'provisional',event_count:3,review_counts:{},cash_sign_policy:'statement_checked_gbp_v1',cash:[{basis:'broker_available_to_trade',currency:'GBP',window_start:'2026-01-01T00:00:00Z',cutoff:'2026-01-02T00:00:00Z',opening_balance:'10',closing_balance:'7.25',known_signed_movements:'-1.75',replayed_cash:'8.25',unexplained_difference:'-1',included_movement_count:2,excluded_movement_count:1}]};
- const ui=setup(async()=>({ok:true,status:200,json:async()=>data}));await ui.view.load();
- const text=ui.el('cash-reconciliation').textContent;
- assert.match(text,/opening 10; supported movements -1.75; expected 8.25; reported closing 7.25; unexplained difference -1/);
- assert.match(text,/2 supported and 1 excluded/);
- assert.match(text,/zero difference does not establish complete reconciliation/);
- assert.match(text,/positive GBP cash interest and signed GBP transfers only/);
+ const text=content(ui.el('cash-reconciliation'));
+ assert.match(text,/Cash available to trade now £7/);
+ assert.match(text,/amounts are not available in this saved snapshot/);
+ assert.doesNotMatch(text,/578|£0|sign conventions/);
 });

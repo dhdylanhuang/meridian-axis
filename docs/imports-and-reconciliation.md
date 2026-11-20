@@ -232,3 +232,37 @@ No NAV, lifetime cash reconciliation, return, fee/FX or corporate-action booking
 No migration, grant, Worker, browser request or cadence change. Service failure
 continues to preserve successful broker publication. Offline exporter defaults keep
 signs unverified and controls empty unless explicitly opted in by a trusted caller.
+
+
+## Reported income and funding — 20 November 2026
+
+Owner DC25 requires useful monetary amounts rather than the review/window paragraph.
+The hosted adapter opts into `activity_since` at January 1 00:00 UTC of the current
+broker cutoff year. It reads succeeded cash **and dividend** revisions within the
+unchanged shared 1,024-observation / 512 KiB bounds. Initial captures remain excluded
+under existing RLS; coverage is explicitly incomplete/unverified. It no longer asks
+for a prior-day cash control or runs that extra snapshot query in production.
+
+Rust identity now includes source family, preserving original reference/revision/
+digest evidence and preventing a dividend reference from colliding with a cash
+reference. Optional observation `family` defaults to `transactions`; `dividends`
+uses raw `paidOn`, `amount`, `currency` and original type (or explicit UNSPECIFIED).
+The provider documents `amount`/`currency` as account-primary for paid dividends:
+[paid payouts](https://docs.trading212.com/api/historical-events/dividends.md).
+No gross/net tax treatment or corporate-action economics is inferred.
+
+`reported_activity` is a descriptive source report, **not** additional cash booking.
+It sums original signed reported amounts once per latest family/reference, by
+category/currency in `[activity_since, cutoff]`, excluding conflicts. Dividend
+records have `reported_activity_only` state and no cash delta, even with a caller's
+sign claim. Unknown cash types stay separate as other activity. The window/core
+remains available to explicit callers; it no longer drives the main dashboard.
+
+The whitelist returns only dated monetary category totals, counts and excluded-
+conflict count, with existing root snapshot ID/input digest provenance. Python
+checks period/currency/category/decimal-string/count shapes and unique category/
+currency pairs. Browser performs no aggregation or FX. Missing categories are
+unestablished rather than invented zero; existing saved snapshots still display
+current broker cash with an explicit unavailable activity state. Current cash and
+historic income/funding remain separate because receipts may already be spent.
+No schema, grant, Worker, poll, provider request or workbook change.

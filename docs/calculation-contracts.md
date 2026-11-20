@@ -97,3 +97,16 @@ Holding RAG is requested but its score/threshold meaning is OPEN (Q09). Until de
 ## Confirmed drawdown alert defaults
 
 Every group has a configurable default 10% drawdown-from-running-peak alert. The portfolio has a configurable default 2% largest peak-to-trough decline within a rolling two-trading-day window. Both use compatible flow-adjusted wealth and re-arm after the measured condition recovers. The portfolio rule is not a two-day endpoint loss; see [alerts](alerts.md) for ordered observations, window memory and missing-data rules. These defaults do not define a holding RAG score or a tech shock.
+
+
+## Reported cash activity summary
+
+Owner DC25: cash now and historical receipts/withdrawals are distinct quantities.
+For an explicit UTC period, sum latest nonconflicting source amounts once within
+`(account, environment, source family, reference)`, separately by currency/category.
+This descriptive reported total preserves provider signs; it does not establish
+cash ledger economics, external contribution classification, gross/net dividend
+semantics, returns, or what fraction remains in current cash. Missing coverage is
+labelled; a missing category is unestablished rather than a synthetic zero. Rust
+owns exact sums; Python validates and JavaScript displays strings without finance
+arithmetic. Broker cash components stay independent.

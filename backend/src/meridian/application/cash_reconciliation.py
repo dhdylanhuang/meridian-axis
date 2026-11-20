@@ -22,6 +22,7 @@ CASH_TYPES = {
     "INTEREST_ON_FREE_CASH",
     "LENDING_INTEREST",
     "OTHER",
+    "DIVIDEND",
 }
 REVIEW_STATES = {"unverified_sign_review", "identity_conflict_review", "unsupported_type_review"}
 WARNINGS = {
@@ -68,6 +69,62 @@ def _count(value):
     return value
 
 
+ACTIVITY_CATEGORIES = {
+    "deposits",
+    "withdrawals",
+    "fees",
+    "transfers",
+    "cash_interest",
+    "lending_interest",
+    "dividends",
+    "other",
+}
+
+
+def _decimal_text(value):
+    if (
+        not isinstance(value, str)
+        or len(value) > 600
+        or re.fullmatch(r"-?[0-9]+(?:\.[0-9]+)?", value) is None
+    ):
+        raise ValueError("reconciliation_result_invalid")
+
+
+def _reported_activity(result, request, events, currencies):
+    activity = result.get("reported_activity")
+    if "activity_since" not in request:
+        if activity is not None:
+            raise ValueError("reconciliation_result_invalid")
+        return {}
+    if (
+        not isinstance(activity, dict)
+        or set(activity) != {"since", "cutoff", "totals", "excluded_conflicts"}
+        or activity["since"] != request["activity_since"]
+        or activity["cutoff"] != request["cutoff"]
+        or not isinstance(activity["totals"], list)
+        or len(activity["totals"]) > 128 * len(ACTIVITY_CATEGORIES)
+    ):
+        raise ValueError("reconciliation_result_invalid")
+    keys = set()
+    counted = _count(activity["excluded_conflicts"])
+    for row in activity["totals"]:
+        if (
+            not isinstance(row, dict)
+            or set(row) != {"currency", "category", "amount", "event_count"}
+            or row["currency"] not in currencies
+            or row["category"] not in ACTIVITY_CATEGORIES
+            or (row["currency"], row["category"]) in keys
+            or _count(row["event_count"]) == 0
+        ):
+            raise ValueError("reconciliation_result_invalid")
+        keys.add((row["currency"], row["category"]))
+        _decimal_text(row["amount"])
+        counted += row["event_count"]
+    if counted > events:
+        raise ValueError("reconciliation_result_invalid")
+    return {"reported_activity": activity}
+
+
 def approved_summary(raw, request, encoded):
     if not isinstance(raw, str) or len(raw.encode()) > 16 * 1024:
         raise ValueError("reconciliation_result_invalid")
@@ -87,7 +144,9 @@ def approved_summary(raw, request, encoded):
     }
     if (
         not isinstance(result, dict)
-        or not expected <= set(result) <= expected | {"activity_counts", "cash_sign_policy"}
+        or not expected
+        <= set(result)
+        <= expected | {"activity_counts", "cash_sign_policy", "reported_activity"}
         or (
             result["method"] != METHOD
             or result["scope"] != request["scope"]
@@ -176,12 +235,16 @@ def approved_summary(raw, request, encoded):
                 or re.fullmatch(r"-?[0-9]+(?:\.[0-9]+)?", value) is None
             ):
                 raise ValueError("reconciliation_result_invalid")
+    reported = _reported_activity(result, request, events, currencies)
     coverage = dict(COVERAGE)
+    if reported:
+        coverage["families"] = ["cash_transactions", "paid_dividends"]
     if controls:
         coverage["opening_cash"] = "observed_available_to_trade_component"
     if request.get("cash_sign_policy"):
         coverage["signs"] = "statement_checked_gbp_interest_and_transfers_only"
     return {key: result[key] for key in expected - {"scope"}} | {
+        **reported,
         "coverage": coverage,
         "activity_counts": activity,
         **(
@@ -213,7 +276,7 @@ async def prepare_cash_summary(engine, *, account_id, projection, snapshot_id, r
                     snapshot_id=snapshot_id,
                     max_observations=MAX_EVENTS,
                     include_captures=False,
-                    observed_available_cash=True,
+                    reported_activity=True,
                     sign_policy="statement_checked_gbp_v1",
                 )
             connection.rollback()
