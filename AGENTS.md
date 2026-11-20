@@ -8,6 +8,17 @@
 
 Current repository status: authenticated AXIS/HOLDINGS, ten-minute broker refresh and bounded sixty-day detailed-refresh retention are deployed. Native parity is `0008`; gateway source is `5709f30`, session owner/sync are `94042f2`. The cash dashboard shows broker cash now and descriptive year-to-date dividend/interest/deposit/withdrawal amounts, with coverage and separate currencies. Raw event counts and component-window diagnostics no longer drive the main view; the opening-control query is disabled at runtime. Current status owns actual publication verification. Private Rust cash review is deployed through a named gateway service binding and approved snapshots; hosted nonfinancial WASM readiness is verified. Broker-led automatic discovery/enrichment is deployed; exact assets/source tags, preserved bindings and ten-minute schedule were verified without database probes. Daily observed snapshots, latest snapshot and transaction/import/audit history are retained. Post-reset login/automatic cadence and realized query use remain unverified. Trading 212 reported figures stay authoritative; status owns evidence and unresolved gates.
 
+**Current owner direction, 20 November 2026 (DC26/DC27):** defer cash-change
+explanation/reconciliation and holding-quantity reconciliation; the owner considers
+them unnecessary for the dashboard. Use Trading 212 reported positions and cash as
+authoritative. Portfolio exposures/concentration are next, followed by eligible
+historical performance, risk and monitoring. Do not restart reconciliation work
+unless the owner reactivates it. Rust is the default for new AXIS application logic
+going forward, not merely a reconciliation experiment. Preserve working Python/JS
+integration as needed; this does not request a whole-application rewrite. Record
+any necessary non-Rust implementation exception explicitly. This documentation
+amendment does not start feature development or change the deployed application.
+
 **Current delivery:** monetary totals now have on-demand, generation-pinned
 transaction drill-down and completed-broker-history coverage (release evidence in
 current status). A private audit found no retained capture-reference gap; lifetime
@@ -19,7 +30,7 @@ withdrawal amounts; event counts and component-window diagnostics alone do not
 satisfy acceptance. Keep current cash separate from past income/funding, and verify
 real approved publication. Current status owns implementation/release evidence.
 
-**Current owner scope, 20 November 2026:** begin reconciliation in Rust, with Python retaining ingestion/database access. The native cash core/read-only evidence bridge have seven Rust/four Python checks. WASM packaging and local workerd qualification add three focused checks; reuse evidence in current status. Private invocation/approved summary publication is deployed; live provisional summary/input revision/snapshot identity were observed. Full-bound hosted CPU/memory and verified cash economics remain open in current status. No whole-app rewrite or unqualified hosted Rust deployment. Preserve token/test discipline.
+**Prior owner scope, superseded by DC26/DC27:** begin reconciliation in Rust, with Python retaining ingestion/database access. The native cash core/read-only evidence bridge have seven Rust/four Python checks. WASM packaging and local workerd qualification add three focused checks; reuse evidence in current status. Private invocation/approved summary publication is deployed; live provisional summary/input revision/snapshot identity were observed. Full-bound hosted CPU/memory and verified cash economics remain open in current status. No whole-app rewrite or unqualified hosted Rust deployment. Preserve token/test discipline.
 
 **Prior owner scope, 19 November 2026:** manual XLSX archive completed; see `docs/workbook-archive.md`. The dedicated AXIS Archive sheet contains 1,360 broker-refresh generations. Preserve legacy sheets/formulas and never put the workbook, config, previews or real source rows in Git. The reusable stdlib export needs no temporary venv/Docker, and cloud expiry does not wait for manual exports. Retention implementation and separately approved backup repair are complete. Reuse the targeted/CI evidence in current status; no new platform task is activated. Keep changes/output minimal and flag substantial expansion. For `recovery_docker_unavailable`, start existing Docker Desktop and require a nonempty `docker version --format` server version. Formatted `docker info` can misleadingly return zero alongside a daemon connection error; do not repeat sizing/tests, reconfigure sockets or install clients to diagnose that category.
 

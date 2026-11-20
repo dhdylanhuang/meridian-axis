@@ -1,40 +1,52 @@
-# Next delivery: useful cash, income and funding
+# Next delivery: portfolio exposures and concentration in Rust
 
-Reviewed **20 November 2026**. Owner DC25 supersedes acceptance of event counts
-or component windows as useful dashboard deliveries. Trading remains on Trading 212;
-AXIS is one integrated dashboard. Tax remains deferred.
+Reviewed **20 November 2026**. Owner DC26/DC27 supersedes reconciliation-first
+ordering and the description of Rust as only a bounded experiment. This is the next
+implementation brief; the present documentation task does not begin development.
 
-## Current bounded delivery
+## Owner direction
 
-Deployed gateway `5709f30`, session owner/sync `94042f2`. Step 1 adds paginated source-backed transaction drill-downs to every monetary total
-and specific available-broker-history coverage. The private audit found no retained
-capture references missing from revisions, so no blind backfill is required.
-Completed provider traversals and earliest captured dates are shown; account-lifetime
-completeness remains unproven. The 14:10 UTC saved generation verified detail capability and source-backed coverage.
-Current status owns tests, release verification and the browser automation limitation.
+Cash-change explanation/reconciliation and holding-quantity reconciliation are
+deferred because the owner considers them unnecessary for the dashboard. Use
+Trading 212 reported cash, positions, prices and values as authoritative. Keep
+existing ingestion/evidence, revision/duplicate safeguards and cash income/funding
+totals with transaction drill-down. Orders continue to execute on Trading 212.
+AXIS remains one integrated dashboard; tax remains deferred.
 
-Pages are pinned to saved total input hashes/cutoffs, preserve source revisions,
-and load only on demand behind existing member/origin/CSRF guards. The private sync
-role reads accepted evidence, Rust selects exact latest rows, and only the approved
-page is returned. No full-history copies in each snapshot; no new Worker/schema/
-role/poll or broker call. Offline exporter defaults remain unchanged.
+Use Rust as the default for new AXIS application/domain/analytics development going
+forward. Existing Python ingestion/database/session and JavaScript UI/Worker glue
+can remain where needed. This is not a request for a whole-app rewrite. Document
+any necessary non-Rust exception and qualify its actual integration/runtime path.
 
-## Remaining useful deliveries
+## Next useful outcome
 
-1. Step 1 is implemented: source-backed drill-down and available-history evidence.
-   Statement/inception proof remains required before lifetime-complete claims.
-2. Explain changes in cash with verified trade/dividend/fee/FX and reservation/pie
-   effects, comparable controls and a review list of specific unexplained items.
-3. Integrate quantity comparison against Trading 212, showing concrete holding
-   differences and corporate actions needing review without invented economics.
-4. Deliver dated portfolio concentration, risk and treasury metrics only when
-   their inputs meet the corresponding calculation/coverage contract.
+Show where the portfolio is invested and concentrated: holding weights, largest
+positions, available sector/country/currency breakdowns and cash allocation. Use
+dated broker-reported primary-currency values and an explicit compatible denominator;
+never sum overlapping cash components or apply FX twice. Expose unclassified/missing
+coverage rather than inventing classifications. Distinguish listing currency from
+underlying economic currency exposure and ETF look-through. Pure Rust owns derived
+calculations; approved projections supply sourced, dated exact values to the UI.
+Choose a bounded, useful vertical slice from verified current inputs. Cash/quantity
+reconciliation is not a prerequisite for these broker-reported exposure views.
 
-## Preserve
+## Following phases
 
-Schema `0008`, restricted roles/RLS, native migration authority, private Rust service,
-existing three Workers, ten-minute cadence, sixty-day detail retention with daily/
-latest/history/import/audit preservation. No workbook modification/import. No full
-suites/CI matrices/sizing/repeated live probes. Prior source/deployment evidence and
-remaining operational gates (login/cadence/query use, full-bound hosted workload,
-backup recovery) live in current status. Existing release authority persists.
+1. Historical portfolio value/income trends and benchmark comparisons; calculated
+   returns require verified flow/history inputs and methods despite reconciliation
+   being deferred. Do not manufacture openings or gains from deposits.
+2. Risk: drawdown, volatility, correlations and scenarios when daily price/FX and
+   coverage meet calculation contracts.
+3. Monitoring: concentration/exposure thresholds, material changes, stale-data
+   warnings and supported upcoming-event alerts.
+
+## Completed evidence and preservation
+
+Cash drill-down works per owner confirmation. Gateway `5709f30`, session owner/sync
+`94042f2`; current status owns focused tests, deployment and 14:10 publication proof.
+Do not restart that validation. Full account-lifetime completeness remains unproven.
+Schema `0008`, restricted roles/RLS, native migration authority, existing three
+Workers/private Rust service, ten-minute refresh and sixty-day detailed retention
+with daily/latest/history/import/audit preservation remain unchanged. Do not modify
+or re-import the real workbook. No full suites/CI matrices/sizing/repeated live probes.
+Operational capacity/query-use/recovery gates remain separately recorded in status.

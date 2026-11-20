@@ -117,3 +117,21 @@ alongside. Report cash and activity separately: money received may already have
 been invested/spent. State source, currency, period and missing historical coverage;
 never claim those totals partition current cash. Keep technical counts out of the
 main view. Acceptance includes real approved publication, not just static assets.
+
+
+## Exposures first and Rust going forward — 20 November 2026
+
+CONFIRMED owner direction (DC26/DC27): cash-change explanation/reconciliation and
+holding-quantity reconciliation provide no current value to the owner and are
+therefore deferred. They are not gates for broker-reported portfolio exposure
+views. Preserve existing source evidence, revisions, duplicate protection and the
+working monetary totals/drill-down. Trading 212 reported cash and positions remain
+authoritative. Next: exposures/concentration; then eligible historical performance,
+risk and monitoring. Earlier reconciliation-first requirement/stage references
+are subordinate to this amendment; deferred capabilities are not marked complete.
+
+Rust is the default for new AXIS development, beyond the earlier reconciliation
+experiment. Retain necessary working Python/JavaScript integration and explicitly
+document non-Rust exceptions; no whole-app rewrite is requested. Missing history,
+prices/FX or classification still limit outputs. Deferring reconciliation does not
+establish complete lifetime coverage or authorize fabricated calculated returns.

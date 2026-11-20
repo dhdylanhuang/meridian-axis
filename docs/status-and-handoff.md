@@ -4,6 +4,23 @@ Reviewed **20 November 2026**. This file is the authoritative implementation sna
 
 ## Current work scope
 
+**Latest owner amendment (DC26/DC27):** cash-change explanation/reconciliation
+and holding-quantity reconciliation are deferred as unnecessary for the owner's
+current dashboard. Trading 212 reported positions/cash remain authoritative.
+Portfolio exposures/concentration are the next delivery; historical performance,
+risk and monitoring follow subject to their input contracts. Rust is the default
+for new AXIS development going forward, beyond the reconciliation experiment.
+Preserve working Python/JS integration; no full rewrite or additional infrastructure
+is authorized by this documentation amendment. Do not restart reconciliation or
+repeat its passing checks. Existing cash totals/drill-down remain deployed.
+
+The owner reported that the cash drill-down works. This is owner confirmation;
+it does not turn the earlier blocked automated browser check into a passing check.
+This turn changes documentation only: no code, deployment, schema, live probe or
+financial input. Reviewed with `git diff --check`; runtime tests are unnecessary.
+
+## Completed cash total drill-down delivery
+
 Cash total drill-down and specific broker coverage are **deployed**: gateway
 `5709f30`, session owner/sync `94042f2`. Three Worker source annotations, preserved
 secret/Hyperdrive/private bindings, exact no-store assets, WASM readiness and

@@ -4,6 +4,18 @@ Status: **CONFIRMED production platform change, 11 November 2026**. The owner se
 
 **Implemented state, 19 November 2026:** the private two-user AXIS/HOLDINGS application and bounded broker refresh are deployed at native parity `0008`. The BFF reads approved projections and refresh health. A separate restricted writer persists broker evidence and revisions. Ten-minute refresh and bounded sixty-day detailed-observation expiry are deployed, with latest/daily observations and financial history protected. A manual local XLSX archive is implemented. Normalized economics, broader analytics, streaming and full capacity acceptance remain open. [Current status](status-and-handoff.md) owns delivery evidence.
 
+## Rust implementation direction — owner amendment, 20 November 2026
+
+DC27 makes Rust the default for new AXIS development, including application,
+domain and analytics logic. This supersedes the earlier Python-first default for
+new logic and the description of Rust as only a reconciliation experiment. Retain
+working Python ingestion/database/session integration and JavaScript UI/Worker glue
+where needed; document any non-Rust exception. No whole-app rewrite, platform
+migration, new Worker or privilege expansion follows from this instruction.
+Continue pure calculation boundaries, exact decimal JSON, approved publication and
+measured native/WASM/runtime qualification for the actual selected workload.
+DC26 defers cash/holding reconciliation; Trading 212 remains current-data authority.
+
 ## Current-data authority — owner amendment, 19 November 2026
 
 Use one broker snapshot publication path for current holdings, prices, values,

@@ -33,6 +33,9 @@ Baseline: 11 November 2026. This register distinguishes explicit owner requireme
 
 | DC24 | Begin transaction/cash reconciliation in Rust as a bounded pure-core experiment; retain Python ingestion/database access and limit validation to changed behavior. | Explicit owner direction, 20 November 2026; [Rust boundary](../rust/reconciliation/README.md) |
 | DC25 | Deliver useful monetary dashboard outcomes: current cash plus dated dividend/interest/deposit/withdrawal amounts. Counts and component-window diagnostics alone are not feature acceptance. Distinguish activity from the composition of current cash and verify approved publication. | Explicit owner direction, 20 November 2026 |
+| DC26 | Defer cash-change explanation/reconciliation and holding-quantity reconciliation: the owner considers these unnecessary for the dashboard. Use Trading 212 reported cash/positions as authoritative and move next to portfolio exposures/concentration, then eligible performance, risk and monitoring. Existing evidence, duplicate protection and deployed cash totals/drill-down remain. | Explicit owner direction, 20 November 2026; supersedes reconciliation-first delivery ordering |
+| DC27 | Use Rust going forward as the default for new AXIS development, including application/domain/analytics logic. Retain existing working Python/JavaScript integration where needed; no wholesale rewrite is requested. Document necessary non-Rust exceptions. | Explicit owner direction, 20 November 2026; broadens the earlier bounded Rust experiment in DC24 |
+
 
 Owner clarification: AXIS remains a unified operating dashboard with the existing shared access model. Separate role-based screens or permissions are not required for the current scope. Future workflow suggestions remain proposals until selected.
 

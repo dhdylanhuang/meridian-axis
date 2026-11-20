@@ -2,28 +2,28 @@
 
 Status, **13 November 2026:** this document defines the delivery roadmap and acceptance gates. [Current status](status-and-handoff.md) owns completed slices and the latest owner scope. Secure two-user broker views are deployed; the owner changed refresh to ten minutes on 19 November, with deployment evidence in current status. Stage 1 evidence/import slices and parts of Stage 2 are verified. Full economic replay, daily market inputs, analytics and final operational acceptance remain open. Stage 0H retains unresolved capacity and workload gates.
 
-## Active delivery order — owner amendment, 19 November 2026
+## Active delivery order — owner amendment, 20 November 2026
 
-This order supersedes the earlier requirement to build an independent current-price
-and reconstructed live-account valuation pipeline before the dashboard is useful.
-Trading 212 remains the authority for current prices and reported figures; trading
-stays in Trading 212. Stage definitions below retain the analytical acceptance
-contracts, subject to this source/ordering amendment and current status.
+DC26/DC27 supersedes reconciliation-first ordering and the prior Python-first
+implementation default for new application logic. Trading 212 reported current
+cash/positions/prices/values remain authoritative; orders execute there. Rust is
+the default for new AXIS development, with existing Python/JS integration retained
+where necessary and implementation exceptions documented. No wholesale rewrite.
 
-1. Automatic holding discovery/enrichment: reuse successful broker snapshots and
-   the existing metadata job, expose available facts and missing coverage.
-2. Integrated transaction/cash reconciliation: traceable execution, dividend, fee
-   and cash records alongside the authoritative broker snapshot.
-3. Portfolio/risk analytics: allocations and concentration, then narrowly scoped
-   historical daily/benchmark/FX inputs for eligible risk and performance.
-4. Integrated decision dashboard: complete the nine-tab workflows, grouping,
-   stress, persistent alerts, and bounded attribution/projection deliveries.
-5. Operational acceptance: bounded post-reset cadence/query checks, browser checks,
-   measured analytics workload, scheduled backup and current-schema recovery.
+1. Portfolio exposures/concentration: position weights, top holdings, available
+   sector/country/currency breakdowns and cash allocation with explicit coverage.
+2. Historical value/income/performance and benchmarks, only where inputs support
+   the requested calculation. Deferral does not permit invented returns/openings.
+3. Risk: drawdown, volatility, correlations and scenarios using eligible daily data.
+4. Monitoring: exposure thresholds/changes, stale data and supported event alerts.
 
-No separate PM/trader/risk/treasury roles or screens. No duplicate live-quote
-service or current-account valuation engine is required. Historical data,
-reconciliation, analytics and operational gates remain supported work.
+Automatic discovery/enrichment and cash totals/drill-down are already deployed.
+Cash-change explanation/reconciliation and holding-quantity reconciliation are
+**deferred at the owner's direction**, not unfinished prerequisites for exposure
+views. Keep existing immutable evidence, revisions and duplicate controls. Historical
+stage definitions below retain calculation/operational contracts; reconciliation-
+first exit requirements do not override this active scope. Current status owns
+actual verification; next-milestone defines the next bounded delivery.
 
 ## Delivery discipline
 
