@@ -6,10 +6,18 @@ import { syntheticCashRequest } from '../tests/fixtures/cash_wasm.mjs';
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (!['localhost','127.0.0.1'].includes(url.hostname) || !['/qualify','/qualify-rpc','/qualify-foreign','/qualify-details'].includes(url.pathname)) {
+    if (!['localhost','127.0.0.1'].includes(url.hostname) || !['/qualify','/qualify-rpc','/qualify-foreign','/qualify-details','/qualify-exposures'].includes(url.pathname)) {
       return new Response('Not found', {status:404});
     }
     if (request.method !== 'GET') return new Response('Method not allowed', {status:405});
+    if (url.pathname === '/qualify-exposures') {
+      const date = '2026-01-02T13:00:00Z';
+      const input = {snapshot_id:'synthetic-exposures',account_as_of:date,positions_as_of:date,
+        currency:'GBP',portfolio_value:'40',invested_value:'30',cash_components:{availableToTrade:'10'},
+        positions:[{ticker:'ABC',current_value:'30.00000000000000000001',account_currency:'GBP',quote_currency:'USD'}]};
+      return new Response(await env.RECONCILIATION.portfolioExposures(JSON.stringify(input)),
+        {headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
+    }
     if (url.pathname !== '/qualify') {
       const input = syntheticCashRequest();
       const scope = {account_id:url.pathname === '/qualify-foreign' ? 'foreign' : 'shared-isa',environment:'demo'};

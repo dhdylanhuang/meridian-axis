@@ -158,7 +158,10 @@ class SyncWorkerTests(unittest.IsolatedAsyncioTestCase):
         worker = module.BrokerSyncDO()
         worker.ctx = SimpleNamespace(storage=self.storage())
         binding = SimpleNamespace(
-            reconcileCash=AsyncMock(return_value='{"method":"synthetic"}')
+            reconcileCash=AsyncMock(return_value='{"method":"synthetic"}'),
+            portfolioExposures=AsyncMock(
+                return_value='{"method":"broker_exposures_v1"}'
+            ),
         )
         worker.env = SimpleNamespace(
             HYPERDRIVE=object(),
@@ -173,6 +176,10 @@ class SyncWorkerTests(unittest.IsolatedAsyncioTestCase):
                 await kwargs["reconcile_cash"]("synthetic-input"),
                 '{"method":"synthetic"}',
             )
+            self.assertEqual(
+                await kwargs["calculate_exposures"]("synthetic-exposures"),
+                '{"method":"broker_exposures_v1"}',
+            )
             return {"status": "succeeded"}
 
         with patch.dict(
@@ -183,6 +190,7 @@ class SyncWorkerTests(unittest.IsolatedAsyncioTestCase):
                 (await worker.execute(scheduled=False))["status"], "succeeded"
             )
         binding.reconcileCash.assert_awaited_once_with("synthetic-input")
+        binding.portfolioExposures.assert_awaited_once_with("synthetic-exposures")
 
     async def test_activity_page_uses_readonly_service_without_broker_execution(self):
         module = self.load_worker()

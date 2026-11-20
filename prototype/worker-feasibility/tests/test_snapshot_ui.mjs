@@ -166,3 +166,44 @@ test('late activity page cannot repopulate after signout',async()=>{
  ui.view.clear();finish({ok:true,status:200,json:async()=>({entries:[{reference:'should-not-appear'}]})});await pending;
  assert.equal(content(ui.el('cash-reconciliation')),'—');
 });
+
+test('portfolio exposures show exact amounts and filter the existing holdings view', async () => {
+  const data = snapshot();
+  const value = '10.000000000000000000001';
+  data.positions[0].current_value = value;
+  data.positions.push({name:'Missing Wallet',ticker:'MISSING',quantity:'2',instrument_currency:'USD'});
+  const observed = {value,portfolio_pct:'0',invested_pct:'10.1'};
+  const missing = {value:null,portfolio_pct:null,invested_pct:null};
+  data.exposures = {
+    account_as_of:data.account_retrieval.retrieval_completed_at,
+    positions_as_of:data.positions_retrieval.retrieval_completed_at,
+    invested_denominator:'99',portfolio_denominator:data.total_value,
+    observed_holdings:observed,missing_values:1,
+    holdings:[{ticker:'SYNTH',quote_currency:'USD',...observed},{ticker:'MISSING',quote_currency:null,...missing}],
+    quote_currencies:[{quote_currency:'USD',missing_values:0,...observed},{quote_currency:null,missing_values:1,...missing}],
+    concentration:[{top:1,position_count:1,...missing}],
+    cash_component_pct:{availableToTrade:'0',inPies:null,reservedForOrders:null},
+  };
+  const ui = setup(async () => ({ok:true,status:200,json:async()=>data}));
+  await ui.view.load();
+  const section = ui.el('portfolio-exposures');
+  const find = (node, value) => node.textContent === value ? node
+    : node.children.map(child => find(child, value)).find(Boolean);
+  assert.ok(find(section, '£10.000000000000000000001'));
+  assert.ok(find(section, '10.1%'));
+  assert.ok(find(section, 'Largest position'));
+  assert.ok(find(section, 'Unclassified sector'));
+  find(section, 'Unclassified quote currency').listeners.click();
+  assert.equal(ui.el('holdings-panel').hidden,false);
+  assert.equal(ui.el('holdings-body').children.length,1);
+  assert.equal(ui.el('holdings-body').children[0].children[0].textContent,'Missing Wallet');
+  find(section, 'USD').listeners.click();
+  assert.equal(ui.el('holdings-body').children[0].children[5].textContent,'10.1%');
+  find(section, 'Unclassified country').listeners.click();
+  assert.equal(ui.el('holdings-body').children.length,2);
+  ui.el('clear-holding-scope').listeners.click();
+  assert.equal(ui.el('holding-scope').hidden,true);
+  ui.view.clear();
+  assert.equal(section.children.length,0);
+  assert.equal(ui.el('holdings-body').children.length,0);
+});

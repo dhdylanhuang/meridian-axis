@@ -1,6 +1,9 @@
 """Broker-reported snapshot projection: no reconstructed totals or ledger math."""
 
-from meridian.adapters.broker_evidence import BrokerEvidence, instant, number
+import asyncio
+import json
+
+from meridian.adapters.broker_evidence import BrokerEvidence, canonical, instant, number
 
 
 def _amount(value):
@@ -39,6 +42,11 @@ def broker_snapshot(evidence: BrokerEvidence, *, metadata=None, previous=None) -
             listing["currencyCode"],
         ):
             state, listing = "conflict", {}
+        quote_currency_source = None
+        if instrument.get("currency"):
+            quote_currency_source = "position"
+        elif state == "available" and listing.get("currencyCode"):
+            quote_currency_source = "instrument_metadata"
         positions.append(
             {
                 "ticker": instrument["ticker"],
@@ -46,6 +54,7 @@ def broker_snapshot(evidence: BrokerEvidence, *, metadata=None, previous=None) -
                 "instrument_currency": instrument.get("currency") or listing.get("currencyCode"),
                 "isin": instrument.get("isin") or listing.get("isin"),
                 "instrument_type": listing.get("type"),
+                "quote_currency_source": quote_currency_source,
                 "metadata": {
                     "state": state,
                     "source_id": metadata["source_id"] if metadata else None,
@@ -103,3 +112,41 @@ def broker_snapshot(evidence: BrokerEvidence, *, metadata=None, previous=None) -
         "profit_loss_basis": "broker_reported_management_not_tax",
         "snapshot_atomicity": "separate_provider_requests",
     }
+
+
+async def prepare_exposures(projection, snapshot_id, calculate):
+    """Pass only the approved position/control inputs to the private Rust service."""
+    if calculate is None:
+        return None
+    request = {
+        "snapshot_id": snapshot_id,
+        "account_as_of": projection["account_retrieval"]["retrieval_completed_at"],
+        "positions_as_of": projection["positions_retrieval"]["retrieval_completed_at"],
+        "currency": projection["currency"],
+        "portfolio_value": projection["total_value"],
+        "invested_value": projection["investments"]["currentValue"],
+        "cash_components": projection["cash_components"],
+        "positions": [
+            {
+                "ticker": row["ticker"],
+                "current_value": row["current_value"],
+                "account_currency": row["account_currency"],
+                "quote_currency": (
+                    row["instrument_currency"] if row["quote_currency_source"] else None
+                ),
+            }
+            for row in projection["positions"]
+        ],
+    }
+    try:
+        async with asyncio.timeout(5):
+            result = json.loads(await calculate(canonical(request)))
+        if result.get("method") == "broker_exposures_v1" and all(
+            result.get(key) == request[key]
+            for key in ("snapshot_id", "account_as_of", "positions_as_of", "currency")
+        ):
+            return result
+    except Exception:
+        # The Python Worker bridge raises host-specific errors for failed RPCs.
+        pass
+    return {"method": "broker_exposures_v1", "availability": "failed"}

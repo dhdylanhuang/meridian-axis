@@ -70,6 +70,51 @@ Two funds' constituent overlap can use `sum(min(a_k,b_k))` over normalised under
 
 Listing-currency allocation groups current GBP values by listing currency. It does not claim currency hedging or underlying economic exposure. Underlying revenue currency requires dated sourced percentages with coverage; country of listing is not a proxy. A fund's reporting currency is not automatically the listing currency or revenue currency.
 
+### Approved broker snapshot exposure
+
+AXIS uses `broker_exposures_v1`. The position numerator is Trading 212
+`positions[].walletImpact.currentValue` in the snapshot's primary currency.
+The two denominators are the account summary's reported `totalValue` (portfolio)
+and `investments.currentValue` (invested value). Neither is reconstructed. Both
+must be positive for their respective percentages, and portfolio weights require
+a nonnegative investment control no greater than the reported total. Account and
+positions use their own retrieval completion times. The portfolio denominator
+is a broker account control, without an assertion of reconciled NAV.
+
+Rank supported nonnegative position amounts descending, with ticker breaking
+ties. Largest, top five and top ten use the sum of the largest min(k, number of
+positions) values, as money and as a percentage of each eligible denominator.
+These measures are unavailable if any position value is absent or incompatible.
+Individual and bucket percentages use the full broker controls even with
+partial coverage. Known valued holdings and missing values remain visible. A
+bucket with no usable values has no amount. Separate retrievals can produce a
+difference between summed holdings and the reported investment control. Rust
+sums exact decimal amounts and rounds percentages once, half up to two decimal
+places. Amounts and percentages cross WASM and JSON as decimal strings.
+
+Quote-currency buckets use Trading 212 instrument currency from positions, then
+available, nonconflicting held-listing metadata as a fallback. Unclassified
+quote currency is an explicit bucket. Currency buckets represent direct holdings
+by quoted currency, with no underlying currency, geographic or fund look-through
+claim. Current broker enrichment supplies zero sector or country classifications.
+Each of these dimensions shows the full known-valued holdings amount as
+unclassified, with missing values disclosed separately. A dated,
+identifier-keyed issuer-to-sector mapping with a named taxonomy and a dated
+issuer-to-country mapping with a defined country basis are required for direct
+allocations. Fund sector and country exposures require dated constituents and
+weights at a supported coverage level.
+
+Available-to-trade, in-pies and reserved-for-orders cash each use the eligible
+portfolio denominator. Shares are independent and may overlap. Total cash
+allocation requires either an authoritative total cash control or verified
+disjoint components. The approved projection carries the method, snapshot ID,
+both cutoffs, primary currency, control amounts, measured coverage and outputs.
+Older snapshots and compute failures leave broker figures usable.
+
+Sources: [account summary](https://docs.trading212.com/api/accounts/getaccountsummary.md),
+[open positions](https://docs.trading212.com/api/positions/getpositions.md),
+[instrument catalogue](https://docs.trading212.com/api/instruments/instruments.md).
+
 ## Projections
 
 The active model is portfolio-level only. Confirmed planning goal: **£100,000 by 2030**, retaining **30 April 2030** from the original brief. Workbook legacy date: 5 April 2030 and fixed 44 months. Preserve legacy reconciliation in [workbook baseline](workbook-baseline.md); do not create group projection objects to reproduce its interface.

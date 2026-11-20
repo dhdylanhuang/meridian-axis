@@ -12,9 +12,9 @@ from sqlalchemy.orm import Session
 from meridian.adapters.broker_evidence import EvidenceError, canonical, identifier, validate_refresh
 from meridian.adapters.trading212 import PREFIX, BrokerError
 from meridian.application.broker_jobs import BrokerJobs
-from meridian.application.broker_snapshot import broker_snapshot
+from meridian.application.broker_snapshot import broker_snapshot, prepare_exposures
 from meridian.application.cash_reconciliation import prepare_cash_summary
-from meridian.application.snapshot_publish import publish_snapshot
+from meridian.application.snapshot_publish import project_snapshot, publish_snapshot
 from meridian.persistence.models import (
     Account,
     AuditRecord,
@@ -65,11 +65,13 @@ class BrokerSync:
         *,
         jobs=None,
         cash_reconciler=None,
+        exposure_calculator=None,
     ):
         self.engine, self.account_id = engine, account_id
         self.environment, self.reference, self.api = environment, expected_reference, api
         self.jobs = jobs or BrokerJobs(engine, account_id)
         self.cash_reconciler = cash_reconciler
+        self.exposure_calculator = exposure_calculator
         if api.environment != environment:
             raise BrokerError("account_identity_mismatch")
         with Session(engine) as db:
@@ -160,7 +162,11 @@ class BrokerSync:
             evidence = validate_refresh(canonical(document).encode())
             if evidence.broker_reference != self.reference:
                 raise BrokerError("account_identity_mismatch")
-            projection = broker_snapshot(evidence)
+            prepared = None
+            if self.exposure_calculator is not None:
+                with Session(self.engine) as db:
+                    prepared = project_snapshot(db, self.account_id, evidence)
+            projection = prepared if prepared is not None else broker_snapshot(evidence)
             snapshot_id = uuid4().hex
             reconciliation = await prepare_cash_summary(
                 self.engine,
@@ -169,6 +175,7 @@ class BrokerSync:
                 snapshot_id=snapshot_id,
                 reconcile=self.cash_reconciler,
             )
+            exposures = await prepare_exposures(projection, snapshot_id, self.exposure_calculator)
             with Session(self.engine) as db, db.begin():
                 job = self.jobs.owned(db, task, token)
                 self.scope(db)
@@ -187,6 +194,8 @@ class BrokerSync:
                     actor="broker-sync",
                     snapshot_id=snapshot_id,
                     reconciliation=reconciliation,
+                    prepared=prepared,
+                    exposures=exposures,
                 )
                 self.jobs.succeed(job, interval=600)
             return {"status": "succeeded"}

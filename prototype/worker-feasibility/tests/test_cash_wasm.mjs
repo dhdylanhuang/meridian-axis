@@ -77,6 +77,12 @@ test('Cloudflare local workerd executes the same precompiled WASM module', {time
     assert.equal(details.details.entries[0].amount,'2.000000000000000000001');
     assert.equal(details.details.entries[0].revision_id,'revision-1');
     assert.equal('observations' in details,false);assert.equal('evidence' in details.details.entries[0],false);
+    const exposure = await (await fetch('http://127.0.0.1:8797/qualify-exposures')).json();
+    assert.equal(exposure.method,'broker_exposures_v1');
+    assert.equal(exposure.quote_currencies[0].value,'30.00000000000000000001');
+    assert.equal(exposure.holdings[0].portfolio_pct,'75');
+    assert.equal(exposure.holdings[0].invested_pct,'100');
+    assert.equal(exposure.cash_component_pct.availableToTrade,'25');
     assert.equal((await fetch('http://127.0.0.1:8797/qualify-foreign')).status,400);
     assert.equal((await fetch('http://127.0.0.1:8797/')).status,404);
   } finally {

@@ -25,6 +25,8 @@ def publish_snapshot(
     actor="administration",
     snapshot_id=None,
     reconciliation=None,
+    prepared=None,
+    exposures=None,
 ):
     now = now or datetime.now(UTC)
     account = db.get(Account, account_id)
@@ -50,26 +52,18 @@ def publish_snapshot(
     observed = max(
         instant(observations[f]["retrieval_completed_at"]) for f in ("account_summary", "positions")
     )
-    metadata = latest_metadata(db, account_id)
-    previous = db.scalar(
-        select(BrokerSnapshot)
-        .where(BrokerSnapshot.account_id == account_id, BrokerSnapshot.observed_at <= observed)
-        .order_by(BrokerSnapshot.observed_at.desc(), BrokerSnapshot.id.desc())
-        .limit(1)
-    )
-    projection = broker_snapshot(
-        evidence,
-        metadata={"source_id": metadata.id, "payload": json.loads(metadata.payload_json)}
-        if metadata
-        else None,
-        previous=json.loads(previous.snapshot_json) if previous else None,
-    )
+    projection = prepared if prepared is not None else project_snapshot(db, account_id, evidence)
     snapshot_id = snapshot_id or uuid4().hex
     if reconciliation is not None:
         if reconciliation.get("source_snapshot_id") != snapshot_id:
             raise ValueError("reconciliation_snapshot_mismatch")
         projection["cash_reconciliation"] = reconciliation
+    if exposures is not None:
+        projection["exposures"] = exposures
     payload = canonical(projection)
+    if exposures is not None and len(payload.encode()) > MAX_SNAPSHOT_BYTES:
+        projection.pop("exposures")
+        payload = canonical(projection)
     if len(payload.encode()) > MAX_SNAPSHOT_BYTES:
         raise ValueError("snapshot_size_limit")
     snapshot = BrokerSnapshot(
@@ -96,3 +90,24 @@ def publish_snapshot(
     )
     db.flush()
     return snapshot
+
+
+def project_snapshot(db, account_id, evidence):
+    observations = evidence.document["observations"]
+    observed = max(
+        instant(observations[f]["retrieval_completed_at"]) for f in ("account_summary", "positions")
+    )
+    metadata = latest_metadata(db, account_id)
+    previous = db.scalar(
+        select(BrokerSnapshot)
+        .where(BrokerSnapshot.account_id == account_id, BrokerSnapshot.observed_at <= observed)
+        .order_by(BrokerSnapshot.observed_at.desc(), BrokerSnapshot.id.desc())
+        .limit(1)
+    )
+    return broker_snapshot(
+        evidence,
+        metadata={"source_id": metadata.id, "payload": json.loads(metadata.payload_json)}
+        if metadata
+        else None,
+        previous=json.loads(previous.snapshot_json) if previous else None,
+    )

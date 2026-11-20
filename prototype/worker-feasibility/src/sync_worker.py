@@ -122,6 +122,9 @@ class BrokerSyncDO(DurableObject):
                 async def reconcile_cash(encoded):
                     return str(await binding.reconcileCash(encoded))
 
+                async def calculate_exposures(encoded):
+                    return str(await binding.portfolioExposures(encoded))
+
                 result = await run_sync(
                     self.env.HYPERDRIVE,
                     api_key=self.env.BROKER_API_KEY,
@@ -129,6 +132,7 @@ class BrokerSyncDO(DurableObject):
                     environment=self.env.BROKER_ENVIRONMENT,
                     scheduled=scheduled,
                     reconcile_cash=reconcile_cash if binding else None,
+                    calculate_exposures=calculate_exposures if binding else None,
                 )
             except Exception:
                 result = {"status": "unavailable"}

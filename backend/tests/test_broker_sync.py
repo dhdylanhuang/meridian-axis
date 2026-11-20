@@ -3,8 +3,11 @@
 import asyncio
 import copy
 import json
+import os
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -23,12 +26,13 @@ from meridian.adapters.broker_evidence import (
 )
 from meridian.adapters.trading212 import PREFIX, BrokerError
 from meridian.application.broker_jobs import BrokerJobs, Deferred
-from meridian.application.broker_sync import BrokerSync
+from meridian.application.broker_sync import BrokerSync, source_record
 from meridian.application.snapshot_access import read_snapshot
 from meridian.persistence.database import create_db_engine, upgrade_database
 from meridian.persistence.models import (
     Account,
     BrokerEventRevision,
+    BrokerSnapshot,
     BrokerSyncJob,
     ImportRun,
     SourceRecord,
@@ -526,3 +530,99 @@ def test_ten_minute_cooldown_and_twenty_minute_staleness(setup):
         ]
     clock[0] += timedelta(minutes=1)
     assert jobs.acquire("snapshot") is not None
+
+
+@pytest.mark.skipif(not os.environ.get("AXIS_NODE_TEST_BINARY"), reason="generated WASM required")
+def test_exposures_publish_atomically_and_fail_open(setup):
+    engine, clock, jobs = setup
+    api = API()
+    first = api.rows["positions"]["records"][0]
+    first["instrument"].pop("currency", None)
+    first["walletImpact"] = {"currency": "GBP", "currentValue": "12.000000000000000000001"}
+    ticker = first["instrument"]["ticker"]
+    missing = "SYNTH_MISSING"
+    api.rows["positions"]["records"].append({"instrument": {"ticker": missing}, "quantity": "1"})
+    service = sync(setup, api)
+    with Session(engine) as db, db.begin():
+        run = service.new_run(db, "trading212_metadata")
+        run.status, run.finished_at = "succeeded", clock[0]
+        db.add(
+            source_record(
+                "shared-isa",
+                run.id,
+                1,
+                "trading212_metadata",
+                {
+                    "requested_tickers": [ticker, missing],
+                    "retrieved_at": clock[0].isoformat(),
+                    "instruments": [{"ticker": ticker, "currencyCode": "USD"}],
+                },
+            )
+        )
+
+    active = []
+    event.listen(engine, "begin", lambda connection: active.append(connection))
+    event.listen(engine, "rollback", lambda connection: active.remove(connection))
+    event.listen(engine, "commit", lambda connection: active.remove(connection))
+    wasm = (
+        Path(__file__).resolve().parents[2] / "prototype/worker-feasibility/src/reconciliation_wasm"
+    )
+
+    async def calculate(encoded):
+        assert not active
+        request = json.loads(encoded)
+        assert request["positions"][0]["quote_currency"] == "USD"
+        assert "scope" not in request and "history" not in request
+        result = subprocess.run(
+            [
+                os.environ["AXIS_NODE_TEST_BINARY"],
+                "--input-type=module",
+                "-e",
+                """
+                import fs from 'node:fs';
+                import {initSync, portfolio_exposures_json} from './axis_reconciliation.mjs';
+                const bytes=fs.readFileSync("axis_reconciliation_bg.wasm");
+                initSync({module:new WebAssembly.Module(bytes)});
+                process.stdout.write(portfolio_exposures_json(fs.readFileSync(0,'utf8')));
+            """,
+            ],
+            input=encoded,
+            text=True,
+            capture_output=True,
+            timeout=5,
+            cwd=wasm,
+            check=True,
+        )
+        return result.stdout
+
+    service.exposure_calculator = calculate
+    assert asyncio.run(service.refresh())["status"] == "succeeded"
+    with Session(engine) as db:
+        initial = read_snapshot(db, "shared-isa")
+        report = initial["exposures"]
+        assert report["snapshot_id"] == db.scalar(select(BrokerSnapshot.id))
+        assert report["positions_as_of"] == initial["positions_retrieval"]["retrieval_completed_at"]
+        assert report["holdings"][0]["value"] == "12.000000000000000000001"
+        assert report["missing_values"] == 1
+        assert report["quote_currencies"][0]["quote_currency"] == "USD"
+        assert report["quote_currencies"][1]["quote_currency"] is None
+        assert initial["positions"][0]["quote_currency_source"] == "instrument_metadata"
+
+    async def bad_result(encoded):
+        assert not active
+        return '{"method":"broker_exposures_v1","snapshot_id":"foreign"}'
+
+    clock[0] += timedelta(minutes=10)
+    service.exposure_calculator = bad_result
+    assert asyncio.run(service.refresh())["status"] == "succeeded"
+    with Session(engine) as db:
+        snapshot = read_snapshot(db, "shared-isa")
+        assert snapshot["exposures"]["availability"] == "failed"
+        for key in ("positions", "total_value", "cash_components"):
+            assert initial[key] == snapshot[key]
+
+    clock[0] += timedelta(minutes=10)
+    api.fail_positions = True
+    assert asyncio.run(service.refresh())["status"] == "failed"
+    with Session(engine) as db:
+        assert read_snapshot(db, "shared-isa") == snapshot

@@ -44,7 +44,14 @@ def metadata_time(payload):
 
 
 async def run_sync(
-    binding, *, api_key, api_secret, environment, scheduled=False, reconcile_cash=None
+    binding,
+    *,
+    api_key,
+    api_secret,
+    environment,
+    scheduled=False,
+    reconcile_cash=None,
+    calculate_exposures=None,
 ):
     engine = create_binding_engine(binding, expected_role="meridian_sync_public")
     try:
@@ -74,6 +81,7 @@ async def run_sync(
                 api,
                 jobs=jobs,
                 cash_reconciler=reconcile_cash,
+                exposure_calculator=calculate_exposures,
             )
             state = session_state(engine, "shared-isa", jobs.clock()) if scheduled else "manual"
             result = await service.refresh() if state != "closed" else {"status": "outside_session"}

@@ -135,3 +135,13 @@ experiment. Retain necessary working Python/JavaScript integration and explicitl
 document non-Rust exceptions; no whole-app rewrite is requested. Missing history,
 prices/FX or classification still limit outputs. Deferring reconciliation does not
 establish complete lifetime coverage or authorize fabricated calculated returns.
+
+### Current portfolio exposure delivery
+
+AXIS uses the approved Trading 212 snapshot for position ranks, portfolio and
+invested weights, largest/top-five/top-ten concentration, quote-currency
+allocations, and cash component weights. Holdings supports constituent
+drill-down from the exposure view. Sector and country remain explicitly
+unclassified until a dated issuer mapping is available. Economic currency and
+fund look-through depend on underlying evidence. This delivery advances G03 and
+R04 within [the broker snapshot calculation contract](calculation-contracts.md#approved-broker-snapshot-exposure).

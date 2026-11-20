@@ -2,22 +2,48 @@
 
 Reviewed **20 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
-## Current work scope
+## Portfolio exposure delivery
 
-**Latest owner amendment (DC26/DC27):** cash-change explanation/reconciliation
-and holding-quantity reconciliation are deferred as unnecessary for the owner's
-current dashboard. Trading 212 reported positions/cash remain authoritative.
-Portfolio exposures/concentration are the next delivery; historical performance,
-risk and monitoring follow subject to their input contracts. Rust is the default
-for new AXIS development going forward, beyond the reconciliation experiment.
-Preserve working Python/JS integration; no full rewrite or additional infrastructure
-is authorized by this documentation amendment. Do not restart reconciliation or
-repeat its passing checks. Existing cash totals/drill-down remain deployed.
+The AXIS dashboard adds ranked positions, portfolio and invested weights,
+largest/top-five/top-ten concentration, quote-currency allocations and
+independent cash component weights. Allocation rows open constituent positions
+in Holdings. Sector and country currently show the known value as unclassified
+because the broker metadata supplies neither dimension. See the
+[calculation contract](calculation-contracts.md#approved-broker-snapshot-exposure)
+for the missing classification inputs, coverage and exact methods.
 
-The owner reported that the cash drill-down works. This is owner confirmation;
-it does not turn the earlier blocked automated browser check into a passing check.
-This turn changes documentation only: no code, deployment, schema, live probe or
-financial input. Reviewed with `git diff --check`; runtime tests are unnecessary.
+A new pure Rust calculator runs through the existing private gateway WASM
+binding. Python retains broker ingestion, accepted metadata selection and atomic
+approved snapshot publication. JavaScript retains Worker integration,
+formatting and Holdings interaction. There is no new provider, network route,
+schema migration, access grant or polling loop. Compute failure leaves the
+authoritative broker snapshot publishable. Source values and cash drill-down
+remain intact. Cash-change and quantity reconciliation and tax stay deferred.
+
+Focused evidence passed using invented positions:
+
+- `cargo test --manifest-path rust/reconciliation/Cargo.toml --locked --offline --test exposures --jobs 2`
+  passed three cases covering exact amounts, top-k counts, rounding, missing and
+  incompatible values, denominator guards and independent cash weights.
+- `pytest -q -p no:cacheprovider -m 'not postgres' backend/tests/test_broker_sync.py::test_exposures_publish_atomically_and_fail_open prototype/worker-feasibility/tests/test_sync_worker.py::SyncWorkerTests::test_private_rust_binding_is_passed_to_python_job`
+  passed two cases with generated WASM. Verified existing metadata fallback,
+  snapshot/cutoff pinning, closed DB transaction during RPC, wrong-scope rejection,
+  failed-calculation publication and last-good preservation on broker failure.
+- `node --test --test-name-pattern='portfolio exposures|broker total stays exact|late response cannot repopulate' prototype/worker-feasibility/tests/test_snapshot_ui.mjs`
+  passed three cases covering monetary formatting, constituent filtering,
+  older snapshots and cleared private state. The exposure case passed again
+  after the final accessibility labels and empty-state adjustment.
+- `node --test --test-name-pattern='Cloudflare local' prototype/worker-feasibility/tests/test_cash_wasm.mjs`
+  passed the private-service RPC case with actual workerd and the generated
+  620,487-byte WASM (wasm-bindgen 0.2.130). The local loopback listener needed
+  permission outside the managed sandbox.
+- Targeted backend Ruff check and format passed. No test matrix, retention run,
+  workbook access, sizing query or additional provider integration.
+
+Release is pending gateway then sync, with the session owner left on the
+previous release. Verify actual approved publication from the next successful
+refresh with a single bounded read of dates and agreement flags. Asset and WASM
+health checks alone do not establish financial publication.
 
 ## Completed cash total drill-down delivery
 

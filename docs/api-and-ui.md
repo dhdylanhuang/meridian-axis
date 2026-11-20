@@ -104,6 +104,16 @@ Signed-in content retrieves the approved portfolio snapshot after authorization.
 
 Response fields come from the approved broker-reported projection: source/basis/environment/currency; exact decimal-string total value; reported investments/current value/cost/PnL; separately labelled cash components; holdings with reported quantity, instrument-currency price and account-currency value/cost/PnL; separate account/positions retrieval windows; unknown quote time; unavailable historical returns. Missing fields stay null. No broker account ID, source payloads, provider credentials or session token is returned. Empty storage returns 404 `snapshot_unavailable`; integrity/storage failure fails closed.
 
+Successful exposure calculation adds `exposures` to the same snapshot response.
+It contains the source snapshot identity and dates, both broker controls used as
+denominators, ranked holding weights, quote-currency buckets, coverage,
+concentration and independent cash weights. No new route or request is needed.
+AXIS links each bucket and ranked holding to the same Holdings table with a
+reversible filter. Holdings retains the original broker values alongside its
+two weight columns. Both members use the existing approved snapshot access path.
+Logout clears exposure and drill-down state.
+
+
 AXIS shows reported account figures and HOLDINGS supplies search and exact-decimal sorting. Monetary values are formatted from strings without JavaScript Number coercion. Values are not summed to replace the broker total. The browser retrieves the last successfully published snapshot every ten minutes while visible. Snapshot JSON includes browser-safe `refresh_health`, so the client makes one authenticated request per read. Scheduled jobs refresh Trading 212 separately during relevant sessions. The Reload saved snapshot control reads approved storage with a one-minute browser cooldown, and Refresh Trading 212 queues authenticated broker work with a shared one-minute signal cooldown and the persisted ten-minute snapshot eligibility. Hidden tabs pause polling. Transient failures back off from ten minutes to one hour; failed reads preserve last-good figures. Sign-out, expired sessions and denied reads clear financial DOM/state; in-flight responses cannot repopulate it after clearing. The existing synthetic React preview remains separate.
 
 ## Authenticated broker refresh — 13 November 2026

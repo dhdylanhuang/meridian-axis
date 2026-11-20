@@ -2,7 +2,15 @@
 (() => {
   const el = id => document.getElementById(id);
   let snapshot = null, generation = 0, controller = null;
+  let holdingScope = null;
   const detailControllers = new Set();
+  const add = (parent, tag, text) => {
+    const node = document.createElement(tag);
+    if (text != null) node.textContent = text;
+    parent.append(node);
+    return node;
+  };
+  const when = value => new Date(value).toLocaleString('en-GB',{timeZone:'Europe/London',timeZoneName:'short'});
   function cancelDetails(){ for (const pending of detailControllers) pending.abort(); detailControllers.clear(); }
   let active = false, loading = false, timer = null, failures = 0, nextRead = 0, nextManual = 0;
   const INTERVAL = 600_000, MAX_BACKOFF = 3_600_000, READ_COOLDOWN = 60_000;
@@ -30,7 +38,6 @@
     const container = el('cash-reconciliation');
     if (!container) return;
     container.replaceChildren();
-    const add = (parent, tag, text) => { const node = document.createElement(tag); if (text != null) node.textContent = text; parent.append(node); return node; };
     const current = add(container, 'dl');
     for (const [label, key] of [['Cash available to trade now','availableToTrade'],['Cash in pies','inPies'],['Reserved for orders','reservedForOrders']]) {
       add(current, 'dt', label); add(current, 'dd', decimal(data.cash_components?.[key], data.currency));
@@ -121,6 +128,129 @@
     const [x,y] = parts.map(([whole, fraction='']) => BigInt(whole + fraction.padEnd(scale, '0')));
     return x < y ? -1 : x > y ? 1 : 0;
   }
+  const tabs = [['axis-tab','axis-panel'],['holdings-tab','holdings-panel']];
+  function selectTab(tab) {
+    for (const [other, section] of tabs) {
+      el(other).setAttribute('aria-pressed',String(other === tab));
+      el(section).hidden = other !== tab;
+    }
+  }
+  function showHoldings(scope) {
+    holdingScope = scope;
+    el('holding-search').value = '';
+    el('holding-sort').value = 'value';
+    selectTab('holdings-tab');
+    renderHoldings();
+    (scope ? el('holding-scope') : el('holding-search')).focus?.();
+  }
+  function holdingLink(parent, label, scope) {
+    const button = add(parent, 'button', label);
+    button.type = 'button';
+    button.className = 'holding-link';
+    button.addEventListener('click', () => showHoldings(scope));
+    return button;
+  }
+  function percent(value) {
+    return value == null ? 'Unavailable' : `${decimal(value)}%`;
+  }
+  function exposureTable(parent, columns, label) {
+    const scroll = add(parent, 'div');
+    scroll.className = 'table-scroll';
+    scroll.tabIndex = 0;
+    scroll.setAttribute('aria-label', label);
+    const table = add(scroll, 'table');
+    const header = add(add(table, 'thead'), 'tr');
+    for (const title of columns) add(header, 'th', title).scope = 'col';
+    return add(table, 'tbody');
+  }
+  function exposureCells(row, exposure, currency) {
+    add(row, 'td', decimal(exposure.value, currency));
+    add(row, 'td', percent(exposure.portfolio_pct));
+    add(row, 'td', percent(exposure.invested_pct));
+  }
+  function renderExposures(data) {
+    const section = el('portfolio-exposures');
+    if (!section) return;
+    section.replaceChildren();
+    add(section, 'h2', 'Portfolio exposures');
+    const report = data.exposures;
+    if (!report?.holdings) {
+      add(section, 'p', report?.availability === 'failed'
+        ? 'Exposure calculation was unavailable for this refresh.'
+        : 'This saved snapshot has no exposure calculation. A successful broker refresh can publish one.');
+      return;
+    }
+    const currency = data.currency;
+    const columns = ['Value', '% of portfolio', '% of invested value'];
+    add(section, 'p', `Trading 212 · Holdings captured ${when(report.positions_as_of)}. Account values captured ${when(report.account_as_of)}.`);
+    add(section, 'p', `Portfolio denominator: ${decimal(report.portfolio_denominator, currency)} (broker total value). Invested denominator: ${decimal(report.invested_denominator, currency)} (broker investment value). Weights use account-currency values and may differ from 100% across buckets because the requests are separate and some values may be missing.`);
+    const observed = report.observed_holdings;
+    add(section, 'p', `Holdings with compatible reported values: ${decimal(observed.value, currency)} · ${percent(observed.invested_pct)} of broker investment value.`);
+    if (report.missing_values) add(section, 'p', `${report.missing_values} holdings lack a usable value in ${currency}. Tables show known amounts and weights; the concentration rankings may change once those values are known.`);
+
+    add(section, 'h3', 'Concentration');
+    add(section, 'p', 'Largest position and combined weights of the largest five and ten positions, using fewer if the account holds fewer. Cash is excluded from the ranked positions.');
+    const concentration = exposureTable(section, ['Largest positions', ...columns], 'Concentration measures');
+    for (const measure of report.concentration) {
+      const row = add(concentration, 'tr');
+      const label = measure.top === 1 ? 'Largest position' : `Top ${measure.top}`;
+      add(row, 'td', measure.value == null ? label : `${label} (${measure.position_count} used)`);
+      exposureCells(row, measure, currency);
+    }
+    if (report.missing_values) add(section, 'p', 'Combined concentration weights require a compatible value for every holding.');
+
+    add(section, 'h3', 'Top holdings by reported value');
+    const ranked = report.holdings.filter(row => row.value != null).slice(0, 10);
+    if (ranked.length) {
+      const body = exposureTable(section, ['Holding', ...columns], 'Top holdings');
+      const figures = new Map(data.positions.map(row => [row.ticker, row]));
+      for (const [index, position] of ranked.entries()) {
+        const row = add(body, 'tr'), cell = add(row, 'td');
+        const holding = figures.get(position.ticker);
+        holdingLink(cell, `${index + 1}. ${holding?.name || position.ticker}`,
+          {kind:'ticker', key:position.ticker, label:holding?.name || position.ticker});
+        add(cell, 'small', position.ticker);
+        exposureCells(row, position, currency);
+      }
+    } else add(section, 'p', report.holdings.length
+      ? 'No holding has a compatible value to rank.' : 'Trading 212 reported no open positions.');
+    if (report.holdings.length) holdingLink(section, 'View all holdings', null);
+
+    add(section, 'h3', 'Listing and quote currencies');
+    add(section, 'p', 'Trading 212 position currency, with current broker instrument metadata as a fallback. Values are grouped by trading currency. Economic currency exposure requires underlying issuer or fund data.');
+    if (report.quote_currencies.length) {
+      const body = exposureTable(section, ['Quote currency', ...columns], 'Quote currency allocation');
+      for (const bucket of report.quote_currencies) {
+        const row = add(body, 'tr'), cell = add(row, 'td');
+        const label = bucket.quote_currency || 'Unclassified quote currency';
+        holdingLink(cell, label, {kind:'quote', key:bucket.quote_currency, label});
+        if (bucket.missing_values) add(cell, 'small', `${bucket.missing_values} missing values`);
+        exposureCells(row, bucket, currency);
+      }
+    } else add(section, 'p', 'No holdings to group.');
+
+    add(section, 'h3', 'Sector and country coverage');
+    add(section, 'p', 'Trading 212 positions and instrument metadata supply neither classification. Sector needs a dated issuer-to-sector mapping with a named taxonomy. Country needs a dated issuer-to-country mapping with a defined country basis. Fund look-through requires source-dated constituents and weights.');
+    if (report.holdings.length) {
+      const body = exposureTable(section, ['Classification', ...columns], 'Classification coverage');
+      for (const label of ['Unclassified sector','Unclassified country']) {
+        const row = add(body, 'tr');
+        holdingLink(add(row, 'td'), label, {kind:'unclassified', label});
+        exposureCells(row, observed, currency);
+      }
+      add(section, 'p', `Classifications supplied for 0 of ${report.holdings.length} holdings. The unclassified amounts show the compatible values available above.`);
+    }
+
+    add(section, 'h3', 'Reported cash components');
+    const cash = exposureTable(section, ['Component', 'Value', '% of portfolio'], 'Cash component weights');
+    for (const [key, label] of [['availableToTrade','Available to trade'],['inPies','In pies'],['reservedForOrders','Reserved for orders']]) {
+      const row = add(cash, 'tr');
+      add(row, 'td', label);
+      add(row, 'td', decimal(data.cash_components[key], currency));
+      add(row, 'td', percent(report.cash_component_pct[key]));
+    }
+    add(section, 'p', 'Shares are calculated separately for each component. Total cash allocation is unavailable because the broker field definitions do not establish that the components are disjoint.');
+  }
   function clear() {
     active = false; clearTimeout(timer); failures = 0; nextRead = 0; nextManual = 0;
     generation++; controller?.abort(); cancelDetails(); snapshot = null;
@@ -128,20 +258,45 @@
     el('holdings-body').replaceChildren(); el('holding-count').textContent = '';
     if (el('cash-reconciliation')) { el('cash-reconciliation').replaceChildren(); el('cash-reconciliation').textContent = '—'; }
     el('snapshot-time').textContent = '—'; el('snapshot-status').textContent = ''; el('refresh-status').textContent = '';
+    el('portfolio-exposures')?.replaceChildren();
+    holdingScope = null;
+    el('holding-scope').hidden = true;
+    el('holding-scope').textContent = '';
+    el('clear-holding-scope').hidden = true;
     el('holding-search').value = ''; el('refresh-broker').disabled = false; document.body.classList.remove('snapshot-ready');
   }
   function renderHoldings() {
     const query = el('holding-search').value.trim().toLowerCase();
-    const rows = (snapshot?.positions || []).filter(row => `${row.ticker} ${row.name || ''}`.toLowerCase().includes(query));
-    rows.sort(el('holding-sort').value === 'name' ? (a,b) => (a.name || a.ticker).localeCompare(b.name || b.ticker) : (a,b) => compare(b.current_value,a.current_value));
+    const report = snapshot?.exposures;
+    const weights = new Map((report?.holdings || []).map(row => [row.ticker, row]));
+    const scopeLabel = el('holding-scope');
+    scopeLabel.textContent = holdingScope?.label || '';
+    scopeLabel.hidden = el('clear-holding-scope').hidden = !holdingScope;
+    const inScope = row => {
+      if (holdingScope?.kind === 'ticker') return row.ticker === holdingScope.key;
+      if (holdingScope?.kind === 'quote') return weights.get(row.ticker)?.quote_currency === holdingScope.key;
+      return true;
+    };
+    const rows = (snapshot?.positions || []).filter(row =>
+      inScope(row) && `${row.ticker} ${row.name || ''}`.toLowerCase().includes(query));
+    rows.sort(el('holding-sort').value === 'name' ? (a,b) => (a.name || a.ticker).localeCompare(b.name || b.ticker) : (a,b) => compare(
+      report?.holdings ? weights.get(b.ticker)?.value : b.current_value,
+      report?.holdings ? weights.get(a.ticker)?.value : a.current_value));
     const fragment = document.createDocumentFragment();
     for (const row of rows) {
       const tr = document.createElement('tr');
       const name = document.createElement('td'); name.textContent = row.name || row.ticker;
       const ticker = document.createElement('small'); ticker.textContent = row.ticker;
       const metadataStates = {pending:'metadata pending',missing:'metadata unavailable',stale:'metadata stale',conflict:'metadata needs review'};
-      if (metadataStates[row.metadata?.state]) ticker.textContent += ` · ${metadataStates[row.metadata.state]}`; name.append(ticker); tr.append(name);
-      for (const value of [decimal(row.quantity), decimal(row.current_price,row.instrument_currency), decimal(row.current_value,row.account_currency), decimal(row.total_cost,row.account_currency), decimal(row.unrealized_profit_loss,row.account_currency)]) {
+      if (metadataStates[row.metadata?.state]) ticker.textContent += ` · ${metadataStates[row.metadata.state]}`;
+      const weight = weights.get(row.ticker);
+      if (weight?.quote_currency) {
+        const source = row.quote_currency_source === 'instrument_metadata'
+          ? `broker catalogue, ${when(row.metadata.retrieved_at)}` : 'broker position';
+        ticker.textContent += ` · Quote: ${weight.quote_currency} (${source})`;
+      }
+      name.append(ticker); tr.append(name);
+      for (const value of [decimal(row.quantity), decimal(row.current_price,row.instrument_currency), decimal(row.current_value,row.account_currency), percent(weight?.portfolio_pct), percent(weight?.invested_pct), decimal(row.total_cost,row.account_currency), decimal(row.unrealized_profit_loss,row.account_currency)]) {
         const cell = document.createElement('td'); cell.textContent = value; tr.append(cell);
       }
       fragment.append(tr);
@@ -167,7 +322,6 @@
       snapshot = data;
       const values = [data.total_value,data.investments.currentValue,data.cash_components.availableToTrade,data.investments.unrealizedProfitLoss,data.cash_components.inPies,data.cash_components.reservedForOrders,data.investments.totalCost,data.investments.realizedProfitLoss];
       amounts.forEach((id,index) => el(id).textContent = decimal(values[index],data.currency));
-      const when = value => new Date(value).toLocaleString('en-GB',{timeZone:'Europe/London',timeZoneName:'short'});
       el('snapshot-time').textContent = `Trading 212 · ${data.environment.toUpperCase()} account · Account captured ${when(data.account_retrieval.retrieval_completed_at)}; holdings captured ${when(data.positions_retrieval.retrieval_completed_at)}.`;
       const changes = data.holding_changes;
       const additions = changes?.added_tickers || [], closures = changes?.closed_tickers || [];
@@ -175,6 +329,7 @@
       document.body.classList.add('snapshot-ready'); renderHoldings();
       failures = 0; nextRead = Date.now() + READ_COOLDOWN;
       renderCash(data);
+      renderExposures(data);
       health(data.refresh_health);
     } catch (error) {
       if (version === generation && error.name !== 'AbortError') {
@@ -213,11 +368,8 @@
     } catch { if (version === generation) { backoff(); schedule(); el('refresh-status').textContent = 'Broker refresh is unavailable. Last successful snapshot remains displayed. Retries are paused.'; } }
     finally { el('refresh-broker').disabled = false; }
   }
-  for (const [tab,panel] of [['axis-tab','axis-panel'],['holdings-tab','holdings-panel']]) {
-    el(tab).addEventListener('click', () => {
-      for (const [other,section] of [['axis-tab','axis-panel'],['holdings-tab','holdings-panel']]) { el(other).setAttribute('aria-pressed',String(other===tab)); el(section).hidden=section!==panel; }
-    });
-  }
+  for (const [tab] of tabs) el(tab).addEventListener('click', () => selectTab(tab));
+  el('clear-holding-scope').addEventListener('click', () => showHoldings(null));
   el('holding-search').addEventListener('input',renderHoldings); el('holding-sort').addEventListener('change',renderHoldings);
   el('reload-snapshot').addEventListener('click',load);
   el('refresh-broker').addEventListener('click',refreshBroker);

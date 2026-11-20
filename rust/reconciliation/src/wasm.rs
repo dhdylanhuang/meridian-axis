@@ -18,3 +18,14 @@ pub fn reconcile_cash_json(input: &str) -> Result<String, JsValue> {
     let report = reconcile(request).map_err(|error| JsValue::from_str(error.0))?;
     serde_json::to_string(&report).map_err(|_| JsValue::from_str("output_failed"))
 }
+
+#[wasm_bindgen]
+pub fn portfolio_exposures_json(input: &str) -> Result<String, JsValue> {
+    if input.len() > MAX_WASM_BYTES {
+        return Err(JsValue::from_str("input_size_limit"));
+    }
+    let request = serde_json::from_str(input).map_err(|_| JsValue::from_str("request_invalid"))?;
+    let report =
+        crate::exposures::calculate(request).map_err(|error| JsValue::from_str(error.0))?;
+    serde_json::to_string(&report).map_err(|_| JsValue::from_str("output_failed"))
+}
