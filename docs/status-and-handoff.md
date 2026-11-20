@@ -4,7 +4,8 @@ Reviewed **20 November 2026**. This file is the authoritative implementation sna
 
 ## Current work scope
 
-Observed cash component window is **implemented; release verification pending**.
+Observed cash component window is **deployed at gateway/sync source `27da2f3`**
+(session owner unchanged at `5cc8564`).
 The private ISA transactions statement independently corroborated account identity
 and signed GBP transfers (both directions) / positive GBP cash interest. Proof and
 source remain ignored; no workbook/source PDF was modified. Hosted Rust policy now
@@ -24,10 +25,18 @@ UI cases passed. Targeted Ruff check/format passed. Commands:
 - `private/dev-tools/node_modules/.bin/node --test --test-name-pattern='delivery cash window|approved Rust review' prototype/worker-feasibility/tests/test_snapshot_ui.mjs`.
 
 Reuse prior retention/RLS/private RPC/core evidence below. No full suite, CI matrix,
-sizing, broker request or database probe for development. Next: source review,
-commit/push, gateway producer first (old requests retain old summary shape), sync
-consumer second, existing release checks. Session owner unchanged. Actual financial
-publication must be distinguished from hosted WASM/static readiness.
+sizing, broker request or database probe for development. Reviewed source committed
+and pushed; gateway producer deployed first (old requests retain the old summary
+shape), sync consumer second. Both active source annotations matched `27da2f3`;
+session owner version stayed unchanged. Three static assets matched exact source
+bytes with no-store; hosted WASM health is ready. Protected credentials/Hyperdrive
+and private RPC bindings, restricted origin roles/TLS/cache policy and ten-minute
+schedule were preserved. Native schema remains `0008`; no migration/grant change.
+Private release receipt records successful checks. No new financial SQL/live broker
+probe or forced refresh was run. Actual publication of the **new window** remains
+unverified pending the next successful automatic refresh; previous provisional
+publication evidence below does not establish this window. Full-bound hosted
+CPU/memory and realized query use remain open. Do not restart passing checks.
 
 ## Previous cash review interpretation correction
 

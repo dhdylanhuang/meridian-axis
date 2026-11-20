@@ -31,7 +31,7 @@ Runtime RLS excludes initial captures; that gap is explicit, with no grant chang
 Thirteen focused Python and three Node/RPC/UI cases passed; current status records
 commands. Reuse prior core/WASM tests. No schema/new Worker/new browser poll.
 
-The Rust pipeline is deployed; gateway/sync source is now `f93a493`, with the
+The Rust pipeline is deployed; gateway/sync source is now `27da2f3`, with the
 session owner unchanged at `5cc8564`. The latest correction separates global sign
 policy gaps from record exceptions and adds validated provider-type activity counts. Active source tags,
 private binding target, preserved secret/Hyperdrive bindings, ten-minute schedule,
@@ -42,8 +42,9 @@ error. Current status records the bounded checks; do not restart them.
 Full-bound hosted CPU/memory remains an open workload gate; failures leave broker
 publication available. Do not repeat prior suites or expose a public compute API.
 
-The next bounded cash component window is implemented; current status owns tests
-and release evidence. Source verification supports positive GBP cash interest and
+The bounded cash component window is deployed at `27da2f3`; current status owns
+tests and release evidence. New-window financial publication awaits the next
+successful automatic refresh and has not been separately probed. Source verification supports positive GBP cash interest and
 signed GBP transfers only. The private Rust job compares actual opening/closing
 available-to-trade observations and exposes a provisional residual and exclusions.
 This completes a useful component diagnostic, not the transaction ledger stage.
@@ -64,7 +65,7 @@ Do not rerun previous suites or platform probes without a specific new risk.
 
 ## Preserve
 
-Deployed gateway/sync `f93a493`, session owner `5cc8564`; schema `0008`; ten-minute
+Deployed gateway/sync `27da2f3`, session owner `5cc8564`; schema `0008`; ten-minute
 refresh and sixty-day detailed retention unchanged. Financial history/daily/latest
 observations stay retained. The manual XLSX archive is complete; do not touch the
 real workbook. Post-reset login/cadence/enrichment/query use remains unverified;
