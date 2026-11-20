@@ -42,6 +42,38 @@ Daily, MTD, calendar-YTD and since-inception results chain compatible available 
 
 Portfolio drawdown uses a flow-adjusted wealth index, not raw NAV inflated by deposits. Current holding risk can use total-return security series independently of portfolio ownership history, with that distinction labelled.
 
+### Observed Modified Dietz
+
+`modified_dietz_observed_v1` uses GBP Trading 212 account values at their actual
+account capture times. Each interval requires two approved captures on adjacent
+UTC snapshot dates. Capture time determines elapsed-time weights. Each result
+shows its observed start and end. Exact decimal arithmetic uses microsecond
+elapsed weights and rounds division and chained growth to 24 decimal places.
+Displayed percentages are rounded to six decimal places.
+
+The private evidence read uses the newest successful completed Trading 212
+transaction traversal as of the History read. It checks recorded page count,
+sequence, digests and traversal completion. Repeated identical references count
+once. Its conservative coverage starts at the earliest returned transaction and
+ends at the first page's retrieval start. Days outside those bounds have
+unverified funding coverage. Provider-available history does not establish
+account-lifetime or independent statement coverage.
+
+A positive GBP deposit or negative GBP withdrawal supplies a timed external
+cash flow. Retained dividends, cash or lending interest and fees remain in
+account performance. Transfers, unknown cash types, non-GBP or incompatible
+funding signs block intersecting intervals. A qualifying external transaction
+at exactly a valuation timestamp also blocks that interval because ordering
+is unknown. A missing UTC date, unusable capture, nonpositive account value
+or invalid weighted capital prevents the affected result.
+
+The latest eligible pair and longest usable 90-day stretch report their actual
+dates. Month-to-date and year-to-date chain through the latest eligible date in
+the respective period, with prior period-end and every intervening valuation
+required. Today can be provisional. The 90-day chart does not cap the internal
+year-boundary check. A scheduled non-capture date breaks the chain under the
+initial UTC-date convention.
+
 ## Return series and risk conventions
 
 Risk uses approved daily data; default horizon 252 observations. For a positive GBP total-return series `P_t`, simple return is `P_t/P_(t−1)−1`; log return `l_t = log(P_t/P_(t−1))`. Require one extra price observation. An adjusted series and explicit dividends cannot both supply the same return component. The adapter records adjustment basis; raw valuation closes remain separate.

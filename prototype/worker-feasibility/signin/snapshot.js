@@ -140,6 +140,7 @@
   const historyLabel = point => point.status === 'missing' ? 'No saved snapshot' : 'Saved snapshot unavailable';
   const utcStamp = value => value.replace('T', ' ').replace(/\+00:00$/, '');
   const historyAmount = point => decimal(point.total_value, 'GBP');
+  const fundingDays = new Map();
   const plot = {left: 175, right: 942, top: 24, bottom: 218};
   const plotX = index => plot.left + (plot.right - plot.left) * index / (history.days.length - 1);
   function drawHistory() {
@@ -196,8 +197,12 @@
       ctx.fillStyle = point.status === 'observed' ? '#91e5bc' : point.status === 'missing' ? '#586a63' : '#e9b879';
       ctx.fillRect(plotX(index) - 2, 229, 4, 4);
     }
+    ctx.fillStyle = '#e9b879';
+    for (const [index, point] of points.entries()) {
+      if (fundingDays.has(point.date)) ctx.fillRect(plotX(index) - 2, 237, 4, 5);
+    }
     ctx.fillStyle = '#ecf8ee';
-    ctx.fillRect(plotX(historyIndex) - 1, 223, 2, 15);
+    ctx.fillRect(plotX(historyIndex) - 1, 223, 2, 12);
   }
   function inspectDay(index) {
     historyIndex = Math.max(0, Math.min(history.days.length - 1, index));
@@ -206,10 +211,107 @@
     el('history-point').textContent = point.status === 'observed'
       ? `${day} UTC · ${historyAmount(point)} · Account captured ${utcStamp(point.captured_at)} UTC · Snapshot observed ${utcStamp(point.observed_at)} UTC`
       : `${day} UTC · ${historyLabel(point)}`;
+    const count = fundingDays.get(point.date);
+    if (count) {
+      const link = add(el('history-point'), 'a', `View ${count} funding ${count === 1 ? 'transaction' : 'transactions'}`);
+      link.className = 'history-funding-link';
+      link.href = '#history-funding-' + point.date;
+      link.addEventListener('click', () => { el('history-funding').open = true; });
+    }
     drawHistory();
+  }
+  const performanceReasons = {
+    missing_valuation:'A saved valuation is missing',
+    funding_coverage_unverified:'Funding coverage is unverified for the interval',
+    unclassified_or_unsupported_funding:'A movement needs funding classification',
+    funding_valuation_order_unknown:'A movement shares the valuation timestamp',
+    capture_order_invalid:'Account captures are out of order',
+    nonpositive_account_value:'An account value is zero or negative',
+    nonpositive_weighted_capital:'Weighted capital is zero or negative',
+    nonpositive_growth:'The interval cannot be linked to a return series',
+    period_boundary_unavailable:'A required period boundary is missing',
+  };
+  const periodRange = row => `${row.start_date} to ${row.end_date}`;
+  const adjustedReturn = row => row?.return_pct != null
+    ? percent(row.return_pct)
+    : performanceReasons[row?.reason] || 'No eligible interval in this window';
+  function fundingLabel(event) {
+    if (event.kind === 'DEPOSIT') return 'Deposit';
+    if (event.kind === 'WITHDRAW') return 'Withdrawal';
+    return event.kind === 'TRANSFER' ? 'Transfer' : event.kind;
+  }
+  function renderPerformance(data) {
+    const section = el('history-performance');
+    section.replaceChildren();
+    add(section, 'h2', 'Cash-flow-adjusted performance');
+    const report = data.performance;
+    if (!report) {
+      add(section, 'p', 'Funding and adjusted performance are temporarily unavailable. Reload History to try again.');
+      return;
+    }
+    add(section, 'p', 'Modified Dietz approximation using saved Trading 212 account values and timed external flows. Longer periods link eligible daily intervals. Retained dividends and interest stay in account performance.');
+    const stretch = report.longest_valuation;
+    add(section, 'p', stretch
+      ? `Longest uninterrupted valuation stretch · ${periodRange(stretch)} UTC · ${stretch.days} saved days.`
+      : 'No uninterrupted valuation stretch is available.');
+    const coverage = report.funding_coverage;
+    add(section, 'p', coverage
+      ? `Trading 212 funding evidence · ${utcStamp(coverage.start_at)} to ${utcStamp(coverage.end_at)} UTC. History traversal finished ${utcStamp(coverage.completed_at)} UTC.`
+      : 'A completed funding history with a usable coverage window is unavailable.');
+    const results = exposureTable(section, ['Period', 'UTC dates', 'Eligible intervals', 'Adjusted return or reason'], 'Adjusted performance');
+    for (const [label, item] of [
+      ['Latest eligible daily interval', report.latest_eligible], ['Longest eligible stretch', report.longest_eligible],
+      ['Month to date', report.month_to_date], ['Year to date', report.year_to_date],
+    ]) {
+      const row = add(results, 'tr');
+      add(row, 'td', label);
+      add(row, 'td', item ? periodRange(item) : '—');
+      add(row, 'td', item ? String(item.intervals ?? 1) : '—');
+      add(row, 'td', adjustedReturn(item));
+    }
+    const funding = add(section, 'details');
+    funding.id = 'history-funding';
+    add(funding, 'summary', `Funding transactions · ${report.funding.length} in this window`);
+    if (!report.funding.length) add(funding, 'p', 'The available history showed no funding movements in this window.');
+    if (report.funding.length) {
+      const events = exposureTable(funding, ['Transaction', 'Reported amount', 'Event time (UTC)', 'Funding treatment'], 'Funding evidence');
+      const dateRows = new Set();
+      for (const event of report.funding) {
+        const row = add(events, 'tr');
+        const day = event.at.slice(0, 10);
+        if (!dateRows.has(day)) row.id = 'history-funding-' + day;
+        dateRows.add(day);
+        const transaction = add(add(row, 'td'), 'details');
+        add(transaction, 'summary', fundingLabel(event));
+        add(transaction, 'small', 'Trading 212 reference ' + event.reference);
+        add(transaction, 'small', 'Provider type ' + event.kind);
+        add(row, 'td', decimal(event.amount, event.currency));
+        add(row, 'td', utcStamp(event.at));
+        add(row, 'td', event.signed_gbp ? 'External funding' : 'Review required');
+      }
+    }
+    const intervals = add(section, 'details');
+    const eligible = report.intervals.filter(item => item.return_pct != null).length;
+    add(intervals, 'summary', `Daily return intervals · ${eligible} of ${report.intervals.length} eligible`);
+    const checks = exposureTable(intervals, ['UTC dates', 'Account captures (UTC)', 'External flows', 'Net funding', 'Adjusted return or reason'], 'Daily return eligibility');
+    for (const item of [...report.intervals].reverse()) {
+      const row = add(checks, 'tr');
+      add(row, 'td', periodRange(item));
+      add(row, 'td', [item.start_at, item.end_at].map(time => time ? utcStamp(time) : '—').join(' to '));
+      add(row, 'td', item.external_flow_count == null ? '—' : String(item.external_flow_count));
+      add(row, 'td', item.net_external_flow == null ? '—' : decimal(item.net_external_flow, 'GBP'));
+      add(row, 'td', adjustedReturn(item));
+    }
   }
   function renderHistory(data) {
     history = data;
+    fundingDays.clear();
+    for (const event of data.performance?.funding || []) {
+      const day = event.at.slice(0, 10);
+      fundingDays.set(day, (fundingDays.get(day) || 0) + 1);
+    }
+    el('history-funding-note').hidden = fundingDays.size === 0;
+    renderPerformance(data);
     const body = document.createDocumentFragment();
     let observed = 0, missing = 0, unavailable = 0;
     for (const point of [...data.days].reverse()) {
@@ -400,6 +502,9 @@
     el('portfolio-exposures')?.replaceChildren();
     historyRequest?.abort(); historyRequest = null; history = null;
     el('history-body').replaceChildren();
+    fundingDays.clear();
+    el('history-performance').replaceChildren();
+    el('history-funding-note').hidden = true;
     el('history-point').textContent = '';
     el('history-status').textContent = '';
     el('history-chart').getContext?.('2d')?.clearRect(0, 0, 960, 264);

@@ -13,6 +13,7 @@
       <canvas id="history-chart" width="960" height="264" tabindex="0" aria-label="Observed GBP account value. Use left and right arrows to inspect each UTC day. Exact values and times are also in the daily observations table."></canvas>
     </div>
     <p id="history-point" aria-live="polite"></p>
+    <p id="history-funding-note" class="hint" hidden>Gold marks show UTC days with a funding transaction. Select a marked day to open its evidence.</p>
     <details id="history-details">
       <summary>Daily observations · exact values and capture times</summary>
       <div class="table-scroll" tabindex="0" aria-label="Daily observations table, scroll horizontally">
@@ -22,6 +23,7 @@
         </table>
       </div>
     </details>
+    <section id="history-performance" class="exposures" aria-label="Cash-flow-adjusted performance"></section>
   </div>
 </section>
 <section id="cash-income" class="details"><h2>Cash, income and funding</h2><div id="cash-reconciliation">Loading cash activity…</div></section><div class="provenance"><h2>Source and availability</h2><p id="snapshot-time">—</p><p>Figures are reported by Trading 212. Account and holding observations are fetched separately. Broker quote times are unavailable. Historical returns are not available in this view.</p><button id="refresh-broker" type="button">Refresh Trading 212</button><button id="reload-snapshot" type="button">Reload saved snapshot</button></div><p id="expiry" class="hint"></p></section><p id="message" role="status" aria-live="polite"></p><footer>Access is limited to the two approved members.</footer></main></body></html>

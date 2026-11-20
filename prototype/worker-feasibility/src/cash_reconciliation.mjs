@@ -1,5 +1,5 @@
 // Import this module only from trusted Worker code, not browser assets.
-import { portfolio_exposures_json } from './reconciliation_wasm/axis_reconciliation.mjs';
+import { observed_performance_json, portfolio_exposures_json } from './reconciliation_wasm/axis_reconciliation.mjs';
 import module from './reconciliation_wasm/axis_reconciliation_bg.wasm';
 import { createCashReconciler } from './cash_reconciliation_adapter.mjs';
 let engine;
@@ -13,4 +13,11 @@ export function portfolioExposuresJSON(input) {
   if (typeof input !== 'string') throw new Error('request_invalid');
   try { return portfolio_exposures_json(input); }
   catch { throw new Error('exposures_unavailable'); }
+}
+
+export function observedPerformanceJSON(input) {
+  engine ??= createCashReconciler(module);
+  if (typeof input !== 'string') throw new Error('request_invalid');
+  try { return observed_performance_json(input); }
+  catch { throw new Error('performance_unavailable'); }
 }

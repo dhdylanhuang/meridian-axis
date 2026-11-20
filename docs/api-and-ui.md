@@ -142,6 +142,25 @@ calls. The chart connects adjacent observed days. The daily table and chart
 selection give the original amount and capture times. Sign-out clears the
 response and invalidates in-flight reads.
 
+### Funding timeline and observed returns
+
+The same History response adds an optional `performance` report. It contains
+the dated transaction evidence visible on the 90-day timeline, completed
+funding coverage, valuation and eligible stretches, per-interval return
+eligibility, and the latest eligible, month-to-date and year-to-date results.
+Funding markers link to the selected day's transaction records and their
+Trading 212 references. The separate income totals and detail pages continue
+to use their own coverage.
+
+The session application authenticates the shared account and selects approved
+daily observations before any private service call. It uses enough retained dates
+to check the year boundary internally. The fixed sync object uses its existing
+role to read completed funding evidence in a bounded read-only transaction and
+invokes the Rust method through the private WASM service. No transaction remains
+open during that invocation. No external broker call or new public route is
+needed. A failed calculation reports performance unavailable and preserves the
+90-day account value response. See [the calculation rules](calculation-contracts.md#observed-modified-dietz).
+
 ## Authenticated broker refresh — 13 November 2026
 
 | Route | Deployed contract |

@@ -75,14 +75,14 @@ def _history_fields(row, postgres):
     }
 
 
-def read_history(db, account_id, now):
+def read_history(db, account_id, now, *, day_count=HISTORY_DAYS):
     """Keep one saved observation per UTC day, with explicit missing days."""
     now = now.astimezone(UTC)
     today = now.date()
-    start = today - timedelta(days=HISTORY_DAYS - 1)
+    start = today - timedelta(days=day_count - 1)
     params = {"account_id": account_id, "max_bytes": MAX_SNAPSHOT_BYTES}
     ranges = []
-    for index in range(HISTORY_DAYS):
+    for index in range(day_count):
         day = start + timedelta(days=index)
         lower = datetime.combine(day, time.min, UTC)
         upper = min(lower + timedelta(days=1), now + timedelta(microseconds=1))

@@ -102,6 +102,9 @@ class SessionWorkerTests(unittest.IsolatedAsyncioTestCase):
         async def hosted(binding, **options):
             result = await options["cash_activity"]({"snapshot_id": "saved"})
             self.assertEqual(result, ({"entries": []}, 200))
+            self.assertEqual(
+                await options["performance"]({"days": []}), {"entries": []}
+            )
             yield object()
 
         worker = module.SessionApplicationDO()
@@ -137,3 +140,8 @@ class SessionWorkerTests(unittest.IsolatedAsyncioTestCase):
             captured[0][:2], ("https://sync.internal/cash-activity", "POST")
         )
         self.assertEqual(json.loads(captured[0][2]), {"snapshot_id": "saved"})
+
+        self.assertEqual(
+            captured[1][:2], ("https://sync.internal/observed-performance", "POST")
+        )
+        self.assertEqual(json.loads(captured[1][2]), {"days": []})

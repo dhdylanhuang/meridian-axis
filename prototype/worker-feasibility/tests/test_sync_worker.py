@@ -235,3 +235,51 @@ class SyncWorkerTests(unittest.IsolatedAsyncioTestCase):
         )
         engine.dispose.assert_called_once()
         worker.execute.assert_not_called()
+
+    async def test_performance_uses_fixed_readonly_path_without_broker_execution(self):
+        module = self.load_worker()
+        module.Response.json = lambda body, **options: SimpleNamespace(
+            body=body, **options
+        )
+        worker = module.BrokerSyncDO()
+        worker.ctx = SimpleNamespace(storage=self.storage())
+        binding = SimpleNamespace(
+            observedPerformance=AsyncMock(return_value="synthetic-result")
+        )
+        worker.env = SimpleNamespace(HYPERDRIVE=object(), RECONCILIATION=binding)
+        worker.execute = AsyncMock(side_effect=AssertionError("No broker work"))
+        engine = Mock()
+        create = Mock(return_value=engine)
+
+        async def report(actual, value, calculate):
+            self.assertIs(actual, engine)
+            self.assertEqual(value, {"days": []})
+            self.assertEqual(await calculate("invented"), "synthetic-result")
+            return {"method": "modified_dietz_observed_v1"}
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "meridian.security.hosted": SimpleNamespace(
+                    create_binding_engine=create
+                ),
+                "meridian.application.performance_evidence": SimpleNamespace(
+                    performance_report=report,
+                    MAX_REQUEST_BYTES=128 * 1024,
+                ),
+            },
+        ):
+            response = await worker.fetch(
+                SimpleNamespace(
+                    method="POST",
+                    url="https://sync.internal/observed-performance",
+                    text=AsyncMock(return_value='{"days":[]}'),
+                )
+            )
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.headers, {"Cache-Control": "no-store"})
+        create.assert_called_once_with(
+            worker.env.HYPERDRIVE, expected_role="meridian_sync_public"
+        )
+        engine.dispose.assert_called_once()
+        worker.execute.assert_not_called()

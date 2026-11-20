@@ -267,3 +267,28 @@ test('late History reads cannot repopulate a signed-out dashboard',async()=>{
  assert.equal(ui.el('history-status').textContent,'');
  assert.equal(ui.el('history-results').hidden,true);
 });
+
+test('History exposes funding evidence and explains ineligible returns without browser calculations', async () => {
+ const days=Array.from({length:90},(_,index)=>({date:new Date(Date.UTC(2026,0,1+index)).toISOString().slice(0,10),status:'missing'}));
+ const end=days[89].date, start=days[88].date, at=end+'T04:00:00+00:00';
+ Object.assign(days[89],{status:'observed',total_value:'100',observed_at:end+'T15:01:00+00:00',captured_at:end+'T15:00:00+00:00'});
+ const interval={start_date:start,end_date:end,start_at:start+'T15:00:00+00:00',end_at:days[89].captured_at,return_pct:'2.727273',external_flow_count:1,net_external_flow:'20.123456789'};
+ const performance={
+   funding:[{kind:'DEPOSIT',amount:'20.123456789',currency:'GBP',at,reference:'invented-ref',signed_gbp:true}],
+   funding_coverage:{start_at:days[0].date+'T00:00:00+00:00',end_at:end+'T16:00:00+00:00',completed_at:end+'T17:00:00+00:00'},
+   intervals:[interval],latest_eligible:interval,longest_eligible:interval,longest_valuation:{start_date:start,end_date:end,days:2},
+   month_to_date:{start_date:start,end_date:end,return_pct:null,intervals:0,reason:'missing_valuation'},year_to_date:null,
+ };
+ const data={source:'trading212',basis:'broker_reported',currency:'GBP',as_of:end+'T18:00:00+00:00',start_date:days[0].date,end_date:end,days,performance};
+ const ui=setup(async()=>({ok:true,status:200,json:async()=>data}));
+ ui.el('history-tab').listeners.click();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(ui.el('history-funding-note').hidden,false);
+ assert.equal(ui.el('history-point').children[0].href,'#history-funding-'+end);
+ const text=node=>[node.textContent,...node.children.flatMap(text)];
+ const results=text(ui.el('history-performance')).join(' ');
+ for (const value of ['2.727273%','£20.123456789','invented-ref','Modified Dietz','A saved valuation is missing']) assert.ok(results.includes(value), value);
+ ui.view.clear();
+ assert.equal(ui.el('history-performance').children.length,0);
+ assert.equal(ui.el('history-funding-note').hidden,true);
+});

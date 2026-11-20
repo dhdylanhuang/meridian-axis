@@ -18,17 +18,30 @@ class BrokerSyncDO(DurableObject):
         from urllib.parse import urlsplit
 
         path = urlsplit(request.url).path
-        if path == "/cash-activity" and request.method == "POST":
+        if (
+            path in {"/cash-activity", "/observed-performance"}
+            and request.method == "POST"
+        ):
             async with _LOCK:
                 engine = None
+                performance = path == "/observed-performance"
+                unavailable = (
+                    "performance_unavailable" if performance else "activity_unavailable"
+                )
                 try:
                     import json
 
                     from meridian.application.cash_activity import cash_activity_page
                     from meridian.security.hosted import create_binding_engine
 
+                    if performance:
+                        from meridian.application.performance_evidence import (
+                            MAX_REQUEST_BYTES,
+                            performance_report,
+                        )
+
                     raw = await request.text()
-                    if len(raw.encode()) > 2048:
+                    if len(raw.encode()) > (MAX_REQUEST_BYTES if performance else 2048):
                         return Response.json(
                             {"error": "request_invalid"},
                             status=400,
@@ -38,13 +51,29 @@ class BrokerSyncDO(DurableObject):
                         await self.ctx.storage.get("database-not-before")
                     ):
                         return Response.json(
-                            {"error": "activity_unavailable"},
+                            {"error": unavailable},
                             status=503,
                             headers={"Cache-Control": "no-store"},
                         )
                     engine = create_binding_engine(
                         self.env.HYPERDRIVE, expected_role="meridian_sync_public"
                     )
+
+                    if performance:
+
+                        async def calculate(encoded):
+                            return str(
+                                await self.env.RECONCILIATION.observedPerformance(
+                                    encoded
+                                )
+                            )
+
+                        result = await performance_report(
+                            engine, json.loads(raw), calculate
+                        )
+                        return Response.json(
+                            result, status=200, headers={"Cache-Control": "no-store"}
+                        )
 
                     async def reconcile(encoded):
                         return str(
@@ -63,9 +92,9 @@ class BrokerSyncDO(DurableObject):
                         status=400,
                         headers={"Cache-Control": "no-store"},
                     )
-                except Exception:
+                except Exception:  # noqa: BLE001 — private errors never expose input or credentials
                     return Response.json(
-                        {"error": "activity_unavailable"},
+                        {"error": unavailable},
                         status=503,
                         headers={"Cache-Control": "no-store"},
                     )

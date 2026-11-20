@@ -87,6 +87,25 @@ class SessionApplicationDO(DurableObject):
                         return {"error": "activity_unavailable"}, 503
                     return json.loads(await response.text()), response.status
 
+                async def performance(history):
+                    import json
+
+                    from js import Object, Request
+
+                    options = Object.new()
+                    options.method = "POST"
+                    options.body = json.dumps(history, separators=(",", ":"))
+                    sync_id = self.env.SYNC.idFromName("shared-isa")
+                    response = await self.env.SYNC.get(sync_id).fetch(
+                        Request.new("https://sync.internal/observed-performance", options)
+                    )
+                    if response.status != 200:
+                        return None
+                    raw = await response.text()
+                    if len(raw.encode()) > 128 * 1024:
+                        return None
+                    return json.loads(raw)
+
                 async with hosted_application(
                     self.env.HYPERDRIVE,
                     origin=self.env.PUBLIC_ORIGIN,
@@ -95,6 +114,7 @@ class SessionApplicationDO(DurableObject):
                     login_csrf_key=SecretStr(self.env.LOGIN_CSRF_KEY),
                     refresh=refresh,
                     cash_activity=cash_activity,
+                    performance=performance,
                 ) as app:
                     stage = "request_adapter"
                     return await buffered_fetch(app, request, self.env, self.ctx)

@@ -3,6 +3,7 @@
 mod wasm;
 
 pub mod exposures;
+pub mod performance;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};

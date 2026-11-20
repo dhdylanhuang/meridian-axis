@@ -30,6 +30,7 @@ async def hosted_application(
     login_csrf_key,
     refresh=None,
     cash_activity=None,
+    performance=None,
 ):
     """Own all resources for one serialised Durable Object request.
 
@@ -54,6 +55,7 @@ async def hosted_application(
                 login_csrf_key,
                 refresh=refresh,
                 cash_activity=cash_activity,
+                performance=performance,
             )
             yield create_app(session_http=handler)
     finally:

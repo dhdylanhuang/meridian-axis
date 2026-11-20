@@ -2,6 +2,20 @@
 
 Reviewed **20 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
+## Observed funding and performance
+
+History adds the funding timeline, per-transaction evidence, valuation
+coverage and Modified Dietz approximations for supported daily intervals.
+Month-to-date and year-to-date require the prior period-end valuation and a
+continuous chain verified by the available funding history. The chart stays
+at 90 UTC days. The funding coverage is bounded by the completed traversal
+and gaps remain visible. See [the published method](calculation-contracts.md#observed-modified-dietz).
+
+Funding evidence stays within the private sync role and the Rust WASM
+method uses the existing named service. Session authentication commits
+before the private call. There is no schema or scheduling change.
+
+
 ## Observed account history
 
 The History tab reads the last approved Trading 212 snapshot for each of 90 UTC

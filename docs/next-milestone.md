@@ -21,6 +21,14 @@ The cash, income and funding totals and their transaction drill-down remain
 accessible in the same workspace. Live publication has been verified. See
 [the history contract](api-and-ui.md#observed-account-history).
 
+## Observed funding and performance
+
+History marks dated Trading 212 deposits and withdrawals and opens their
+transaction evidence. It reports the longest eligible valuation stretch and
+the reasons an interval is unavailable. Eligible intervals get a labelled
+Modified Dietz approximation. MTD and YTD link eligible valuations from the
+relevant period boundary. See [the calculation method](calculation-contracts.md#observed-modified-dietz).
+
 ## Following delivery
 
 Qualify benchmarks and calculated returns where the inputs and methods in the

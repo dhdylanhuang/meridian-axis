@@ -24,3 +24,9 @@ body.signed-in main{max-width:1180px}.workspace-head{display:flex;align-items:ce
 #history-details{margin-top:1rem}
 #history-details summary{cursor:pointer}
 #history-details th,#history-details td{white-space:nowrap}
+#history-performance details{margin-top:1rem}
+#history-performance details summary{cursor:pointer;color:#d4e6d8}
+#history-performance td details{margin:0}
+#history-performance td details small{white-space:normal;overflow-wrap:anywhere}
+.history-funding-link{display:inline-block;margin-left:.8em}
+#history-funding-note{margin:0 0 1rem}

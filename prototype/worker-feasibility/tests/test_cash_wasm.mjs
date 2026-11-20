@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
 import { createCashReconciler, MAX_CASH_WASM_BYTES } from '../src/cash_reconciliation_adapter.mjs';
+import { observed_performance_json } from '../src/reconciliation_wasm/axis_reconciliation.mjs';
 import { syntheticCashRequest } from './fixtures/cash_wasm.mjs';
 
 const prototype = fileURLToPath(new URL('..', import.meta.url));
@@ -93,4 +94,20 @@ test('Cloudflare local workerd executes the same precompiled WASM module', {time
       child.once('exit',()=>{clearTimeout(timeout);resolve();});
     });
   }
+});
+
+test('WASM exports observed performance through the existing module initialization', () => {
+  const days = Array.from({length:90}, (_,index) => ({
+    date:new Date(Date.UTC(2026,0,1+index)).toISOString().slice(0,10),status:'missing',
+  }));
+  for (const [index,amount] of [[88,'100'],[89,'123']]) Object.assign(days[index], {
+    status:'observed',total_value:amount,captured_at:days[index].date+'T16:00:00Z',
+  });
+  const report = JSON.parse(observed_performance_json(JSON.stringify({
+    days, coverage:{start_at:'2026-01-01T00:00:00Z',end_at:days[89].date+'T19:00:00Z',completed_at:days[89].date+'T20:00:00Z'},
+    events:[{reference:'invented-flow',kind:'DEPOSIT',currency:'GBP',amount:'20',at:days[89].date+'T04:00:00Z'}],
+  })));
+  assert.equal(report.latest_eligible.return_pct, '2.727273');
+  assert.equal(report.funding[0].amount, '20');
+  assert.equal(report.intervals.length, 89);
 });

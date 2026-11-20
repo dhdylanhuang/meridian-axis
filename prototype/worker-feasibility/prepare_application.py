@@ -13,6 +13,7 @@ FILES = (
     "app.py",
     "application/__init__.py",
     "application/snapshot_access.py",
+    "application/performance_evidence.py",
     "application/refresh_status.py",
     "application/broker_jobs.py",
     "application/broker_sessions.py",

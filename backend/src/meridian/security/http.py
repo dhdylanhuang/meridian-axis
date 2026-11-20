@@ -62,6 +62,7 @@ class SessionHttp:
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         refresh: Callable[[], Awaitable[dict]] | None = None,
         cash_activity: Callable[[dict], Awaitable[tuple[dict, int]]] | None = None,
+        performance: Callable[[dict], Awaitable[dict | None]] | None = None,
     ):
         if (
             not isinstance(login_csrf_key, SecretStr)
@@ -75,6 +76,7 @@ class SessionHttp:
         self._key, self._clock = login_csrf_key, clock
         self.refresh = refresh
         self.cash_activity = cash_activity
+        self.performance = performance
 
     def _now(self):
         now = self._clock()
@@ -263,17 +265,47 @@ class SessionHttp:
                 # Authorisation commits before the separate sync authority makes upstream calls.
                 result = await self.refresh()
                 return private_response(result, 200 if result.get("status") == "succeeded" else 202)
+            if operation == "history":
+                from meridian.application.snapshot_access import HISTORY_DAYS, read_history
+
+                year_open = now.date().replace(month=1, day=1)
+                # Keep enough approved observations for the year chain. Only the
+                # last 90 date rows cross the browser boundary.
+                count = max(HISTORY_DAYS, (now.date() - year_open).days + 2)
+                with self.database() as db, db.begin():
+                    principal = self.service.authenticate(db, token, now=now)
+                    calculate_performance = (
+                        self.performance if principal.account_id == "shared-isa" else None
+                    )
+                    series = read_history(
+                        db,
+                        principal.account_id,
+                        now,
+                        day_count=count if calculate_performance else HISTORY_DAYS,
+                    )
+                report = None
+                if calculate_performance is not None:
+                    try:
+                        async with asyncio.timeout(8):
+                            report = await calculate_performance(series)
+                    except Exception:
+                        report = None
+                days = series["days"][-HISTORY_DAYS:]
+                return private_response(
+                    series
+                    | {
+                        "start_date": days[0]["date"],
+                        "days": days,
+                        "performance": report,
+                    }
+                )
             with self.database() as db, db.begin():
-                if operation in {"current", "snapshot", "history", "refresh_status"}:
+                if operation in {"current", "snapshot", "refresh_status"}:
                     principal = self.service.authenticate(db, token, now=now)
                     if operation == "refresh_status":
                         from meridian.application.refresh_status import refresh_status
 
                         return private_response(refresh_status(db, principal.account_id, now))
-                    if operation == "history":
-                        from meridian.application.snapshot_access import read_history
-
-                        return private_response(read_history(db, principal.account_id, now))
                     if operation == "snapshot":
                         from meridian.application.refresh_status import refresh_status
                         from meridian.application.snapshot_access import read_snapshot

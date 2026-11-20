@@ -1,6 +1,6 @@
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { heldClassifications } from './portfolio_classification_catalog.mjs';
-import { portfolioExposuresJSON, reconcileCashJSON } from './cash_reconciliation.mjs';
+import { observedPerformanceJSON, portfolioExposuresJSON, reconcileCashJSON } from './cash_reconciliation.mjs';
 import { summarizeCashReport, summarizeActivityDetails } from './cash_reconciliation_summary.mjs';
 
 // Named service entrypoint only: no fetch method and no public HTTP route.
@@ -15,6 +15,10 @@ export class CashReconciliation extends WorkerEntrypoint {
     } catch {
       return portfolioExposuresJSON(input);
     }
+  }
+  async observedPerformance(input) {
+    if (this.env.RECONCILIATION_ENVIRONMENT !== 'live') throw new Error('performance_unavailable');
+    return observedPerformanceJSON(input);
   }
   async cashActivityDetails(input) {
     return summarizeActivityDetails(reconcileCashJSON(input), this.env.RECONCILIATION_ENVIRONMENT);

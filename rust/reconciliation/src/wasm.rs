@@ -29,3 +29,8 @@ pub fn portfolio_exposures_json(input: &str) -> Result<String, JsValue> {
         crate::exposures::calculate(request).map_err(|error| JsValue::from_str(error.0))?;
     serde_json::to_string(&report).map_err(|_| JsValue::from_str("output_failed"))
 }
+
+#[wasm_bindgen]
+pub fn observed_performance_json(input: &str) -> Result<String, JsValue> {
+    crate::performance::calculate_json(input).map_err(|error| JsValue::from_str(error.0))
+}
