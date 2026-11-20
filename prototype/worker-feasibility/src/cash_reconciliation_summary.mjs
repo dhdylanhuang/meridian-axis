@@ -20,7 +20,14 @@ export async function summarizeCashReport(input, reportJSON, environment) {
     scope:report.scope, as_of:report.cutoff, source_snapshot_id:report.broker_cash.snapshot_id,
     input_revision, event_count:report.records.length,
     observation_count:report.records.reduce((n,row)=>n+row.evidence.length,0), review_counts, activity_counts,
-    cash:report.cash.map(row=>({currency:row.currency,state:row.state,unexplained_difference:row.unexplained_difference})),
+    cash:report.cash.map(row=>({currency:row.currency,state:row.state,unexplained_difference:row.unexplained_difference,
+      ...(row.opening?.basis === 'broker_available_to_trade' && row.closing ? {
+        basis:row.opening.basis, opening_balance:row.opening.amount, closing_balance:row.closing.amount,
+        opening_source_snapshot_id:row.opening.source_id, window_start:row.window_start, cutoff:row.cutoff,
+        known_signed_movements:row.known_signed_movements, replayed_cash:row.replayed_cash,
+        included_movement_count:row.included_movement_count, excluded_movement_count:row.excluded_movement_count,
+      } : {})})),
+    ...(report.cash_sign_policy ? {cash_sign_policy:report.cash_sign_policy} : {}),
     warnings:report.warnings,
   });
 }

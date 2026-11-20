@@ -83,3 +83,11 @@ The initial migrations establish accounts, precise storage types and import/sour
 Member slots are capacity identifiers, not permission levels: both have identical editing rights. A partial unique index limits each account to slots 1/2 while allowing revoked membership history. Sessions reference the composite account/member key, preventing a token from claiming another account's membership. Services still check active membership and expiry on every request; a foreign key alone does not authorize a session. Audit records contain the account/actor/action, never token or CSRF hashes. Runtime policies/roles remain a separate gate.
 
 Historical grouping is effective-dated. ADOPTED display default: exposures use current membership; historical attribution uses membership effective at that date. A separately labelled restatement mode may use current classification; it must not rewrite historical evidence.
+
+
+Observed cash component window (20 November): the approved snapshot JSON now may
+carry policy ID, exact-string opening/closing available-to-trade controls, opening
+snapshot identity, window timestamps, supported/excluded movement counts and Rust
+residual. Existing root snapshot/input revision supplies current provenance. This
+is a derived provisional read model, not persisted normalized transaction entities
+or a reconciled total-cash ledger. No table, migration, role or RLS change.

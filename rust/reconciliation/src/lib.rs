@@ -50,9 +50,16 @@ pub struct Observation {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+pub enum CashSignPolicy {
+    StatementCheckedGbpV1,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum BalanceBasis {
     StatementCash,
     VerifiedTotalCash,
+    BrokerAvailableToTrade,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -87,6 +94,8 @@ pub struct Request {
     pub opening_cash: Vec<Balance>,
     pub closing_cash: Vec<Balance>,
     pub broker_cash: Option<BrokerCash>,
+    #[serde(default)]
+    pub cash_sign_policy: Option<CashSignPolicy>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -133,6 +142,10 @@ pub struct CashComparison {
     pub replayed_cash: Option<String>,
     pub unexplained_difference: Option<String>,
     pub state: ComparisonState,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub included_movement_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub excluded_movement_count: Option<usize>,
 }
 
 #[derive(Debug, Serialize)]
@@ -146,6 +159,8 @@ pub struct Report {
     pub cash: Vec<CashComparison>,
     pub broker_cash: Option<BrokerCash>,
     pub warnings: BTreeSet<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cash_sign_policy: Option<CashSignPolicy>,
 }
 
 /// Safe categories only; no input data appears in diagnostics.
@@ -217,6 +232,29 @@ fn balances<'a>(
         }
     }
     Ok(result)
+}
+
+fn effective_sign_basis(row: &Observation, request: &Request) -> SignBasis {
+    if row.sign_basis != SignBasis::Unverified {
+        return row.sign_basis.clone();
+    }
+    let eligible = request.cash_sign_policy == Some(CashSignPolicy::StatementCheckedGbpV1)
+        && request.scope.environment == Environment::Live
+        && row.currency == "GBP"
+        && match row.provider_type.as_str() {
+            "INTEREST_ON_FREE_CASH" => {
+                decimal(&row.amount).expect("validated") > BigDecimal::from(0)
+            }
+            "TRANSFER" => decimal(&row.amount).expect("validated") != BigDecimal::from(0),
+            _ => false,
+        };
+    if eligible {
+        SignBasis::VerifiedSignedAmount {
+            evidence_id: "t212-statement-cash-signs-gbp-v1".to_owned(),
+        }
+    } else {
+        SignBasis::Unverified
+    }
 }
 
 pub fn reconcile(request: Request) -> Result<Report> {
@@ -311,13 +349,14 @@ pub fn reconcile(request: Request) -> Result<Report> {
                     || r.occurred_at != current.occurred_at
                     || r.sign_basis != current.sign_basis
             });
+        let sign_basis = effective_sign_basis(current, &request);
         let state = if conflict {
             RecordState::IdentityConflictReview
         } else if instant(&current.occurred_at)? > cutoff {
             RecordState::AfterCutoff
         } else if !supported(&current.provider_type) {
             RecordState::UnsupportedTypeReview
-        } else if matches!(current.sign_basis, SignBasis::Unverified) {
+        } else if matches!(sign_basis, SignBasis::Unverified) {
             RecordState::UnverifiedSignReview
         } else {
             RecordState::KnownSignedMovement
@@ -351,7 +390,7 @@ pub fn reconcile(request: Request) -> Result<Report> {
             state,
             selected_source_id: current.source_id.clone(),
             selected_revision_id: current.revision_id.clone(),
-            sign_basis: current.sign_basis.clone(),
+            sign_basis,
             evidence: observations.into_iter().cloned().collect(),
         });
     }
@@ -364,17 +403,26 @@ pub fn reconcile(request: Request) -> Result<Report> {
                 return Err(Error("cash_control_basis_mismatch"));
             }
         }
+        let available_component = opening
+            .map(|o| o.basis == BalanceBasis::BrokerAvailableToTrade)
+            .unwrap_or(false);
+        if available_component {
+            warnings.insert("available_cash_component_not_total_cash");
+        }
         let mut total = BigDecimal::from(0);
+        let (mut included, mut excluded) = (0, 0);
         for record in records.iter().filter(|r| r.currency == currency) {
-            if let Some(delta) = &record.cash_delta {
-                if opening
-                    .map(|o| {
-                        instant(&record.occurred_at).expect("validated")
-                            > instant(&o.at).expect("validated")
-                    })
-                    .unwrap_or(true)
-                {
+            let at = instant(&record.occurred_at).expect("validated");
+            let in_window = at <= cutoff
+                && opening
+                    .map(|o| at > instant(&o.at).expect("validated"))
+                    .unwrap_or(true);
+            if in_window {
+                if let Some(delta) = &record.cash_delta {
                     total += BigDecimal::from_str(delta).expect("validated internal amount");
+                    included += 1;
+                } else {
+                    excluded += 1;
                 }
             }
         }
@@ -401,6 +449,8 @@ pub fn reconcile(request: Request) -> Result<Report> {
             replayed_cash: replayed.as_ref().map(text),
             unexplained_difference: difference.as_ref().map(text),
             state,
+            included_movement_count: available_component.then_some(included),
+            excluded_movement_count: available_component.then_some(excluded),
         });
     }
     Ok(Report {
@@ -413,5 +463,6 @@ pub fn reconcile(request: Request) -> Result<Report> {
         cash: comparisons,
         broker_cash: request.broker_cash,
         warnings,
+        cash_sign_policy: request.cash_sign_policy,
     })
 }

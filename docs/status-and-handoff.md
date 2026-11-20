@@ -4,6 +4,33 @@ Reviewed **20 November 2026**. This file is the authoritative implementation sna
 
 ## Current work scope
 
+Observed cash component window is **implemented; release verification pending**.
+The private ISA transactions statement independently corroborated account identity
+and signed GBP transfers (both directions) / positive GBP cash interest. Proof and
+source remain ignored; no workbook/source PDF was modified. Hosted Rust policy now
+supports only these cases. Other cash types, negative interest corrections, other
+currencies and demo remain unverified. Python selects an actual prior-UTC-day
+approved available-to-trade observation and pending closing observation; Rust
+computes supported window movements and residual. Dashboard displays these controls,
+counts and explicit component/coverage limitations. No total cash or return claim.
+
+New focused evidence: two Rust `delivery_` cases passed; WASM release rebuilt and
+packaged with existing wasm-bindgen 0.2.130. Three Python publication/validation/
+legacy cases passed (new fixture corrected to append synthetic history after an
+initial immutable-update fixture failure; reran only that failed case). Two Node
+UI cases passed. Targeted Ruff check/format passed. Commands:
+- Scoped Rust toolchain: `cargo test --manifest-path rust/reconciliation/Cargo.toml --locked --quiet --test cash delivery_ --jobs 2`.
+- `AXIS_NODE_TEST_BINARY="$PWD/private/dev-tools/node_modules/.bin/node" /private/tmp/meridian-query-venv/bin/python -m pytest -q -p no:cacheprovider backend/tests/test_cash_publication.py::test_delivery_available_cash_window_and_projection_validation backend/tests/test_cash_publication.py::test_wasm_summary_commits_atomically_without_raw_history backend/tests/test_cash_publication.py::test_activity_projection_validates_counts_and_accepts_older_results` (two legacy cases passed first; new case passed after fixture correction).
+- `private/dev-tools/node_modules/.bin/node --test --test-name-pattern='delivery cash window|approved Rust review' prototype/worker-feasibility/tests/test_snapshot_ui.mjs`.
+
+Reuse prior retention/RLS/private RPC/core evidence below. No full suite, CI matrix,
+sizing, broker request or database probe for development. Next: source review,
+commit/push, gateway producer first (old requests retain old summary shape), sync
+consumer second, existing release checks. Session owner unchanged. Actual financial
+publication must be distinguished from hosted WASM/static readiness.
+
+## Previous cash review interpretation correction
+
 Cash review interpretation correction is **deployed at `f93a493` on gateway/sync**
 (session owner unchanged at `5cc8564`): the former wording
 counted the global unverified-sign prerequisite as a per-event manual-review task.

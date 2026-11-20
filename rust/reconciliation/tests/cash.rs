@@ -202,3 +202,81 @@ fn native_cli_emits_report_or_safe_error_without_echoing_input() {
     assert!(output.stdout.is_empty());
     assert_eq!(output.stderr, b"request_invalid\n");
 }
+
+#[test]
+fn delivery_statement_policy_verifies_only_supported_live_gbp_signs() {
+    let mut input = request(vec![
+        event("interest", "0.25"),
+        event("transfer", "-2"),
+        event("fee", "-1"),
+        event("negative-interest", "-0.5"),
+    ]);
+    input["scope"]["environment"] = json!("live");
+    let initial_scope = input["scope"].clone();
+    for row in input["observations"].as_array_mut().unwrap() {
+        row["scope"] = initial_scope.clone();
+        row["sign_basis"] = json!({"state":"unverified"});
+    }
+    input["observations"][0]["provider_type"] = json!("INTEREST_ON_FREE_CASH");
+    input["observations"][1]["provider_type"] = json!("TRANSFER");
+    input["observations"][2]["provider_type"] = json!("FEE");
+    input["observations"][3]["provider_type"] = json!("INTEREST_ON_FREE_CASH");
+    input["cash_sign_policy"] = json!("statement_checked_gbp_v1");
+    let result = report(input.clone());
+    let records = result["records"].as_array().unwrap();
+    assert_eq!(
+        records
+            .iter()
+            .filter(|r| r["state"] == "known_signed_movement")
+            .count(),
+        2
+    );
+    assert_eq!(result["cash"][0]["known_signed_movements"], "-1.75");
+    input["scope"]["environment"] = json!("demo");
+    let scope = input["scope"].clone();
+    for row in input["observations"].as_array_mut().unwrap() {
+        row["scope"] = scope.clone();
+    }
+    assert!(report(input)["records"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|r| r["cash_delta"].is_null()));
+}
+
+#[test]
+fn delivery_observed_available_cash_window_reports_exact_residual_and_exclusions() {
+    let mut input = request(vec![
+        event("interest", "0.25"),
+        event("transfer", "-2"),
+        event("fee", "-1"),
+    ]);
+    let scope = json!({"account_id":"synthetic-isa","environment":"live"});
+    input["scope"] = scope.clone();
+    for row in input["observations"].as_array_mut().unwrap() {
+        row["scope"] = scope.clone();
+        row["sign_basis"] = json!({"state":"unverified"});
+    }
+    input["observations"][0]["provider_type"] = json!("INTEREST_ON_FREE_CASH");
+    input["observations"][1]["provider_type"] = json!("TRANSFER");
+    input["observations"][2]["provider_type"] = json!("FEE");
+    input["cash_sign_policy"] = json!("statement_checked_gbp_v1");
+    let mut opening = balance("10", "2026-01-01T00:00:00Z");
+    let mut closing = balance("7.25", "2026-01-03T00:00:00Z");
+    for row in [&mut opening, &mut closing] {
+        row["scope"] = scope.clone();
+        row["basis"] = json!("broker_available_to_trade");
+    }
+    input["opening_cash"] = json!([opening]);
+    input["closing_cash"] = json!([closing]);
+    let result = report(input);
+    assert_eq!(result["cash"][0]["known_signed_movements"], "-1.75");
+    assert_eq!(result["cash"][0]["replayed_cash"], "8.25");
+    assert_eq!(result["cash"][0]["unexplained_difference"], "-1");
+    assert_eq!(result["cash"][0]["included_movement_count"], 2);
+    assert_eq!(result["cash"][0]["excluded_movement_count"], 1);
+    assert!(result["warnings"]
+        .as_array()
+        .unwrap()
+        .contains(&json!("available_cash_component_not_total_cash")));
+}

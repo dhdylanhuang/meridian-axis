@@ -162,3 +162,88 @@ def test_activity_projection_validates_counts_and_accepts_older_results():
         result["activity_counts"] = wrong
         with pytest.raises(ValueError, match="reconciliation_result_invalid"):
             approved_summary(json.dumps(result), request, encoded)
+
+
+@pytest.mark.skipif(not os.environ.get("AXIS_NODE_TEST_BINARY"), reason="qualified WASM required")
+def test_delivery_available_cash_window_and_projection_validation(driver):
+    from sqlalchemy import select
+
+    from meridian.application.cash_reconciliation import approved_summary
+    from meridian.persistence.models import BrokerSnapshot
+
+    service, clock = driver
+    with Session(service.engine) as db:
+        prior_id = db.scalar(select(BrokerSnapshot)).id
+    clock[0] += timedelta(days=1)
+    service.api.pages = [
+        (
+            [
+                dict(
+                    reference="new-interest",
+                    type="INTEREST_ON_FREE_CASH",
+                    amount="0.25",
+                    currency="GBP",
+                    dateTime="2026-01-02T12:00:00Z",
+                ),
+                dict(
+                    reference="new-fee",
+                    type="FEE",
+                    amount="-1",
+                    currency="GBP",
+                    dateTime="2026-01-02T12:00:00Z",
+                ),
+            ],
+            None,
+        )
+    ]
+    assert asyncio.run(service.history_page("transactions"))["status"] == "succeeded"
+    service.api.rows["account_summary"]["records"][0]["cash"]["availableToTrade"] = "70.25"
+    captured = {}
+
+    async def rpc(encoded):
+        script = (
+            Path(__file__).resolve().parents[2]
+            / "prototype/worker-feasibility/tests/cash_summary_cli.mjs"
+        )
+        raw = subprocess.run(
+            [os.environ["AXIS_NODE_TEST_BINARY"], str(script)],
+            input=encoded,
+            text=True,
+            capture_output=True,
+            timeout=5,
+            check=True,
+        ).stdout
+        captured.update(encoded=encoded, raw=raw)
+        return raw
+
+    service.cash_reconciler = rpc
+    assert asyncio.run(service.refresh())["status"] == "succeeded"
+    with Session(service.engine) as db:
+        summary = read_snapshot(db, "shared-isa")["cash_reconciliation"]
+    assert summary["availability"] == "provisional"
+    assert summary["cash_sign_policy"] == "statement_checked_gbp_v1"
+    window = summary["cash"][0]
+    assert window["basis"] == "broker_available_to_trade"
+    assert window["opening_source_snapshot_id"] == prior_id
+    assert window["opening_balance"] == "70"
+    assert window["closing_balance"] == "70.25"
+    assert window["known_signed_movements"] == "0.25"
+    assert window["unexplained_difference"] == "0"
+    assert window["included_movement_count"] == 1
+    assert window["excluded_movement_count"] == 1
+    assert window["state"] == "matches_known_events_only"
+    request = json.loads(captured["encoded"])
+    raw = json.loads(captured["raw"])
+    for key, wrong in [
+        ("opening_balance", "0"),
+        ("unexplained_difference", 0),
+        ("opening_source_snapshot_id", "foreign"),
+        ("excluded_movement_count", True),
+    ]:
+        invalid = json.loads(captured["raw"])
+        invalid["cash"][0][key] = wrong
+        with pytest.raises(ValueError):
+            approved_summary(json.dumps(invalid), request, captured["encoded"])
+    raw["cash_sign_policy"] = "invented-policy"
+    with pytest.raises(ValueError):
+        approved_summary(json.dumps(raw), request, captured["encoded"])

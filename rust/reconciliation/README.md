@@ -39,9 +39,14 @@ Source decimal inputs match the existing 128-digit / 128-exponent bounds.
 
 `meridian.application.cash_history.cash_history_request` exports only accepted
 initial cash rows and completed ongoing cash revisions, with source/digest/scope
-checks. Running/failed pages stay excluded. **All exported sign bases are
-unverified and opening/closing controls are empty** until real semantics/evidence
-support them. This makes current output useful for identity/revision/review work;
+checks. Running/failed pages stay excluded. Default exports retain **unverified raw sign bases and empty controls**.
+Hosted opt-in `cash_sign_policy=statement_checked_gbp_v1` verifies only live GBP
+positive cash interest and nonzero signed transfers against independently checked
+private ISA statement evidence. Other cases remain unverified. Optional
+`broker_available_to_trade` controls compare actual component observations; they
+are never total cash. Original evidence is unchanged; the report carries policy
+and derived sign-evidence IDs. Component comparisons include supported/excluded
+window counts and remain provisional even on zero residual. This makes current output useful for identity/revision/review work;
 it does not claim actual account cash is reconciled.
 
 Build once from the repository root:

@@ -90,3 +90,13 @@ These gaps block complete historical reconciliation, production cross-source ali
 ## Inspection evidence
 
 Read-only inspection used the bundled Python PDF libraries for all 117 pages and Poppler rendering of relevant table headers. The trade, open-position, dividend and cash schemas were checked against source layout, including the additional transactions statement's ISA table header. Private extraction files stay in an ignored review directory; no raw source rows were added to fixtures or documentation. No source PDF was edited, no authenticated broker request occurred and no automated financial import or cash/quantity reconciliation is claimed.
+
+
+20 November cash-sign addendum: independent ISA identity and representative cash
+rows corroborate positive GBP `INTEREST_ON_FREE_CASH` and `TRANSFER` signs in both
+directions against captured API evidence. Matching wall-time/currency/absolute
+amount is corroboration only: no timezone or canonical cross-source identity is
+asserted. Private source, checks and redacted visual examples remain ignored.
+This statement contains no usable opening/closing cash control; account value is
+not cash. The component diagnostic instead uses actual approved broker observations;
+see the observed cash component window in the reconciliation contract.

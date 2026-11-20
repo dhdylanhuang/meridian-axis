@@ -28,13 +28,15 @@ def cash_history_request(
     snapshot_id=None,
     max_observations=MAX_OBSERVATIONS,
     include_captures=True,
+    observed_available_cash=False,
+    sign_policy=None,
 ):
     """Read one consistent caller-owned snapshot; never grant runtime raw access.
 
     Initial capture and accepted revision payloads remain evidence. Every exported
     sign basis is unverified: provider amounts cannot become economic cash deltas
-    until separately supported semantics are implemented. Broker components remain
-    independent observations, never an invented closing total or opening balance.
+    unless a trusted caller explicitly selects a separately verified Rust policy.
+    Broker components remain independent observations, never an invented total.
     """
     account = db.get(Account, account_id)
     if account is None or account.broker != "trading212":
@@ -144,7 +146,7 @@ def cash_history_request(
             revision.digest,
         )
     cash = projection["cash_components"]
-    return dict(
+    request = dict(
         schema_version=1,
         scope=scope,
         cutoff=cutoff,
@@ -160,3 +162,36 @@ def cash_history_request(
             snapshot_id=snapshot_id,
         ),
     )
+
+    if sign_policy is not None:
+        request["cash_sign_policy"] = sign_policy
+    if observed_available_cash:
+        prior_day = instant(cutoff).replace(hour=0, minute=0, second=0, microsecond=0)
+        prior = db.scalar(
+            select(BrokerSnapshot)
+            .where(BrokerSnapshot.account_id == account_id, BrokerSnapshot.observed_at < prior_day)
+            .order_by(BrokerSnapshot.observed_at.desc(), BrokerSnapshot.id.desc())
+            .limit(1)
+        )
+        if prior is not None and cash.get("availableToTrade") is not None:
+            if hashlib.sha256(prior.snapshot_json.encode()).hexdigest() != prior.digest:
+                raise ReconciliationError("reconciliation_snapshot_integrity_invalid")
+            opening = json.loads(prior.snapshot_json)
+            amount = opening.get("cash_components", {}).get("availableToTrade")
+            if (
+                amount is not None
+                and opening.get("environment") == account.environment
+                and opening.get("currency") == projection["currency"]
+            ):
+                at = opening["account_retrieval"]["retrieval_completed_at"]
+                number(amount)
+                if instant(at) >= instant(cutoff):
+                    raise ReconciliationError("reconciliation_opening_cutoff_invalid")
+                base = dict(
+                    scope=scope, currency=projection["currency"], basis="broker_available_to_trade"
+                )
+                request["opening_cash"] = [base | dict(amount=amount, at=at, source_id=prior.id)]
+                request["closing_cash"] = [
+                    base | dict(amount=cash["availableToTrade"], at=cutoff, source_id=snapshot_id)
+                ]
+    return request

@@ -3,6 +3,7 @@
 import asyncio
 import hashlib
 import json
+import re
 
 from sqlalchemy.orm import Session
 
@@ -33,6 +34,7 @@ WARNINGS = {
     "cash_signs_unverified",
     "transfer_boundary_not_classified",
     "cash_controls_incomplete",
+    "available_cash_component_not_total_cash",
 }
 COVERAGE = {
     "families": ["cash_transactions"],
@@ -85,7 +87,7 @@ def approved_summary(raw, request, encoded):
     }
     if (
         not isinstance(result, dict)
-        or set(result) not in (expected, expected | {"activity_counts"})
+        or not expected <= set(result) <= expected | {"activity_counts", "cash_sign_policy"}
         or (
             result["method"] != METHOD
             or result["scope"] != request["scope"]
@@ -95,6 +97,8 @@ def approved_summary(raw, request, encoded):
             or result["availability"] not in {"provisional", "insufficient_data"}
         )
     ):
+        raise ValueError("reconciliation_result_mismatch")
+    if result.get("cash_sign_policy") != request.get("cash_sign_policy"):
         raise ValueError("reconciliation_result_mismatch")
     events, observations = _count(result["event_count"]), _count(result["observation_count"])
     if events > observations or observations != len(request["observations"]):
@@ -123,18 +127,66 @@ def approved_summary(raw, request, encoded):
     cash = result["cash"]
     if not isinstance(cash, list) or len(cash) != len(currencies):
         raise ValueError("reconciliation_result_invalid")
-    if {row.get("currency") for row in cash} != currencies or any(
-        set(row) != {"currency", "state", "unexplained_difference"}
-        or row["state"] != "insufficient_data"
-        or row["unexplained_difference"] is not None
-        for row in cash
-    ):
-        # The production adapter supplies no verified controls: a numeric residual
-        # here would fabricate economics even if it arrived via a trusted binding.
+    if {row.get("currency") for row in cash} != currencies:
         raise ValueError("reconciliation_result_invalid")
+    base_keys = {"currency", "state", "unexplained_difference"}
+    window_keys = {
+        "basis",
+        "opening_balance",
+        "closing_balance",
+        "opening_source_snapshot_id",
+        "window_start",
+        "cutoff",
+        "known_signed_movements",
+        "replayed_cash",
+        "included_movement_count",
+        "excluded_movement_count",
+    }
+    controls = {row["currency"]: row for row in request.get("opening_cash", [])}
+    closing = {row["currency"]: row for row in request.get("closing_cash", [])}
+    for row in cash:
+        control, end = controls.get(row["currency"]), closing.get(row["currency"])
+        if control is None or end is None:
+            if (
+                set(row) != base_keys
+                or row["state"] != "insufficient_data"
+                or row["unexplained_difference"] is not None
+            ):
+                raise ValueError("reconciliation_result_invalid")
+            continue
+        if (
+            set(row) != base_keys | window_keys
+            or row["basis"] != control["basis"]
+            or row["basis"] != "broker_available_to_trade"
+            or row["opening_balance"] != control["amount"]
+            or row["closing_balance"] != end["amount"]
+            or row["opening_source_snapshot_id"] != control["source_id"]
+            or row["window_start"] != control["at"]
+            or row["cutoff"] != request["cutoff"]
+            or row["state"] not in {"difference", "matches_known_events_only"}
+            or _count(row["included_movement_count"]) + _count(row["excluded_movement_count"])
+            > events
+        ):
+            raise ValueError("reconciliation_result_invalid")
+        for key in ("known_signed_movements", "replayed_cash", "unexplained_difference"):
+            value = row[key]
+            if (
+                not isinstance(value, str)
+                or len(value) > 600
+                or re.fullmatch(r"-?[0-9]+(?:\.[0-9]+)?", value) is None
+            ):
+                raise ValueError("reconciliation_result_invalid")
+    coverage = dict(COVERAGE)
+    if controls:
+        coverage["opening_cash"] = "observed_available_to_trade_component"
+    if request.get("cash_sign_policy"):
+        coverage["signs"] = "statement_checked_gbp_interest_and_transfers_only"
     return {key: result[key] for key in expected - {"scope"}} | {
-        "coverage": COVERAGE,
+        "coverage": coverage,
         "activity_counts": activity,
+        **(
+            {"cash_sign_policy": result["cash_sign_policy"]} if "cash_sign_policy" in result else {}
+        ),
     }
 
 
@@ -161,6 +213,8 @@ async def prepare_cash_summary(engine, *, account_id, projection, snapshot_id, r
                     snapshot_id=snapshot_id,
                     max_observations=MAX_EVENTS,
                     include_captures=False,
+                    observed_available_cash=True,
+                    sign_policy="statement_checked_gbp_v1",
                 )
             connection.rollback()
         encoded = canonical(request)

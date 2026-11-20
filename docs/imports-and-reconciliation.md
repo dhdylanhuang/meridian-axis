@@ -201,3 +201,34 @@ snapshot is considered by the next successful refresh.
 No new Worker, database table, schema writer, browser request or sync schedule.
 The extra account/cash reads are bounded once per successful refresh; actual query
 usage remains an operational verification item, not a claimed measurement.
+
+
+## Observed cash component window — 20 November 2026
+
+The hosted adapter now opts into `statement_checked_gbp_v1`. Independent read-only
+ISA statement checks corroborated captured account identity, positive GBP cash
+interest, and signed GBP transfers in both directions. The private proof and source
+remain ignored. This rule grants no contribution classification, timestamp-zone
+assertion, cross-source alias, or PDF importer. Other types/currencies, negative
+interest corrections and demo data keep unverified signs. Rust preserves original
+observations/revisions and records the applied policy/evidence ID separately.
+
+For each refresh, one indexed bounded read selects the latest approved snapshot
+observed before the current UTC day. Its digest, account/environment, currency and
+available-to-trade component establish an actual opening observation; the pending
+snapshot supplies the matching closing component. No inception opening or total
+cash is inferred. Missing controls retain null residuals. Rust alone sums supported
+unique effective movements in `(opening timestamp, cutoff]`, computes expected
+component cash and closing-minus-expected residual, and counts included/excluded
+cash events. The approved projection carries exact decimal strings, timestamps,
+opening snapshot ID, current snapshot ID and input revision. Projection validation
+rejects mismatched controls, policy, IDs, invalid decimal/count shapes and extra fields.
+
+This is a provisional **available-to-trade component check**. Trade/dividend cash,
+reservations, pie changes, incomplete capture/history and other unverified cash
+families can explain residuals; they are not automatically assigned a cause. A zero
+residual means only `matches_known_events_only`, even when excluded events remain.
+No NAV, lifetime cash reconciliation, return, fee/FX or corporate-action booking.
+No migration, grant, Worker, browser request or cadence change. Service failure
+continues to preserve successful broker publication. Offline exporter defaults keep
+signs unverified and controls empty unless explicitly opted in by a trusted caller.

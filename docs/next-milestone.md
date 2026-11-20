@@ -42,16 +42,25 @@ error. Current status records the bounded checks; do not restart them.
 Full-bound hosted CPU/memory remains an open workload gate; failures leave broker
 publication available. Do not repeat prior suites or expose a public compute API.
 
-Next useful feature work is verified sign/control evidence for actual cash
-reconciliation, then bounded additional event families. Maintain the private Rust
-call and approved summary boundary; never convert review-only amounts to booked
-cash merely because a provider type looks directional.
+The next bounded cash component window is implemented; current status owns tests
+and release evidence. Source verification supports positive GBP cash interest and
+signed GBP transfers only. The private Rust job compares actual opening/closing
+available-to-trade observations and exposes a provisional residual and exclusions.
+This completes a useful component diagnostic, not the transaction ledger stage.
 
-Actual cash economics separately require evidence for signed amounts and comparable
-opening/closing controls. Current exports leave these unverified/missing. Dividends,
-fill-wallet fees/FX, corporate actions, cash coverage and CSV aliases remain open.
-The prior Python quantity diagnostic is retained, not silently replaced by a cash
-module. Do not invent provider signs, corporate-action economics or returns.
+Remaining deliveries, in order:
+1. Explain residuals with verified fill-wallet/dividend and reservation/pie effects;
+   establish comparable total-cash controls before claiming full reconciliation.
+2. Extend evidence-backed signs/coverage for deposits, withdrawals, fees/FX and
+   corrections; maintain source revisions and duplicate protection. Backfill or
+   expose incomplete history without expanding runtime raw-source grants casually.
+3. Integrate the existing quantity diagnostic, with corporate actions requiring
+   review; do not invent their economics or import formats.
+4. Build portfolio/risk/treasury metrics only from eligible, dated, sufficiently
+   covered inputs. Trading remains on Trading 212; no separate role screens or tax.
+
+Full-bound hosted CPU/memory and actual query use remain separate unresolved gates.
+Do not rerun previous suites or platform probes without a specific new risk.
 
 ## Preserve
 

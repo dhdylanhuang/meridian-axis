@@ -115,7 +115,7 @@ test('approved Rust review shows incomplete cash coverage and clears private sta
  assert.match(ui.el('cash-reconciliation').textContent,/1 deposit · 2 cash-interest payments/);
  assert.match(ui.el('cash-reconciliation').textContent,/No record conflicts/);
  assert.doesNotMatch(ui.el('cash-reconciliation').textContent,/3 require review/);
- assert.match(ui.el('cash-reconciliation').textContent,/Balances are not reconciled/);
+ assert.match(ui.el('cash-reconciliation').textContent,/Full cash balances are not reconciled/);
  ui.view.clear();assert.equal(ui.el('cash-reconciliation').textContent,'—');
 });
 
@@ -126,4 +126,15 @@ test('cash review distinguishes actual exceptions and supports older approved sn
  assert.match(ui.el('cash-reconciliation').textContent,/1 record conflict; 1 unsupported cash type require investigation/);
  assert.match(ui.el('cash-reconciliation').textContent,/Activity breakdown will appear/);
  assert.doesNotMatch(ui.el('cash-reconciliation').textContent,/4 require review/);
+});
+
+
+test('delivery cash window shows sourced controls and explicit residual limitations',async()=>{
+ const data=snapshot();data.cash_reconciliation={availability:'provisional',event_count:3,review_counts:{},cash_sign_policy:'statement_checked_gbp_v1',cash:[{basis:'broker_available_to_trade',currency:'GBP',window_start:'2026-01-01T00:00:00Z',cutoff:'2026-01-02T00:00:00Z',opening_balance:'10',closing_balance:'7.25',known_signed_movements:'-1.75',replayed_cash:'8.25',unexplained_difference:'-1',included_movement_count:2,excluded_movement_count:1}]};
+ const ui=setup(async()=>({ok:true,status:200,json:async()=>data}));await ui.view.load();
+ const text=ui.el('cash-reconciliation').textContent;
+ assert.match(text,/opening 10; supported movements -1.75; expected 8.25; reported closing 7.25; unexplained difference -1/);
+ assert.match(text,/2 supported and 1 excluded/);
+ assert.match(text,/zero difference does not establish complete reconciliation/);
+ assert.match(text,/positive GBP cash interest and signed GBP transfers only/);
 });

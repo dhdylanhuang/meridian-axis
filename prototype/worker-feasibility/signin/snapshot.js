@@ -96,7 +96,10 @@
           const conflicts = cashReview.review_counts?.identity_conflict_review || 0;
           const unsupported = cashReview.review_counts?.unsupported_type_review || 0;
           const exceptions = conflicts || unsupported ? `${conflicts} record conflict${conflicts === 1 ? '' : 's'}; ${unsupported} unsupported cash type${unsupported === 1 ? '' : 's'} require investigation.` : 'No record conflicts or unsupported cash types detected by current checks.';
-          return `${cashReview.event_count} cash events captured. ${activity ? activity + '. ' : 'Activity breakdown will appear after the next successful broker refresh. '}${exceptions} Shared prerequisites remain: verify opening cash and cash-sign conventions, and include trade/dividend cash. Balances are not reconciled.`;
+          const window = cashReview.cash?.find(row=>row.basis === 'broker_available_to_trade');
+          const windowText = window ? ` Available-to-trade cash check (${window.currency}), ${window.window_start} to ${window.cutoff}: opening ${window.opening_balance}; supported movements ${window.known_signed_movements}; expected ${window.replayed_cash}; reported closing ${window.closing_balance}; unexplained difference ${window.unexplained_difference}. ${window.included_movement_count} supported and ${window.excluded_movement_count} excluded cash events in this window. This component check excludes trade/dividend cash and reservation/pie changes; a zero difference does not establish complete reconciliation.` : ' An opening observation is not available for a dated cash check.';
+          const policy = cashReview.cash_sign_policy === 'statement_checked_gbp_v1' ? ' Statement-verified sign rules cover positive GBP cash interest and signed GBP transfers only.' : ' Cash-sign conventions remain unverified.';
+          return `${cashReview.event_count} cash events captured. ${activity ? activity + '. ' : 'Activity breakdown will appear after the next successful broker refresh. '}${exceptions}${policy}${windowText} Full cash balances are not reconciled.`;
         })();
       health(data.refresh_health);
     } catch (error) {
