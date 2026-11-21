@@ -4,6 +4,7 @@
   let snapshot = null, generation = 0, controller = null;
   let holdingScope = null;
   let history = null, historyRequest = null, historyIndex = 0, overviewRequested = false;
+  let changesRequest = null;
   let riskLoaded = false, riskRequest = null;
   const detailControllers = new Set();
   const add = (parent, tag, text) => {
@@ -130,13 +131,14 @@
     const [x,y] = parts.map(([whole, fraction='']) => BigInt(whole + fraction.padEnd(scale, '0')));
     return x < y ? -1 : x > y ? 1 : 0;
   }
-  const tabs = [['axis-tab','axis-panel'],['exposures-tab','portfolio-exposures'],['holdings-tab','holdings-panel'],['history-tab','history-panel'],['risk-tab','risk-panel']];
+  const tabs = [['axis-tab','axis-panel'],['exposures-tab','portfolio-exposures'],['holdings-tab','holdings-panel'],['history-tab','history-panel'],['risk-tab','risk-panel'],['changes-tab','changes-panel']];
   function selectTab(tab) {
     for (const [other, section] of tabs) {
       el(other).setAttribute('aria-pressed',String(other === tab));
       el(section).hidden = other !== tab;
     }
     if (tab === 'history-tab' && !history) void loadHistory();
+    if (tab === 'changes-tab') setChangesDates();
     if (tab === 'risk-tab') {
       renderRiskExposure(snapshot);
       if (!riskLoaded && !riskRequest) void loadRisk();
@@ -525,6 +527,7 @@
   }
   function renderHistory(data) {
     history = data;
+    setChangesDates();
     renderOverview();
     fundingDays.clear();
     for (const event of data.performance?.funding || []) {
@@ -613,6 +616,157 @@
     for (const title of columns) add(header, 'th', title).scope = 'col';
     return add(table, 'tbody');
   }
+  function setChangesDates() {
+    const start = el('changes-start'), end = el('changes-end');
+    start.max = end.max = new Date().toISOString().slice(0, 10);
+    if (start.value || end.value || !history) return;
+    const recent = history.days.filter(day => day.status === 'observed').slice(-2);
+    if (recent.length === 2) {
+      start.value = recent[0].date;
+      end.value = recent[1].date;
+    }
+  }
+  const signed = (value, currency) => value != null && compare(value, '0') > 0
+    ? '+' + decimal(value, currency) : decimal(value, currency);
+  const dateCapture = value => value ? utcStamp(value) + ' UTC' : 'Unavailable';
+
+  function renderChanges(data) {
+    const section = el('changes-results');
+    section.replaceChildren();
+    for (const [label, endpoint] of [['Start', data.start], ['End', data.end]]) {
+      add(section, 'h3', `${label} · ${endpoint.date} UTC`);
+      if (endpoint.status === 'missing') {
+        add(section, 'p', 'No approved Trading 212 snapshot was saved for this date.');
+      } else if (endpoint.status === 'unavailable') {
+        add(section, 'p', `A snapshot was saved at ${dateCapture(endpoint.observed_at)}. Its GBP holdings or capture evidence could not be verified.`);
+      } else {
+        add(section, 'p', `Holdings captured ${dateCapture(endpoint.positions_captured_at)} · Account captured ${dateCapture(endpoint.account_captured_at)} · Saved observation ${dateCapture(endpoint.observed_at)}`);
+        add(section, 'p', `Weight denominator (reported ISA value) · ${decimal(endpoint.portfolio_denominator, 'GBP')}`);
+      }
+    }
+    if (data.start.status !== 'observed' || data.end.status !== 'observed') return;
+
+    add(section, 'h3', 'Observed changes in reported holding value');
+    add(section, 'p', 'Ranked by absolute GBP change. Quantity flags compare the saved positions. These snapshots provide no reliable split of the change between price, FX and trading.');
+    const labels = {added:'Added', closed:'Closed', quantity_changed:'Quantity changed',
+      quantity_unchanged:'Quantity unchanged', quantity_unavailable:'Quantity unavailable',
+      identity_conflict:'Listing identity changed'};
+    const body = exposureTable(section, ['Holding', 'GBP change', 'Start value', 'End value',
+      'Start quantity', 'End quantity', 'Start weight', 'End weight', 'Position status'], 'Holding changes');
+    const links = new Map();
+    for (const [index, holding] of data.holdings.entries()) {
+      const row = add(body, 'tr');
+      const evidence = add(add(row, 'td'), 'details');
+      evidence.id = 'change-holding-' + index;
+      const summary = add(evidence, 'summary', holding.end.name || holding.start.name || holding.ticker);
+      links.set(holding.ticker, {evidence, summary});
+      add(evidence, 'small', holding.ticker);
+      for (const [key, side, label] of [['start', holding.start, 'Start'], ['end', holding.end, 'End']]) {
+        const captured = dateCapture(data[key].positions_captured_at);
+        add(evidence, 'small', side.present
+          ? `${label} · ${side.isin || holding.ticker} · ${captured}`
+          : `${label} · No open position at ${captured}`);
+      }
+      add(row, 'td', signed(holding.value_change, 'GBP'));
+      for (const field of ['value','quantity','weight_pct']) {
+        for (const side of [holding.start, holding.end]) {
+          add(row, 'td', field === 'weight_pct' ? percent(side[field])
+            : decimal(side[field], field === 'value' ? 'GBP' : undefined));
+        }
+      }
+      add(row, 'td', labels[holding.status]);
+    }
+    if (!links.size) add(section, 'p', 'Neither snapshot contains open positions.');
+
+    const cashLabels = {availableToTrade:'Available to trade', inPies:'Cash in pies', reservedForOrders:'Reserved for orders'};
+    function weightChanges(title, rows) {
+      const body = exposureTable(section, ['Reported exposure', 'Start value', 'End value', 'GBP change',
+        'Start weight', 'End weight', 'Weight change'], title);
+      for (const item of rows) {
+        const row = add(body, 'tr'), cell = add(row, 'td');
+        const label = cashLabels[item.label] ?? item.label ?? 'Unclassified';
+        if (item.members.length) {
+          const detail = add(cell, 'details');
+          add(detail, 'summary', label);
+          const list = add(detail, 'ul');
+          for (const member of item.members) {
+            const entry = add(list, 'li');
+            const target = links.get(member.ticker);
+            if (target) {
+              const link = add(entry, 'a', member.ticker);
+              link.href = '#' + target.evidence.id;
+              link.addEventListener('click', () => {
+                target.evidence.open = true;
+                target.summary.focus?.();
+              });
+            } else add(entry, 'span', member.ticker);
+            add(entry, 'small', `${decimal(member.start_value ?? '0', 'GBP')} → ${decimal(member.end_value ?? '0', 'GBP')}`);
+          }
+        } else cell.textContent = label;
+        for (const field of ['start_value', 'end_value']) add(row, 'td', decimal(item[field], 'GBP'));
+        add(row, 'td', signed(item.value_change, 'GBP'));
+        for (const field of ['start_weight_pct', 'end_weight_pct']) add(row, 'td', percent(item[field]));
+        add(row, 'td', signed(item.weight_change_pp) + ' pp');
+      }
+    }
+    add(section, 'h3', 'Cash and concentration');
+    add(section, 'p', 'Cash components come from the two account captures. Top five uses the largest reported holdings at each endpoint. Weight changes are differences between displayed weights.');
+    const accountChanges = [...data.cash, ...(data.top_five ? [data.top_five] : [])];
+    if (accountChanges.length) weightChanges('Cash and concentration changes', accountChanges);
+    const missing = Object.keys(cashLabels).filter(key => !data.cash.some(row => row.label === key)).map(key => cashLabels[key]);
+    if (!data.top_five) missing.push('Top five holdings');
+    if (missing.length) add(section, 'p', `Comparable data unavailable · ${missing.join(', ')}`);
+
+    const dimensions = {sectors:'Sectors', issuer_domiciles:'Country · direct issuer domicile',
+      fund_markets:'Country · fund market allocation'};
+    add(section, 'h3', 'Classification changes');
+    add(section, 'p', 'Coverage is classified GBP value out of observed GBP holding value within each view. Buckets reflect the classifications saved at each endpoint and can move as coverage changes.');
+    for (const allocation of data.allocations) {
+      const title = dimensions[allocation.dimension];
+      add(section, 'h4', title);
+      const coverage = side => `${decimal(allocation[side + '_classified'], 'GBP')} of ${decimal(allocation[side + '_observed'], 'GBP')}`;
+      add(section, 'p', `Classified value · Start ${coverage('start')} · End ${coverage('end')}`);
+      if (!allocation.comparable) add(section, 'p', 'Comparable saved allocations or complete GBP holding values are unavailable at one or both endpoints.');
+      else if (allocation.buckets.length) weightChanges(title, allocation.buckets);
+      else add(section, 'p', 'No observed allocation buckets in this view.');
+    }
+  }
+
+  async function loadChanges(start, end) {
+    changesRequest?.abort();
+    const request = new AbortController();
+    changesRequest = request;
+    const status = el('changes-status');
+    el('changes-results').replaceChildren();
+    status.textContent = 'Loading saved endpoints…';
+    el('changes-apply').disabled = true;
+    try {
+      const response = await fetch(`/api/v1/portfolio/changes?start=${start}&end=${end}`,
+        {credentials:'same-origin', cache:'no-store', redirect:'error', signal:request.signal});
+      if (changesRequest !== request) return;
+      if ([401,403].includes(response.status)) { clear(); window.dispatchEvent(new Event('meridian-session-ended')); return; }
+      if (!response.ok) throw new Error('changes_unavailable');
+      const data = await response.json();
+      if (changesRequest !== request) return;
+      if (data.method !== 'observed_portfolio_changes_v1' || data.start.date !== start || data.end.date !== end) {
+        throw new Error('changes_mismatch');
+      }
+      renderChanges(data);
+      status.textContent = data.start.status === 'observed' && data.end.status === 'observed'
+        ? '' : 'Both dates need usable snapshots for a comparison.';
+    } catch {
+      if (changesRequest === request) {
+        el('changes-results').replaceChildren();
+        status.textContent = 'The comparison could not be loaded. Try again.';
+      }
+    } finally {
+      if (changesRequest === request) {
+        changesRequest = null;
+        el('changes-apply').disabled = false;
+      }
+    }
+  }
+
   function exposureCells(row, exposure, currency) {
     add(row, 'td', decimal(exposure.value, currency));
     add(row, 'td', percent(exposure.portfolio_pct));
@@ -729,6 +883,11 @@
     historyRequest?.abort(); historyRequest = null; history = null; overviewRequested = false;
     for (const id of ['overview-comparison','overview-drawdown','overview-concentration']) el(id).textContent = '—';
     for (const id of ['overview-account-time','overview-comparison-period','overview-risk-period','overview-exposure-time']) el(id).textContent = '';
+    changesRequest?.abort(); changesRequest = null;
+    el('changes-results').replaceChildren();
+    el('changes-status').textContent = '';
+    el('changes-start').value = ''; el('changes-end').value = '';
+    el('changes-apply').disabled = false;
     riskRequest?.abort(); riskRequest = null; riskLoaded = false;
     el('risk-results').replaceChildren();
     el('risk-exposures').replaceChildren();
@@ -887,6 +1046,15 @@
       el(tab).focus?.();
     });
   }
+  el('changes-filter').addEventListener('submit', event => {
+    event.preventDefault();
+    const start = el('changes-start').value, end = el('changes-end').value;
+    if (!start || !end || start >= end) {
+      el('changes-status').textContent = 'Choose a start date before the end date.';
+      return;
+    }
+    void loadChanges(start, end);
+  });
   el('risk-filter').addEventListener('submit', event => {
     event.preventDefault();
     const start = el('risk-start').value;

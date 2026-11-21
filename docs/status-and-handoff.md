@@ -40,6 +40,22 @@ versions above refer to the application source. The documentation revision is
 tracked separately in Git history.
 
 
+## Portfolio Changes sprint
+
+Implemented a dated comparison on the existing approved Trading 212 projections.
+The tab shows separate account and holdings capture times, signed GBP changes
+ranked by magnitude, endpoint values, quantities and weights, and position
+flags. Saved sector, domicile and fund-market buckets, independent cash
+components, and top-five concentration use the reported ISA denominators where
+supported. Allocation and concentration rows link to the individual dated
+holdings. See [the calculation contract](calculation-contracts.md#observed-portfolio-changes).
+
+Focused local checks passed for the missing snapshot, changed quantity, added
+and closed positions, allocation drill-down and protected date transport.
+Five existing Rust exposure checks and the targeted History and Risk checks
+passed. The locked WASM artifact was rebuilt. Hosted deployment and the
+authenticated comparison against two saved endpoints are pending.
+
 ## Daily risk coverage and AXIS overview
 
 A bounded audit of the retained window confirmed that saved broker marks and

@@ -1,11 +1,11 @@
 import gateway from './session_gateway.mjs';
-import { reconcileCashJSON } from './cash_reconciliation.mjs';
+import { portfolioChangesJSON, reconcileCashJSON } from './cash_reconciliation.mjs';
 export { CashReconciliation } from './cash_reconciliation_rpc.mjs';
 
 export default {
   scheduled: gateway.scheduled,
   async fetch(request, env) {
-    const response = await gateway.fetch(request, env);
+    const response = await gateway.fetch(request, env, portfolioChangesJSON);
     if (new URL(request.url).pathname !== '/health' || !response.ok) return response;
     // Fixed operational self-check only. No caller data, database or real portfolio.
     let ready = false;

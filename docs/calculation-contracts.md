@@ -275,3 +275,29 @@ semantics, returns, or what fraction remains in current cash. Missing coverage i
 labelled; a missing category is unestablished rather than a synthetic zero. Rust
 owns exact sums; Python validates and JavaScript displays strings without finance
 arithmetic. Broker cash components stay independent.
+
+## Observed portfolio changes
+
+Compare the last approved Trading 212 observation on each selected UTC date.
+Account and positions retrieval completions are shown separately, along with
+the saved observation time. A missing or unusable date blocks the comparison.
+
+For each broker ticker, subtract its opening reported GBP value from its ending
+value and sort by the absolute difference, with ticker as the tie-breaker.
+Amounts and quantities are exact decimal strings. A position absent from a
+complete saved list, or with a saved zero quantity, has zero open quantity and
+value for comparison. Positions with unavailable values remain visible at the
+bottom of the ranking. Conflicting known ISINs suppress the value difference.
+A quantity flag describes the endpoint difference. Reported values and those
+flags provide insufficient evidence for price, FX or trading attribution.
+
+Weights use each endpoint's positive reported ISA total, subject to the existing
+invested-value guard. Percentage-point changes use the difference of the
+displayed weights. Cash components are independent account fields. Top-five
+concentration ranks the available open positions at each endpoint and requires
+complete GBP values. Classification changes use the compatible allocation
+projections saved with the selected snapshots. Sector, issuer domicile and fund
+markets retain their own scope and classified versus observed GBP value. A
+missing bucket represents zero observed allocation to that bucket where both
+projections are compatible. Holdings drill-down shows membership and GBP
+contributions from each selected endpoint.

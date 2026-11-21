@@ -3,6 +3,7 @@ const ROUTES = new Map([
   ["/health", "GET"],
   ["/api/v1/portfolio/snapshot", "GET"],
   ["/api/v1/portfolio/history", "GET"],
+  ["/api/v1/portfolio/changes", "GET"],
   ["/api/v1/portfolio/risk", "GET"],
   ["/api/v1/portfolio/refresh", "POST"],
   ["/api/v1/portfolio/cash-activity", "POST"],
@@ -88,7 +89,7 @@ export default {
     const response = await env.SYNC.get(id).fetch(new Request("https://sync.internal/scheduled", {method:"POST"}));
     if (!response.ok) throw new Error("broker_sync_unavailable");
   },
-  async fetch(request, env) {
+  async fetch(request, env, calculateChanges) {
     const origin = configuredOrigin(env.PUBLIC_ORIGIN);
     if (!origin) return failure("session_configuration_unavailable", 503);
     try {
@@ -97,9 +98,10 @@ export default {
       if (url.origin !== origin.origin || (host !== null && host !== origin.host)) {
         return failure("origin_invalid", 403);
       }
-      const riskRange = url.pathname === "/api/v1/portfolio/risk" &&
+      const changes = url.pathname === "/api/v1/portfolio/changes";
+      const dateRange = (changes || url.pathname === "/api/v1/portfolio/risk") &&
         /^\?start=\d{4}-\d{2}-\d{2}&end=\d{4}-\d{2}-\d{2}$/.test(url.search);
-      if ((request.url.includes("?") && !riskRange) || request.url.includes("#")) {
+      if (((changes || request.url.includes("?")) && !dateRange) || request.url.includes("#")) {
         return failure("request_invalid", 400);
       }
       if (["/", "/signin.js", "/signin.css", "/snapshot.js"].includes(url.pathname) && env.ASSETS) {
@@ -139,11 +141,22 @@ export default {
         if (value !== null) headers.set(name, value);
       }
       if (login || activity) headers.set("Content-Type", "application/json");
-      const upstream = new Request(origin.origin + url.pathname + (riskRange ? url.search : ""), {
+      const upstream = new Request(origin.origin + url.pathname + (dateRange ? url.search : ""), {
         method, headers, redirect: "manual", ...((login || activity) ? { body } : {}),
       });
       const id = env.APP.idFromName("meridian-session-application");
       const response = await env.APP.get(id).fetch(upstream);
+      if (changes && response.ok) {
+        try {
+          if (!calculateChanges) throw new Error("changes_unavailable");
+          const report = calculateChanges(await response.text());
+          const headers = privateHeaders();
+          headers.set("Content-Type", "application/json");
+          return new Response(report, { status: 200, headers });
+        } catch {
+          return failure("changes_unavailable", 503);
+        }
+      }
       return new Response(response.body, {
         status: response.status,
         headers: privateHeaders(response.headers),

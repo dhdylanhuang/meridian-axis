@@ -294,3 +294,20 @@ missing generations return 409 with a reload instruction. Late responses cannot
 repopulate after signout or snapshot replacement. Coverage shows completed broker
 traversals/earliest captured dates and explicitly limits claims to available broker
 history. Old saved summaries retain their existing totals without fake detail rows.
+
+## Portfolio Changes
+
+`GET /api/v1/portfolio/changes?start=YYYY-MM-DD&end=YYYY-MM-DD` requires an
+approved member session and ordered UTC dates through today. It returns
+`observed_portfolio_changes_v1` with two endpoint statuses, snapshot IDs,
+capture and observation times, valid weight denominators and comparison rows.
+The private session owner reads two account-scoped approved projections using
+the History date selection rule and checks their digests. The gateway computes
+the public report in Rust WASM and serves it with `Cache-Control: no-store`.
+A date with no usable input returns `missing` or `unavailable` in the report.
+Neither date selection nor comparison fetches new broker data.
+
+The Portfolio Changes tab defaults to the last two observed dates in the
+loaded History when available. Choose different UTC dates to compare other
+retained anchors. Expand a holding for dated source evidence, or expand an
+allocation or concentration row and follow its links to the compared holdings.

@@ -191,7 +191,7 @@ class SessionHttp:
                 authority != self.service.origin
                 or request.url.scheme != "https"
                 or len(request.headers.getlist("host")) != 1
-                or (request.url.query and operation != "risk")
+                or (request.url.query and operation not in {"risk", "changes"})
                 or (
                     request.headers.getlist("origin")
                     and self._header(request, "origin") != self.service.origin
@@ -265,6 +265,24 @@ class SessionHttp:
                 # Authorisation commits before the separate sync authority makes upstream calls.
                 result = await self.refresh()
                 return private_response(result, 200 if result.get("status") == "succeeded" else 202)
+            if operation == "changes":
+                from meridian.application.snapshot_access import read_changes_endpoints
+
+                with self.database() as db, db.begin():
+                    principal = self.service.authenticate(db, token, now=now)
+                    match = re.fullmatch(
+                        r"start=(\d{4}-\d{2}-\d{2})&end=(\d{4}-\d{2}-\d{2})",
+                        request.url.query,
+                        re.ASCII,
+                    )
+                    if not match:
+                        raise ValueError("changes_range_invalid")
+                    start, end = map(date.fromisoformat, match.groups())
+                    if not start < end <= now.date():
+                        raise ValueError("changes_range_invalid")
+                    return private_response(
+                        read_changes_endpoints(db, principal.account_id, now, start, end)
+                    )
             if operation in {"history", "risk"}:
                 from meridian.application.snapshot_access import HISTORY_DAYS, read_history
 

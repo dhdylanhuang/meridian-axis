@@ -42,7 +42,7 @@ projection or attribution requirement is silently removed; tax stays deferred.
 | D06 | Editable ticker mapping; unmapped instruments produce warnings without destroying evidence | Data model; Stage 1/2 |
 | G01 | One current group per listing; verified export group context, conflict review and Unassigned warnings; Slice is ticker in the inspected snapshot | Imports and data model; Stage 1 |
 | G02 | Rename, merge and reassign with audit; preserve raw labels and manual overrides | Imports; Stage 1/2 |
-| G03 | Group exposure, aggregation, correlation, attribution and risk | Calculations and correlation; Stages 2/4/5 |
+| G03 | Group exposure, aggregation, correlation, attribution and risk | [Observed portfolio changes](calculation-contracts.md#observed-portfolio-changes), calculations and correlation; Stages 2/4/5 |
 | C01 | Derived quantity, costs, value, unrealised/realised PnL, dividends and return | Calculations and tax; Stages 2/3 |
 | C02 | Holding and group weights; configurable holding RAG | Calculations and UI; Stage 2/5 |
 | C03 | Daily, MTD, YTD, since-inception and time-weighted performance with explicit flows | Calculations; Stage 3 |

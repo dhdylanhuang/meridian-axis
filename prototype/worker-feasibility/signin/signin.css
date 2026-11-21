@@ -40,3 +40,7 @@ body.signed-in main{max-width:1180px}.workspace-head{display:flex;align-items:ce
 .overview-metrics{margin-top:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
 .metrics article small{display:block;color:#afc3b5;margin-top:.35rem}
 .overview-metrics article button{margin-top:.4rem}
+#changes-results details{min-width:8rem}
+#changes-results details small{display:block}
+#changes-results details ul{margin:.4rem 0;padding-left:1.25rem}
+#changes-results details:target{outline:2px solid currentColor;outline-offset:3px}

@@ -345,3 +345,43 @@ test('Risk applies a dated range and clears private drawdown on sign-out',async(
  assert.equal(ui.el('risk-results').children.length,0);
  assert.equal(ui.el('risk-start').value,'');
 });
+
+test('Portfolio Changes identifies gaps and links exposure rows to dated holdings', async () => {
+  const date = '2026-11-20', capture = date + 'T15:00:00.123456+00:00';
+  const observed = {date,status:'observed',positions_captured_at:capture,
+    account_captured_at:capture,observed_at:capture,portfolio_denominator:'1000'};
+  let missing = true;
+  const ui = setup(async url => {
+    assert.equal(url, '/api/v1/portfolio/changes?start=2026-11-19&end=2026-11-20');
+    return {ok:true,status:200,json:async()=>({
+      method:'observed_portfolio_changes_v1',
+      start:{...observed,date:'2026-11-19',status:missing?'missing':'observed'}, end:observed,
+      holdings:[{ticker:'SYNTH',status:'quantity_changed',value_change:'10',
+        start:{present:true,value:'11',quantity:'1',weight_pct:'1.1'},
+        end:{present:true,value:'21',quantity:'2',weight_pct:'2.1'}}],
+      cash:[],allocations:[],
+      top_five:{label:'Top five holdings',start_value:'11',end_value:'21',value_change:'10',
+        start_weight_pct:'1.1',end_weight_pct:'2.1',weight_change_pp:'1',
+        members:[{ticker:'SYNTH',start_value:'11',end_value:'21'}]},
+    })};
+  });
+  ui.el('changes-tab').listeners.click();
+  ui.el('changes-start').value = '2026-11-19';
+  ui.el('changes-end').value = date;
+  const submit = async () => {
+    ui.el('changes-filter').listeners.submit({preventDefault(){}});
+    await new Promise(resolve => setImmediate(resolve));
+  };
+  await submit();
+  const results = ui.el('changes-results');
+  assert.match(content(results), /No approved Trading 212 snapshot was saved/);
+  missing = false;
+  await submit();
+  assert.match(content(results), /\+£10.*Quantity changed/s);
+  assert.match(content(results), /15:00:00\.123456 UTC/);
+  const link = descendants(results).find(node=>node.href==='#change-holding-0');
+  link.listeners.click();
+  assert.equal(descendants(results).find(node=>node.id==='change-holding-0').open, true);
+  ui.view.clear();
+  assert.equal(results.children.length, 0);
+});

@@ -133,15 +133,11 @@ def _history_fields(row, postgres):
     }
 
 
-def read_history(db, account_id, now, *, day_count=HISTORY_DAYS, include_benchmark=False):
-    """Keep one saved observation per UTC day, with explicit missing days."""
-    now = now.astimezone(UTC)
-    today = now.date()
-    start = today - timedelta(days=day_count - 1)
-    params = {"account_id": account_id, "max_bytes": MAX_SNAPSHOT_BYTES}
+def _daily_snapshots(db, account_id, now, days, projection, extra_params=None):
+    params = {"account_id": account_id}
+    params.update(extra_params or {})
     ranges = []
-    for index in range(day_count):
-        day = start + timedelta(days=index)
+    for index, day in enumerate(days):
         lower = datetime.combine(day, time.min, UTC)
         upper = min(lower + timedelta(days=1), now + timedelta(microseconds=1))
         params.update(
@@ -152,19 +148,11 @@ def read_history(db, account_id, now, *, day_count=HISTORY_DAYS, include_benchma
             }
         )
         ranges.append(f"(:day{index}, :lower{index}, :upper{index})")
-    postgres = db.get_bind().dialect.name == "postgresql"
-    projection = "SELECT * FROM selected ORDER BY day"
-    if postgres:
-        projection = _POSTGRES_PROJECTION.format(
-            benchmark_projection=_VUAG_PROJECTION if include_benchmark else ""
-        )
-        if include_benchmark:
-            params["vuag_ticker"] = _VUAG_TICKER
     # Bound the reads with the existing account + observation timestamp index.
     statement = text(f"""
         WITH days(day, lower_at, upper_at) AS (VALUES {", ".join(ranges)}),
         selected AS (
-            SELECT days.day, saved.observed_at, saved.snapshot_json, saved.digest
+            SELECT days.day, saved.id, saved.observed_at, saved.snapshot_json, saved.digest
             FROM days
             LEFT JOIN broker_snapshots AS saved ON saved.id = (
                 SELECT candidate.id FROM broker_snapshots AS candidate
@@ -176,8 +164,115 @@ def read_history(db, account_id, now, *, day_count=HISTORY_DAYS, include_benchma
         )
         {projection}
     """)
+    return db.execute(statement, params).mappings()
+
+
+def _capture(value, observed_at):
+    if isinstance(value, str):
+        try:
+            captured = datetime.fromisoformat(value)
+            if captured.utcoffset() is not None and captured <= observed_at:
+                return captured.astimezone(UTC).isoformat()
+        except ValueError:
+            pass
+    return None
+
+
+def read_changes_endpoints(db, account_id, now, start, end):
+    """Return two bounded, digest-checked inputs to the gateway's Rust calculator."""
+    endpoints = []
+    for row in _daily_snapshots(
+        db, account_id, now, (start, end), "SELECT * FROM selected ORDER BY day"
+    ):
+        endpoint = {"date": row["day"], "status": "missing"}
+        endpoints.append(endpoint)
+        if row["id"] is None:
+            continue
+        observed = datetime.fromisoformat(row["observed_at"]).astimezone(UTC)
+        endpoint.update(status="unavailable", observed_at=observed.isoformat())
+        fields = _history_fields(row, False)
+        if (
+            fields.get("source") != "trading212"
+            or fields.get("basis") != "broker_reported"
+            or fields.get("currency") != "GBP"
+        ):
+            continue
+        captures = {}
+        for name in ("account", "positions"):
+            retrieval = fields.get(f"{name}_retrieval")
+            captures[f"{name}_captured_at"] = _capture(
+                retrieval.get("retrieval_completed_at") if isinstance(retrieval, dict) else None,
+                observed,
+            )
+        positions = fields.get("positions")
+        if not all(captures.values()) or not isinstance(positions, list) or len(positions) > 1024:
+            continue
+        tickers = set()
+        selected = []
+        for position in positions:
+            ticker = position.get("ticker") if isinstance(position, dict) else None
+            if not isinstance(ticker, str) or not ticker or ticker in tickers:
+                break
+            tickers.add(ticker)
+            selected.append(
+                {
+                    key: position.get(key) if isinstance(position.get(key), str) else None
+                    for key in (
+                        "ticker",
+                        "name",
+                        "isin",
+                        "quantity",
+                        "current_value",
+                        "account_currency",
+                    )
+                }
+            )
+        else:
+            exposure = fields.get("exposures")
+            if not isinstance(exposure, dict) or (
+                exposure.get("method") != "broker_exposures_v1"
+                or exposure.get("snapshot_id") != row["id"]
+                or exposure.get("currency") != "GBP"
+                or _capture(exposure.get("account_as_of"), observed)
+                != captures["account_captured_at"]
+                or _capture(exposure.get("positions_as_of"), observed)
+                != captures["positions_captured_at"]
+            ):
+                exposure = {}
+            endpoint.update(
+                captures,
+                status="observed",
+                snapshot_id=row["id"],
+                portfolio_value=fields.get("total_value"),
+                invested_value=(fields.get("investments") or {}).get("currentValue"),
+                cash=fields.get("cash_components") or {},
+                positions=selected,
+                allocations={
+                    key: exposure[key]
+                    for key in ("sectors", "issuer_domiciles", "fund_markets")
+                    if key in exposure
+                },
+            )
+    return {"start": endpoints[0], "end": endpoints[1]}
+
+
+def read_history(db, account_id, now, *, day_count=HISTORY_DAYS, include_benchmark=False):
+    """Keep one saved observation per UTC day, with explicit missing days."""
+    now = now.astimezone(UTC)
+    today = now.date()
+    start = today - timedelta(days=day_count - 1)
+    postgres = db.get_bind().dialect.name == "postgresql"
+    projection = "SELECT * FROM selected ORDER BY day"
+    params = {"max_bytes": MAX_SNAPSHOT_BYTES}
+    if postgres:
+        projection = _POSTGRES_PROJECTION.format(
+            benchmark_projection=_VUAG_PROJECTION if include_benchmark else ""
+        )
+        if include_benchmark:
+            params["vuag_ticker"] = _VUAG_TICKER
     points = []
-    for row in db.execute(statement, params).mappings():
+    days = (start + timedelta(days=index) for index in range(day_count))
+    for row in _daily_snapshots(db, account_id, now, days, projection, params):
         point = {"date": row["day"], "status": "missing"}
         if row["observed_at"] is not None:
             point["status"] = "unavailable"

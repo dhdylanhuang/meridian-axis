@@ -48,6 +48,10 @@ def create_app(*, session_http: SessionHttp | None = None) -> FastAPI:
         async def risk(request: Request):
             return await session_http.handle(request, "risk")
 
+        @app.get("/api/v1/portfolio/changes")
+        async def changes(request: Request):
+            return await session_http.handle(request, "changes")
+
         @app.get("/api/v1/portfolio/history")
         async def history(request: Request):
             return await session_http.handle(request, "history")

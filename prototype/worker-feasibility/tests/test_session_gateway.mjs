@@ -252,3 +252,19 @@ test('risk forwards only a bounded date query to the established session object'
   }
   assert.equal(state.requests.length,1);
 });
+
+test('Portfolio Changes only returns calculated output from the authorized endpoint read',async()=>{
+  const state = setup();
+  const path = '/api/v1/portfolio/changes?start=2026-11-18&end=2026-11-20';
+  const req = () => request(path,{method:'GET'});
+  const result = await gateway.fetch(req(),state.env, raw => {
+    assert.equal(JSON.parse(raw).status,'synthetic');
+    return '{"method":"observed_portfolio_changes_v1"}';
+  });
+  privateResponse(result);
+  assert.equal(result.status,200);
+  assert.deepEqual(await result.json(),{method:'observed_portfolio_changes_v1'});
+  assert.equal(state.requests[0].url,ORIGIN+path);
+  assert.equal((await gateway.fetch(req(),state.env)).status,503);
+  assert.equal((await gateway.fetch(request(path+'&account=other',{method:'GET'}),state.env)).status,400);
+});

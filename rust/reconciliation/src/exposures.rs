@@ -92,7 +92,7 @@ struct Concentration {
     exposure: Exposure,
 }
 
-fn nonnegative(value: Option<&str>) -> Option<BigDecimal> {
+pub(crate) fn nonnegative(value: Option<&str>) -> Option<BigDecimal> {
     value
         .and_then(|value| decimal(value).ok())
         .filter(|value| value >= &0)
@@ -100,7 +100,7 @@ fn nonnegative(value: Option<&str>) -> Option<BigDecimal> {
 
 // Round just the output percentage (half up to two decimal places). Align
 // scales first so integer division and the rounding remainder are exact.
-fn percent(value: &BigDecimal, denominator: &BigDecimal) -> String {
+pub(crate) fn percent(value: &BigDecimal, denominator: &BigDecimal) -> String {
     let scaled = value * 10_000_i32;
     let scale = scaled
         .fractional_digit_count()
@@ -114,6 +114,14 @@ fn percent(value: &BigDecimal, denominator: &BigDecimal) -> String {
     text(&BigDecimal::new(quotient, 2))
 }
 
+pub(crate) fn portfolio_denominator(
+    total: Option<&str>,
+    invested: Option<&BigDecimal>,
+) -> Option<BigDecimal> {
+    nonnegative(total)
+        .filter(|total| total > &0 && invested.is_some_and(|invested| invested <= total))
+}
+
 pub fn calculate(request: Request) -> Result<Report> {
     identity(&request.snapshot_id)?;
     currency(&request.currency)?;
@@ -125,8 +133,7 @@ pub fn calculate(request: Request) -> Result<Report> {
         return Err(Error("exposure_position_limit"));
     }
     let invested = nonnegative(request.invested_value.as_deref());
-    let portfolio = nonnegative(request.portfolio_value.as_deref())
-        .filter(|total| total > &0 && invested.as_ref().is_some_and(|invested| invested <= total));
+    let portfolio = portfolio_denominator(request.portfolio_value.as_deref(), invested.as_ref());
     let invested = invested.filter(|value| value > &0);
 
     let weight = |value: Option<&BigDecimal>, denom: Option<&BigDecimal>| {

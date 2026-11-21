@@ -116,6 +116,11 @@ def test_authenticated_snapshot_both_users_and_revocation(engine):
             history_url = "/api/v1/portfolio/history"
             assert (await client.get(url)).status_code == 401
             assert (await client.get(history_url)).status_code == 401
+            changes_url = (
+                f"/api/v1/portfolio/changes?start={(NOW.date() - timedelta(days=1)).isoformat()}"
+                f"&end={NOW.date().isoformat()}"
+            )
+            assert (await client.get(changes_url)).status_code == 401
             for token in tokens:
                 response = await client.get(url, headers={"cookie": SESSION_COOKIE + "=" + token})
                 assert response.status_code == 200 and response.json()["basis"] == "broker_reported"
@@ -133,6 +138,22 @@ def test_authenticated_snapshot_both_users_and_revocation(engine):
                 assert points[0]["total_value"] == response.json()["total_value"]
                 assert "synthetic-broker" not in history.text
                 assert "positions" not in history.text
+                endpoints = await client.get(
+                    changes_url, headers={"cookie": SESSION_COOKIE + "=" + token}
+                )
+                assert endpoints.status_code == 200
+                assert endpoints.headers["cache-control"] == "no-store"
+                data = endpoints.json()
+                assert data["start"]["status"] == "missing"
+                assert data["end"]["status"] == "observed"
+                assert data["end"]["observed_at"] == points[0]["observed_at"]
+                assert data["end"]["account_captured_at"] == points[0]["captured_at"]
+                assert (
+                    data["end"]["positions"][0]["ticker"]
+                    == response.json()["positions"][0]["ticker"]
+                )
+                assert "synthetic-broker" not in endpoints.text
+
                 assert (
                     await client.get(
                         url,
