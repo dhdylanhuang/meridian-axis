@@ -10,6 +10,11 @@ cover the last 90 days. It includes the running peak, worst peak and
 trough, cutoff and coverage. See the
 [drawdown method](calculation-contracts.md#observed-portfolio-drawdown).
 
+Risk tab source `5b4d8df` was deployed. The dated Risk request was verified
+using an approved short-lived session, then the session was revoked. Focused
+Rust, backend and browser checks passed. Existing bindings and the refresh
+schedule were verified.
+
 Gateway source `9ac15f3` was deployed. One focused Rust test and one History
 render test passed. The authenticated live check reproduced the drawdowns and
 matched the interval boundaries. The other Workers, protected bindings and
