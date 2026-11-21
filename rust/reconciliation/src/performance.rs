@@ -18,6 +18,13 @@ pub struct Request {
     events: Vec<Event>,
     benchmark: Option<serde_json::Value>,
     benchmark_as_of: Option<String>,
+    risk_range: Option<RiskRange>,
+}
+
+#[derive(Deserialize)]
+struct RiskRange {
+    start: NaiveDate,
+    end: NaiveDate,
 }
 
 #[derive(Deserialize)]
@@ -280,14 +287,6 @@ pub fn calculate_json(input: &str) -> Result<String> {
     });
     let chart_start = request.days.len() - 90;
     let first_chart_date = request.days[chart_start].date;
-    let funding: Vec<_> = events
-        .iter()
-        .filter(|event| !event.internal() && event.time.date_naive() >= first_chart_date)
-        .map(|event| Funding {
-            event: event.row,
-            signed_gbp: event.signed_gbp(),
-        })
-        .collect();
     let mut intervals = Vec::with_capacity(89);
     for (i, days) in request.days.windows(2).enumerate() {
         let mut row = Interval {
@@ -316,6 +315,33 @@ pub fn calculate_json(input: &str) -> Result<String> {
         intervals.push(row);
     }
     let chart_intervals = &intervals[chart_start..];
+    if let Some(range) = request.risk_range {
+        let start = chart_intervals
+            .iter()
+            .position(|row| row.start_date == range.start);
+        let end = chart_intervals
+            .iter()
+            .position(|row| row.end_date == range.end);
+        let (Some(first), Some(last)) = (start, end) else {
+            return Err(Error("risk_range_invalid"));
+        };
+        if first > last {
+            return Err(Error("risk_range_invalid"));
+        }
+        return serde_json::to_string(&serde_json::json!({
+            "method": "modified_dietz_observed_v1",
+            "drawdown": drawdown::calculate(&chart_intervals[first..=last]),
+        }))
+        .map_err(|_| Error("performance_output_invalid"));
+    }
+    let funding: Vec<_> = events
+        .iter()
+        .filter(|event| !event.internal() && event.time.date_naive() >= first_chart_date)
+        .map(|event| Funding {
+            event: event.row,
+            signed_gbp: event.signed_gbp(),
+        })
+        .collect();
     let latest = chart_intervals
         .iter()
         .rev()

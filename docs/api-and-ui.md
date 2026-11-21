@@ -193,6 +193,15 @@ the requested dates. The input is deployment-managed with no provider polling.
 Daily comparison is the initial scope. Longer benchmarks require an eligible
 portfolio period and matching benchmark evidence.
 
+### Risk tab
+
+`GET /api/v1/portfolio/risk` authenticates the shared account and returns a
+no-store drawdown result from the private Rust calculation. It accepts either
+the default 90-day window or exactly `?start=YYYY-MM-DD&end=YYYY-MM-DD`.
+The dates are UTC snapshot dates, inclusive, and must span at least two dates
+within the supported window. Only the applicable drawdown and coverage are
+returned. History continues to show portfolio and benchmark performance.
+
 ## Authenticated broker refresh — 13 November 2026
 
 | Route | Deployed contract |

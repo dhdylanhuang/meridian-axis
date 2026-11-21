@@ -11,7 +11,7 @@ import json
 import re
 import secrets
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Request
 from pydantic import SecretStr
@@ -191,7 +191,7 @@ class SessionHttp:
                 authority != self.service.origin
                 or request.url.scheme != "https"
                 or len(request.headers.getlist("host")) != 1
-                or request.url.query
+                or (request.url.query and operation != "risk")
                 or (
                     request.headers.getlist("origin")
                     and self._header(request, "origin") != self.service.origin
@@ -265,10 +265,27 @@ class SessionHttp:
                 # Authorisation commits before the separate sync authority makes upstream calls.
                 result = await self.refresh()
                 return private_response(result, 200 if result.get("status") == "succeeded" else 202)
-            if operation == "history":
+            if operation in {"history", "risk"}:
                 from meridian.application.snapshot_access import HISTORY_DAYS, read_history
 
-                year_open = now.date().replace(month=1, day=1)
+                today = now.date()
+                earliest = today - timedelta(days=HISTORY_DAYS - 1)
+                risk = operation == "risk"
+                if risk:
+                    start, end = earliest, today
+                    if request.url.query:
+                        match = re.fullmatch(
+                            r"start=(\d{4}-\d{2}-\d{2})&end=(\d{4}-\d{2}-\d{2})",
+                            request.url.query,
+                            re.ASCII,
+                        )
+                        if match is None:
+                            raise ValueError("risk_range_invalid")
+                        start, end = map(date.fromisoformat, match.groups())
+                        if not earliest <= start < end <= today:
+                            raise ValueError("risk_range_invalid")
+                    risk_range = {"start": start.isoformat(), "end": end.isoformat()}
+                year_open = today.replace(month=1, day=1)
                 # Keep enough approved observations for the year chain. Only the
                 # last 90 date rows cross the browser boundary.
                 count = max(HISTORY_DAYS, (now.date() - year_open).days + 2)
@@ -281,9 +298,11 @@ class SessionHttp:
                         db,
                         principal.account_id,
                         now,
-                        day_count=count if calculate_performance else HISTORY_DAYS,
-                        include_benchmark=calculate_performance is not None,
+                        day_count=count if calculate_performance and not risk else HISTORY_DAYS,
+                        include_benchmark=calculate_performance is not None and not risk,
                     )
+                if risk:
+                    series["risk_range"] = risk_range
                 report = None
                 state = "unavailable"
                 if calculate_performance is not None:
@@ -305,6 +324,16 @@ class SessionHttp:
                         state = "performance_service_timeout"
                     except Exception:
                         state = "performance_service_unavailable"
+                if risk:
+                    return private_response(
+                        {
+                            "earliest_date": earliest.isoformat(),
+                            "latest_date": today.isoformat(),
+                            "range": risk_range,
+                            "drawdown": report.get("drawdown") if report else None,
+                            "performance_state": state,
+                        }
+                    )
                 days = [
                     {key: value for key, value in day.items() if key != "vuag_mark"}
                     for day in series["days"][-HISTORY_DAYS:]

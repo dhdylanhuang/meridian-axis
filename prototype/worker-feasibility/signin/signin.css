@@ -30,3 +30,10 @@ body.signed-in main{max-width:1180px}.workspace-head{display:flex;align-items:ce
 #history-performance td details small{white-space:normal;overflow-wrap:anywhere}
 .history-funding-link{display:inline-block;margin-left:.8em}
 #history-funding-note{margin:0 0 1rem}
+
+.risk-filter{display:flex;flex-wrap:wrap;align-items:end;gap:.75rem;margin-bottom:1rem}
+.risk-filter label{margin:0}
+.risk-filter input{margin-top:.25rem}
+.risk-filter button{width:auto;margin:0;padding:.5rem .85rem}
+#risk-reset{background:#283d2d;color:#e4efdf}
+#risk-results dl{max-width:550px}

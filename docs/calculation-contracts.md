@@ -103,7 +103,8 @@ are unverified. The broker series uses price ratios within that source only.
 ### Observed portfolio drawdown
 
 `observed_flow_adjusted_drawdown_v1` chains the latest uninterrupted eligible
-stretch within the 90-day window from a starting wealth of 1. It reports
+stretch within the selected dates from a starting wealth of 1. The Risk tab
+allows a start and end within the last 90 UTC dates. It reports
 current and worst percentage declines from running peaks, with UTC capture
 times and the number of intervals. Ties retain the earlier peak and trough.
 A missing interval breaks the stretch. If newer intervals are unavailable,

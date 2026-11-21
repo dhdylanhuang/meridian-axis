@@ -297,8 +297,39 @@ test('History exposes funding evidence and explains ineligible returns without b
  assert.equal(ui.el('history-point').children[0].href,'#history-funding-'+end);
  const text=node=>[node.textContent,...node.children.flatMap(text)];
  const results=text(ui.el('history-performance')).join(' ');
- for (const value of ['2.727273%','£20.123456789','invented-ref','Modified Dietz','A saved valuation is missing','0.727273 pp','Worst drawdown in this stretch','Worst decline · peak','through the last eligible capture','VUAG capture missing','Quote age and split adjustments are unverified','1 of 2 eligible portfolio intervals matched','£102 · ']) assert.ok(results.includes(value), value);
+ for (const value of ['2.727273%','£20.123456789','invented-ref','Modified Dietz','A saved valuation is missing','0.727273 pp','VUAG capture missing','Quote age and split adjustments are unverified','1 of 2 eligible portfolio intervals matched','£102 · ']) assert.ok(results.includes(value), value);
  ui.view.clear();
+ assert.ok(!results.includes('Portfolio drawdown'));
  assert.equal(ui.el('history-performance').children.length,0);
  assert.equal(ui.el('history-funding-note').hidden,true);
+});
+
+test('Risk applies a dated range and clears private drawdown on sign-out',async()=>{
+ const requests=[];
+ const ui=setup(async(path)=>{
+   requests.push(path);
+   const custom=path.includes('?');
+   const start=custom?'2026-11-18':'2026-08-23';
+   const end=custom?'2026-11-19':'2026-11-20';
+   return {ok:true,status:200,json:async()=>({
+     performance_state:'available',earliest_date:'2026-08-23',latest_date:'2026-11-20',range:{start,end},
+     drawdown:{start_at:start+'T18:00:00+00:00',as_of:end+'T18:00:00+00:00',
+       intervals:1,current_pct:custom?'12':'5',worst_pct:'12',current_peak_at:start+'T18:00:00+00:00'},
+   })};
+ });
+ ui.el('risk-tab').listeners.click();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(ui.el('risk-panel').hidden,false);
+ assert.equal(ui.el('risk-start').min,'2026-08-23');
+ ui.el('risk-start').value='2026-11-18';
+ ui.el('risk-end').value='2026-11-19';
+ ui.el('risk-filter').listeners.submit({preventDefault(){}});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(requests,['/api/v1/portfolio/risk','/api/v1/portfolio/risk?start=2026-11-18&end=2026-11-19']);
+ assert.match(ui.el('risk-status').textContent,/2026-11-18 to 2026-11-19/);
+ const text=node=>[node.textContent,...node.children.flatMap(text)];
+ assert.ok(text(ui.el('risk-results')).includes('12%'));
+ ui.view.clear();
+ assert.equal(ui.el('risk-results').children.length,0);
+ assert.equal(ui.el('risk-start').value,'');
 });

@@ -4,8 +4,9 @@ Reviewed **20 November 2026**. This file is the authoritative implementation sna
 
 ## Observed portfolio drawdown
 
-History reports current and worst drawdown within the latest contiguous
-cash-flow-adjusted stretch. It includes the running peak, worst peak and
+The Risk tab reports current and worst drawdown within the latest contiguous
+cash-flow-adjusted stretch inside the selected dates. Its UTC date controls
+cover the last 90 days. It includes the running peak, worst peak and
 trough, cutoff and coverage. See the
 [drawdown method](calculation-contracts.md#observed-portfolio-drawdown).
 

@@ -113,6 +113,9 @@ def test_history_performance_keeps_public_window_and_fails_soft(engine):
         return True
 
     async def performance(history):
+        if "risk_range" in history:
+            assert len(history["days"]) == 90
+            return {"method": "modified_dietz_observed_v1", "drawdown": history["risk_range"]}
         assert history["start_date"] == "2025-12-31"
         assert history["end_date"] == "2026-11-20"
         assert len(history["days"]) > 90
@@ -147,5 +150,22 @@ def test_history_performance_keeps_public_window_and_fails_soft(engine):
                 assert result["start_date"] == (now - timedelta(days=89)).date().isoformat()
                 assert len(result["days"]) == 90
                 assert result["performance"] == expected
+
+            risk = "/api/v1/portfolio/risk"
+            selected = {"start": "2026-11-18", "end": "2026-11-19"}
+            url = risk + "?start=2026-11-18&end=2026-11-19"
+            assert (await client.get(url)).status_code == 401
+            response = await client.get(url, headers=headers)
+            assert response.status_code == 200
+            assert response.headers["cache-control"] == "no-store"
+            assert response.json()["range"] == response.json()["drawdown"] == selected
+            assert "days" not in response.json()
+            for query in (
+                "?account=foreign",
+                "?start=2026-11-18&end=2026-11-21",
+                "?start=2026-11-19&end=2026-11-18",
+                "?start=2026-11-18&end=2026-11-19&end=2026-11-20",
+            ):
+                assert (await client.get(risk + query, headers=headers)).status_code == 400
 
     asyncio.run(run())

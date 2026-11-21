@@ -237,3 +237,18 @@ test('activity detail route preserves origin csrf and bounded JSON body',async()
  }
  assert.equal(state.requests.length,1);
 });
+
+test('risk forwards only a bounded date query to the established session object',async()=>{
+  const state = setup();
+  const path = '/api/v1/portfolio/risk';
+  const query = '?start=2026-11-18&end=2026-11-20';
+  const response = await gateway.fetch(request(path + query, {method:'GET'}),state.env);
+  assert.equal(response.status,200);
+  privateResponse(response);
+  assert.equal(state.requests[0].url,ORIGIN + path + query);
+  for (const bad of [path + query + '&account=other',path + '?start=2026-11-18',
+    path + query + '&end=2026-11-21','/api/v1/portfolio/history' + query]) {
+    assert.equal((await gateway.fetch(request(bad,{method:'GET'}),state.env)).status,400);
+  }
+  assert.equal(state.requests.length,1);
+});

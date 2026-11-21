@@ -4,6 +4,7 @@
   let snapshot = null, generation = 0, controller = null;
   let holdingScope = null;
   let history = null, historyRequest = null, historyIndex = 0;
+  let riskLoaded = false, riskRequest = null;
   const detailControllers = new Set();
   const add = (parent, tag, text) => {
     const node = document.createElement(tag);
@@ -129,13 +130,14 @@
     const [x,y] = parts.map(([whole, fraction='']) => BigInt(whole + fraction.padEnd(scale, '0')));
     return x < y ? -1 : x > y ? 1 : 0;
   }
-  const tabs = [['axis-tab','axis-panel'],['exposures-tab','portfolio-exposures'],['holdings-tab','holdings-panel'],['history-tab','history-panel']];
+  const tabs = [['axis-tab','axis-panel'],['exposures-tab','portfolio-exposures'],['holdings-tab','holdings-panel'],['history-tab','history-panel'],['risk-tab','risk-panel']];
   function selectTab(tab) {
     for (const [other, section] of tabs) {
       el(other).setAttribute('aria-pressed',String(other === tab));
       el(section).hidden = other !== tab;
     }
     if (tab === 'history-tab' && !history) void loadHistory();
+    if (tab === 'risk-tab' && !riskLoaded && !riskRequest) void loadRisk();
   }
   const historyLabel = point => point.status === 'missing' ? 'No saved snapshot' : 'Saved snapshot unavailable';
   const utcStamp = value => value.replace('T', ' ').replace(/\+00:00$/, '');
@@ -271,7 +273,7 @@
   function renderDrawdown(section, drawdown) {
     add(section, 'h3', 'Portfolio drawdown');
     if (!drawdown) {
-      add(section, 'p', 'Drawdown needs an eligible cash-flow-adjusted return interval.');
+      add(section, 'p', 'No eligible cash-flow-adjusted interval in the selected dates.');
       return;
     }
     const utc = value => utcStamp(value) + ' UTC';
@@ -285,7 +287,49 @@
       add(section, 'p', `Worst decline · peak ${utc(drawdown.worst_peak_at)} · trough ${utc(drawdown.worst_trough_at)}.`);
     }
     if (drawdown.later_unavailable_intervals > 0) {
-      add(section, 'p', 'Newer dates have unverified returns. Drawdown is shown through the last eligible capture.');
+      add(section, 'p', 'The selected range extends beyond the last eligible capture.');
+    }
+  }
+  async function loadRisk(start, end) {
+    riskRequest?.abort();
+    const request = new AbortController();
+    riskRequest = request;
+    const query = start && end ? `?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}` : '';
+    const status = el('risk-status');
+    status.textContent = 'Loading drawdown…';
+    el('risk-apply').disabled = true;
+    try {
+      const response = await fetch('/api/v1/portfolio/risk' + query, {credentials:'same-origin', cache:'no-store', redirect:'error', signal:request.signal});
+      if (riskRequest !== request) return;
+      if ([401,403].includes(response.status)) { clear(); window.dispatchEvent(new Event('meridian-session-ended')); return; }
+      if (response.status === 400) {
+        status.textContent = 'Choose a start date before the end date within the last 90 UTC days.';
+        return;
+      }
+      if (!response.ok) throw new Error('unavailable');
+      const data = await response.json();
+      if (riskRequest !== request) return;
+      if (data.performance_state !== 'available') throw new Error('unavailable');
+      for (const [id, key] of [['risk-start','start'],['risk-end','end']]) {
+        const input = el(id);
+        input.min = data.earliest_date;
+        input.max = data.latest_date;
+        input.value = data.range[key];
+      }
+      status.textContent = `Selected dates · ${data.range.start} to ${data.range.end} UTC.`;
+      const results = el('risk-results');
+      results.replaceChildren();
+      renderDrawdown(results, data.drawdown);
+      riskLoaded = true;
+    } catch {
+      if (riskRequest === request) status.textContent = riskLoaded
+        ? 'Drawdown could not be updated. Showing the last loaded range below.'
+        : 'Drawdown is temporarily unavailable. Use Reset to 90 days to retry.';
+    } finally {
+      if (riskRequest === request) {
+        riskRequest = null;
+        el('risk-apply').disabled = false;
+      }
     }
   }
   function renderPerformance(data) {
@@ -317,7 +361,6 @@
       add(row, 'td', item ? String(item.intervals ?? 1) : '—');
       add(row, 'td', adjustedReturn(item));
     }
-    renderDrawdown(section, report.drawdown);
     renderBenchmark(section, report.benchmark);
     const funding = add(section, 'details');
     funding.id = 'history-funding';
@@ -551,6 +594,11 @@
     el('snapshot-time').textContent = '—'; el('snapshot-status').textContent = ''; el('refresh-status').textContent = '';
     el('portfolio-exposures')?.replaceChildren();
     historyRequest?.abort(); historyRequest = null; history = null;
+    riskRequest?.abort(); riskRequest = null; riskLoaded = false;
+    el('risk-results').replaceChildren();
+    el('risk-status').textContent = '';
+    el('risk-start').value = ''; el('risk-end').value = '';
+    el('risk-apply').disabled = false;
     el('history-body').replaceChildren();
     fundingDays.clear();
     el('history-performance').replaceChildren();
@@ -691,6 +739,17 @@
   el('holding-search').addEventListener('input',renderHoldings); el('holding-sort').addEventListener('change',renderHoldings);
   el('reload-snapshot').addEventListener('click',load);
   el('reload-history').addEventListener('click',loadHistory);
+  el('risk-filter').addEventListener('submit', event => {
+    event.preventDefault();
+    const start = el('risk-start').value;
+    const end = el('risk-end').value;
+    if (!start || !end || start >= end) {
+      el('risk-status').textContent = 'Choose a start date before the end date.';
+      return;
+    }
+    void loadRisk(start, end);
+  });
+  el('risk-reset').addEventListener('click', () => { void loadRisk(); });
   el('history-chart').addEventListener('click', event => {
     if (!history) return;
     const chart = el('history-chart');

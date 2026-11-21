@@ -25,6 +25,8 @@ def performance_input(db, history):
     cutoff = instant(history["as_of"])
     start = instant(history["start_date"] + "T00:00:00Z")
     request = dict(days=history["days"], coverage=None, events=[])
+    if "risk_range" in history:
+        request["risk_range"] = history["risk_range"]
     run = db.scalar(
         select(ImportRun)
         .where(

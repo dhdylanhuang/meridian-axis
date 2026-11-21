@@ -219,6 +219,12 @@ fn drawdown_uses_flow_adjusted_growth_and_resets_after_gaps() {
     assert_eq!(drawdown["worst_peak_at"], "2026-02-24T16:00:00+00:00");
     assert_eq!(drawdown["worst_trough_at"], "2026-02-26T16:00:00+00:00");
     assert_eq!(drawdown["later_unavailable_intervals"], 1);
+    req["risk_range"] = json!({"start":"2026-02-26", "end":"2026-02-27"});
+    let report = calculate(&req);
+    assert_eq!(report["drawdown"]["intervals"], 1);
+    assert_eq!(report["drawdown"]["current_pct"], "0");
+    assert_eq!(report["drawdown"]["worst_pct"], "0");
+    assert_eq!(report["drawdown"]["as_of"], "2026-02-27T16:00:00+00:00");
     req["coverage"] = Value::Null;
     assert!(calculate(&req)["drawdown"].is_null());
 }
