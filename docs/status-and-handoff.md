@@ -5,8 +5,8 @@ Reviewed **21 November 2026**. This file is the authoritative implementation sna
 ## Start here
 
 The owner deferred new monitoring and alerts to project closeout (DC28).
-The [next delivery brief](next-milestone.md) scopes observed portfolio changes
-and records the daily risk data gate. This handoff records the completed work
+The [delivery brief](next-milestone.md) records the Portfolio Changes sprint
+and the daily risk data gate. This handoff records the completed work
 and the current evidence for the next contributor.
 
 | Surface | Deployed capability |
@@ -15,9 +15,10 @@ and the current evidence for the next contributor.
 | History | 90 UTC dates of saved GBP values and gaps, timed funding and income drill-down, eligible Modified Dietz returns and provisional VUAG comparisons |
 | Risk | Adjustable UTC dates, 90 days by default and up to 367 supported dates, observed losses and drawdown, current concentration and statistical coverage by measure |
 | Holdings and Exposures | Searchable holdings, sector, issuer domicile and fund-market allocations, currency and cash components, largest/top-five/top-ten weights, coverage and holding drill-down |
+| Portfolio Changes | Two approved UTC dates, ranked signed GBP holding changes, quantity flags, cash and concentration, and comparable saved classification weights with dated holding evidence |
 
-**Deployed sources at handoff** are gateway `ed60404`, session owner
-`f25d3bf` and sync `5b4d8df`. The gateway runs the private Rust WASM service and
+**Deployed sources at handoff** are gateway and session owner `3aa8cd5`
+and sync `5b4d8df`. The gateway runs the private Rust WASM service and
 serves the dashboard. The existing session and sync Workers enforce the
 two-member scope around database and broker work. Schema `0008` and the
 ten-minute refresh with sixty-day detailed retention are the operating baseline.
@@ -50,11 +51,26 @@ components, and top-five concentration use the reported ISA denominators where
 supported. Allocation and concentration rows link to the individual dated
 holdings. See [the calculation contract](calculation-contracts.md#observed-portfolio-changes).
 
-Focused local checks passed for the missing snapshot, changed quantity, added
-and closed positions, allocation drill-down and protected date transport.
-Five existing Rust exposure checks and the targeted History and Risk checks
-passed. The locked WASM artifact was rebuilt. Hosted deployment and the
-authenticated comparison against two saved endpoints are pending.
+Gateway and session owner source `3aa8cd5` was deployed. Release checks
+verified both active source annotations, four exact no-store assets, WASM
+readiness, anonymous denial, protected bindings, the sync version and the
+ten-minute schedule.
+
+One authenticated live comparison matched the two approved saved snapshots,
+capture times, both denominators, all 80 holding rows in signed rank order,
+three cash components and top-five concentration. The verification session
+was revoked. The live pair lacked comparable saved classification views.
+Sector and country comparisons require compatible saved allocations at both
+endpoints, and there was no historical reclassification. The focused
+synthetic checks verified the classification math and links. The live check
+used the authenticated API. Interaction and drill-down were checked locally.
+The release and verification receipts remain private.
+
+Focused checks passed:
+
+- `cargo test --manifest-path rust/reconciliation/Cargo.toml --locked --offline --test changes --test exposures --jobs 2` passed seven cases, including missing, added and closed positions and changed quantities.
+- `pytest -q -p no:cacheprovider backend/tests/test_snapshot_access.py -k 'authenticated_snapshot or selects_latest_per_utc_day'` passed two cases. Targeted Ruff and the generated WASM comparison passed.
+- Targeted `node --test` runs on `test_snapshot_ui.mjs` and `test_session_gateway.mjs` passed five cases for the Changes tab and protected transport, with History and Risk regression coverage.
 
 ## Daily risk coverage and AXIS overview
 

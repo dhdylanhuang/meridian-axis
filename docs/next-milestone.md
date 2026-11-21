@@ -3,22 +3,13 @@
 Reviewed **21 November 2026**. Read the [handoff](status-and-handoff.md) first for
 the deployed revisions, checks already run and open evidence gates.
 
-## Next build · Explain portfolio changes
+## Delivered · Portfolio Changes
 
-When the owner starts the next implementation, add an observed changes view
-using two selected approved Trading 212 snapshots. Start with one comparable
-interval and keep the snapshot capture times visible.
-
-- Rank changes in reported holding value in GBP. Show beginning and ending
-  values, quantities and portfolio weights, alongside the observed changes.
-- Flag holdings added or closed and rows with quantity changes. Where quantity
-  is stable and comparable, label the reported value change with its basis.
-  The price, FX and trading components need their own evidence.
-- Show material changes in sector, country and cash weights with their
-  denominators and classification coverage. Link each change to its holdings.
-- Verify the calculation against the saved endpoints. Record a focused
-  synthetic check for missing data and changed quantities, plus a bounded
-  live check of the approved result.
+The signed-in dashboard compares the last approved observations on two UTC
+dates. It exposes reported GBP changes, position flags, separate UTC capture
+times, and dated holding drill-down for comparable allocations and top-five
+concentration. See the [handoff](status-and-handoff.md#portfolio-changes-sprint)
+for the deployed sources, focused checks and live evidence.
 
 ## Risk evidence gate
 
