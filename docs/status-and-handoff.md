@@ -20,6 +20,11 @@ stretch and spread, current and worst drawdown with its cutoff, and
 current top-five concentration. It reuses the snapshot and one signed-in
 History read, with links to the evidence tabs.
 
+Gateway source `ed60404` was deployed. The authenticated live check
+reproduced the matched overview comparison and verified the Bank Rate
+coverage and daily sample gap. Focused Rust performance and frontend
+checks passed. The existing service versions and refresh schedule were verified.
+
 
 ## Observed portfolio drawdown
 
