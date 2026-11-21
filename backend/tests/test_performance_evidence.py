@@ -3,6 +3,7 @@
 import asyncio
 import hashlib
 import json
+import os
 from datetime import date, timedelta
 
 import httpx
@@ -172,3 +173,42 @@ def test_history_performance_keeps_public_window_and_fails_soft(engine):
                 assert (await client.get(risk + query, headers=headers)).status_code == 400
 
     asyncio.run(run())
+
+
+def test_session_funding_export_retains_boundary_and_never_overwrites(engine, tmp_path, capsys):
+    from pathlib import Path
+    from stat import S_IMODE
+
+    from meridian.export_session_funding import main
+
+    with Session(engine) as db, db.begin():
+        db.add(Account(id="shared-isa", environment="live"))
+        db.flush()
+        seed_history(db, "complete", complete=True)
+    output = tmp_path / "funding.json"
+    arguments = [
+        "--database",
+        str(Path(engine.url.database)),
+        "--start-at",
+        (NOW - timedelta(hours=1)).isoformat(),
+        "--end-at",
+        (NOW - timedelta(minutes=5)).isoformat(),
+        "--as-of",
+        NOW.isoformat(),
+        "--output",
+        str(output),
+    ]
+    assert main(arguments) == 0
+    if os.name == "posix":
+        assert S_IMODE(output.stat().st_mode) == 0o600
+    result = json.loads(output.read_bytes())
+    assert result["coverage"]["start_at"] == (NOW - timedelta(hours=1)).isoformat()
+    assert result["coverage"]["end_at"] == (NOW - timedelta(minutes=5)).isoformat()
+    assert [event["amount"] for event in result["events"]] == ["-3.123456789"]
+    assert json.loads(capsys.readouterr().out) == {
+        "funding_window_available": True,
+        "events_exported": 1,
+    }
+    assert main(arguments) == 2
+    assert capsys.readouterr().err == "session_funding_export_failed\n"
+    assert json.loads(output.read_bytes()) == result

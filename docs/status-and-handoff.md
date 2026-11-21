@@ -60,6 +60,17 @@ emitting private rows. The existing runtime source remains deployed. The
 focused Rust performance target passed ten checks, including a sanitized
 funding-aware preflight and future-evidence rejection.
 
+The private funding export is now prepared for the reviewed-session preflight.
+One read-only check against the completed hosted traversal produced 386 events
+within the requested window. The file passed exact read-back, the POSIX
+permissions and bounded coverage checks, and the Rust input smoke check.
+That check used synthetic dates with empty valuations and verified the
+missing-valuation gate. The evidence file remains ignored and private. Two
+targeted Python tests passed for traversal coverage and private export,
+including boundary events and preserving an existing file. The source
+assessment still needs an original one-day Stocks ISA valuation statement and
+a permitted adjusted market-data sample.
+
 ## Reviewed session performance and holding correlation
 
 Implemented the private reviewed session input and offline structural check.

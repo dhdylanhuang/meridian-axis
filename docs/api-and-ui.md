@@ -225,8 +225,22 @@ Trading 212 snapshot retrieval times do not qualify as close-price evidence.
 Run the offline readiness check on the private manifest before publication:
 `cargo run --manifest-path rust/reconciliation/Cargo.toml --locked --bin qualify_daily -- "$(date -u +%FT%TZ)" < /path/to/private/reviewed.json`.
 For a funding-aware rehearsal, pass a second argument containing the private
-funding JSON path. Use the completed Trading 212 traversal projected by
-`performance_input`, retaining only its `coverage` and `events` fields.
+funding JSON path. The local read-only exporter uses the same completed
+Trading 212 traversal as History and Risk. Run it from `backend` with the
+reviewed opening and closing UTC instants and a separate evidence cutoff:
+
+```sh
+python -m meridian.export_session_funding --database /path/to/private/evidence.sqlite3 \
+  --start-at UTC_OPEN --end-at UTC_CLOSE --as-of UTC_AS_OF \
+  --output /path/to/private/funding.json
+```
+
+The file retains events exactly on both boundaries, so ambiguous timing
+remains visible to the Rust calculation. Coverage is clipped to the export
+window. The exporter creates a new private file, preserves existing files and
+prints aggregate counts only. Trusted hosted maintenance can call the same
+export function inside a read-only transaction.
+
 The command reports eligible ISA and VUAG returns, rejection counts, each
 risk measure's sample and availability, and the shared holdings sample. It
 uses the same funding validation and analytics as the Risk tab and writes
