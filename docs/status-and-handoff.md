@@ -13,12 +13,12 @@ and the current evidence for the next contributor.
 | --- | --- |
 | AXIS | Account value and capture time, compounded ISA versus VUAG for the latest contiguous matched stretch, drawdown cutoff and top-five concentration |
 | History | 90 UTC dates of saved GBP values and gaps, timed funding and income drill-down, eligible Modified Dietz returns and provisional VUAG comparisons |
-| Risk | Adjustable UTC dates, 90 days by default and up to 367 supported dates, observed losses and drawdown, current concentration and statistical coverage by measure |
+| Risk | Adjustable UTC dates, 90 days by default and up to 367 supported dates, observed losses and drawdown, current concentration, reviewed-session performance, statistical risk and holding correlation with evidence gates |
 | Holdings and Exposures | Searchable holdings, sector, issuer domicile and fund-market allocations, currency and cash components, largest/top-five/top-ten weights, coverage and holding drill-down |
 | Portfolio Changes | Two approved UTC dates, ranked signed GBP holding changes, quantity flags, cash and concentration, and comparable saved classification weights with dated holding evidence |
 
-**Deployed sources at handoff** are gateway and session owner `3aa8cd5`
-and sync `5b4d8df`. The gateway runs the private Rust WASM service and
+**Deployed sources at handoff** are gateway `d5d6d9e`, session owner
+`3aa8cd5` and sync `5b4d8df`. The gateway runs the private Rust WASM service and
 serves the dashboard. The existing session and sync Workers enforce the
 two-member scope around database and broker work. Schema `0008` and the
 ten-minute refresh with sixty-day detailed retention are the operating baseline.
@@ -52,12 +52,25 @@ correlations using a common reviewed GBP log-return sample and shows exclusions
 and weight coverage. See the [daily evidence contract](api-and-ui.md#risk-tab)
 and [correlation method](correlation.md#initial-risk-tab-delivery).
 
-The existing audit and the current source review leave live risk data gated.
+Gateway source `d5d6d9e` was deployed. The release verified the active
+source, four exact no-store assets, WASM readiness, anonymous denial, protected
+bindings, the existing owner and sync versions, and the ten-minute schedule.
+One authenticated request confirmed observed drawdown remained available and
+that approved performance, daily estimates and holding correlation stayed
+gated. The short-lived verification session was revoked.
+
+Focused checks passed:
+
+- `cargo test --manifest-path rust/reconciliation/Cargo.toml --locked --offline --test performance --jobs 2` passed nine cases. The new cases verified timed deposits, missing valuation gaps, funding coverage, cutoff rejection, matched VUAG estimates and same-sample holding correlation.
+- Three Node binding tests and one targeted Risk rendering test passed. The locked generated WASM and private transport were exercised with a synthetic 252-return window and 80 synthetic holdings. Hosted compute at that size remains unverified.
+
+The backfill audit and source review still leave live daily risk gated.
 Trading 212 exposes current position prices without an exchange quote time.
-The issuer identifies VUAG's London GBP listing and accumulating share class.
-The project still needs an approved session NAV archive and appropriately
-permitted benchmark and holding return series. Deployment and authenticated
-gate verification are pending.
+Vanguard identifies VUAG's London GBP listing and accumulating share class.
+The project needs an approved GBP session NAV archive, dated funding coverage
+for the chosen interval and appropriately permitted benchmark and holding
+return series. The full matrix, rolling correlation and shrinkage remain
+later work. No daily evidence binding was populated.
 
 ## Portfolio Changes sprint
 
