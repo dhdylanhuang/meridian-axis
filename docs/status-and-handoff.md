@@ -9,6 +9,11 @@ cash-flow-adjusted stretch. It includes the running peak, worst peak and
 trough, cutoff and coverage. See the
 [drawdown method](calculation-contracts.md#observed-portfolio-drawdown).
 
+Gateway source `9ac15f3` was deployed. One focused Rust test and one History
+render test passed. The authenticated live check reproduced the drawdowns and
+matched the interval boundaries. The other Workers, protected bindings and
+refresh schedule were verified.
+
 ## GBP benchmark comparison
 
 History has a provisional VUAG comparison path for eligible daily intervals.
