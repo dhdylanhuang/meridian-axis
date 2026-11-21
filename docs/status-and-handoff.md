@@ -1,6 +1,44 @@
 # Current status and handoff
 
-Reviewed **20 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
+Reviewed **21 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
+
+## Start here
+
+The owner deferred new monitoring and alerts to project closeout (DC28).
+The [next delivery brief](next-milestone.md) scopes observed portfolio changes
+and records the daily risk data gate. This handoff records the completed work
+and the current evidence for the next contributor.
+
+| Surface | Deployed capability |
+| --- | --- |
+| AXIS | Account value and capture time, compounded ISA versus VUAG for the latest contiguous matched stretch, drawdown cutoff and top-five concentration |
+| History | 90 UTC dates of saved GBP values and gaps, timed funding and income drill-down, eligible Modified Dietz returns and provisional VUAG comparisons |
+| Risk | Adjustable UTC dates, 90 days by default and up to 367 supported dates, observed losses and drawdown, current concentration and statistical coverage by measure |
+| Holdings and Exposures | Searchable holdings, sector, issuer domicile and fund-market allocations, currency and cash components, largest/top-five/top-ten weights, coverage and holding drill-down |
+
+**Deployed sources at handoff** are gateway `ed60404`, session owner
+`f25d3bf` and sync `5b4d8df`. The gateway runs the private Rust WASM service and
+serves the dashboard. The existing session and sync Workers enforce the
+two-member scope around database and broker work. Schema `0008` and the
+ten-minute refresh with sixty-day detailed retention are the operating baseline.
+
+**Open evidence gates.** No approved session return series was available in the
+backfill audit. Volatility, risk-adjusted ratios, historical VaR and expected
+shortfall, and benchmark statistics therefore show coverage and missing inputs.
+The minimum is 60 eligible sessions per estimate. The dated Bank of England
+review is verified through 21 November 2026. VUAG's broker-observed returns use
+saved GBP holding marks with unknown quote age. HHI and effective holdings
+require a compatible saved exposure projection. Older live-check results below
+describe the generation that was checked. Monthly and annual returns depend on
+the required boundary valuation and a continuous eligible chain.
+
+**Resume from the release evidence below.** Verify new inputs or changed behavior
+with targeted checks. The gateway asset and WASM readiness checks, prior
+authenticated financial comparisons, and session revocation checks are already
+recorded. Private receipts and workbook records stay out of Git. Deployment
+versions above refer to the application source. The documentation revision is
+tracked separately in Git history.
+
 
 ## Daily risk coverage and AXIS overview
 

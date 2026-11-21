@@ -136,6 +136,13 @@ document non-Rust exceptions; no whole-app rewrite is requested. Missing history
 prices/FX or classification still limit outputs. Deferring reconciliation does not
 establish complete lifetime coverage or authorize fabricated calculated returns.
 
+### Monitoring and alerts at closeout — 21 November 2026
+
+DC28 records the owner's decision to deliver new monitoring and alerts during
+project closeout. The current scope prioritises the core dashboard, observed
+portfolio changes and approved data coverage. The confirmed alert rules remain
+in the [closeout specification](alerts.md).
+
 ### Current portfolio exposure delivery
 
 AXIS uses the approved Trading 212 snapshot for position ranks, portfolio and

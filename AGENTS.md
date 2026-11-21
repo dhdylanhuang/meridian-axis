@@ -6,23 +6,17 @@
 2. Use [the documentation index](docs/README.md) to select the task's domain contract, relevant requirements, implementation and tests. Read architecture/ADRs when changing runtime or persistence.
 3. Read [agent workflow](docs/agent-workflow.md) before coordinating parallel work. Historical checkpoints are reference material for a specific evidence question.
 
-Current repository status: authenticated AXIS/HOLDINGS, ten-minute broker refresh and bounded sixty-day detailed-refresh retention are deployed. Native parity is `0008`; gateway source is `5709f30`, session owner/sync are `94042f2`. The cash dashboard shows broker cash now and descriptive year-to-date dividend/interest/deposit/withdrawal amounts, with coverage and separate currencies. Raw event counts and component-window diagnostics no longer drive the main view; the opening-control query is disabled at runtime. Current status owns actual publication verification. Private Rust cash review is deployed through a named gateway service binding and approved snapshots; hosted nonfinancial WASM readiness is verified. Broker-led automatic discovery/enrichment is deployed; exact assets/source tags, preserved bindings and ten-minute schedule were verified without database probes. Daily observed snapshots, latest snapshot and transaction/import/audit history are retained. Post-reset login/automatic cadence and realized query use remain unverified. Trading 212 reported figures stay authoritative; status owns evidence and unresolved gates.
+**Current delivery, 21 November 2026.** AXIS overview, holdings, sourced
+exposures, History with observed VUAG comparison, and dated Risk are deployed.
+Read [current status](docs/status-and-handoff.md) for the deployed source,
+verification, and the daily risk data gate. Use the
+[next delivery brief](docs/next-milestone.md) for the next bounded feature.
 
-**Current owner direction, 20 November 2026 (DC26/DC27):** defer cash-change
-explanation/reconciliation and holding-quantity reconciliation; the owner considers
-them unnecessary for the dashboard. Use Trading 212 reported positions and cash as
-authoritative. Portfolio exposures/concentration are next, followed by eligible
-historical performance, risk and monitoring. Do not restart reconciliation work
-unless the owner reactivates it. Rust is the default for new AXIS application logic
-going forward, not merely a reconciliation experiment. Preserve working Python/JS
-integration as needed; this does not request a whole-application rewrite. Record
-any necessary non-Rust implementation exception explicitly. This documentation
-amendment does not start feature development or change the deployed application.
-
-**Current delivery:** monetary totals now have on-demand, generation-pinned
-transaction drill-down and completed-broker-history coverage (release evidence in
-current status). A private audit found no retained capture-reference gap; lifetime
-coverage is still unproven. Do not repeat validation or copy history into snapshots.
+**Owner direction (DC26/DC27/DC28).** New monitoring and alerts are deferred to
+project closeout. Cash-change and holding-quantity reconciliation are deferred.
+Trading 212 supplies authoritative reported holdings, prices and cash for the
+current dashboard. Rust is the default for new analytics. Retain the existing
+Python/JavaScript integration and document necessary exceptions.
 
 **Owner acceptance amendment, 20 November 2026 (DC25):** deliver meaningful monetary
 features. Cash must show current broker cash and dated dividend/interest/deposit/

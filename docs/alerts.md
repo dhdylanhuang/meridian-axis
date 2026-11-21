@@ -2,6 +2,10 @@
 
 Status: CONFIRMED alert families and recovery re-arm policy; group threshold 10%, portfolio two-trading-day maximum drawdown threshold 2%; ADOPTED persistence model.
 
+Delivery is deferred to project closeout under
+[DC28](decisions-and-questions.md#confirmed-decisions). The rules and
+acceptance criteria below are the closeout specification.
+
 ## Rule catalogue
 
 | Family | Entity / basis | Trigger |

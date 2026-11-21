@@ -2,9 +2,9 @@
 
 Status, **13 November 2026:** this document defines the delivery roadmap and acceptance gates. [Current status](status-and-handoff.md) owns completed slices and the latest owner scope. Secure two-user broker views are deployed; the owner changed refresh to ten minutes on 19 November, with deployment evidence in current status. Stage 1 evidence/import slices and parts of Stage 2 are verified. Full economic replay, daily market inputs, analytics and final operational acceptance remain open. Stage 0H retains unresolved capacity and workload gates.
 
-## Active delivery order — owner amendment, 20 November 2026
+## Active delivery order — owner amendments
 
-DC26/DC27 supersedes reconciliation-first ordering and the prior Python-first
+DC26 and DC27 supersede reconciliation-first ordering and the prior Python-first
 implementation default for new application logic. Trading 212 reported current
 cash/positions/prices/values remain authoritative; orders execute there. Rust is
 the default for new AXIS development, with existing Python/JS integration retained
@@ -15,7 +15,10 @@ where necessary and implementation exceptions documented. No wholesale rewrite.
 2. Historical value/income/performance and benchmarks, only where inputs support
    the requested calculation. Deferral does not permit invented returns/openings.
 3. Risk: drawdown, volatility, correlations and scenarios using eligible daily data.
-4. Monitoring: exposure thresholds/changes, stale data and supported event alerts.
+4. AXIS overview and observed portfolio changes with supporting detail.
+5. Project closeout: monitoring, exposure thresholds, staleness and supported
+   event alerts. DC28 defers this delivery until the core dashboard work is
+   complete.
 
 Automatic discovery/enrichment and cash totals/drill-down are already deployed.
 Cash-change explanation/reconciliation and holding-quantity reconciliation are

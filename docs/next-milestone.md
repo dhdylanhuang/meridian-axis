@@ -1,53 +1,58 @@
-# Current delivery and next priorities
+# Next delivery and closeout
 
-Reviewed **20 November 2026**. See [current status](status-and-handoff.md) for
-the portfolio exposure release and actual publication evidence. Reuse completed
-focused tests. If a release gate remains open, close that gate before extending
-the feature.
+Reviewed **21 November 2026**. Read the [handoff](status-and-handoff.md) first for
+the deployed revisions, checks already run and open evidence gates.
 
-## Current priority
+## Next build · Explain portfolio changes
 
-Maintain the reviewed classification catalogue for new positions and updated
-manager documents. Prioritise remaining partial fund weights by invested value,
-and keep their published basis and residual visible. Use verified instrument IDs
-and the existing authenticated snapshot. The expanded private input can use the
-bounded gzip binding format, with no paid provider or polling change.
+When the owner starts the next implementation, add an observed changes view
+using two selected approved Trading 212 snapshots. Start with one comparable
+interval and keep the snapshot capture times visible.
 
-## Observed account history
+- Rank changes in reported holding value in GBP. Show beginning and ending
+  values, quantities and portfolio weights, alongside the observed changes.
+- Flag holdings added or closed and rows with quantity changes. Where quantity
+  is stable and comparable, label the reported value change with its basis.
+  The price, FX and trading components need their own evidence.
+- Show material changes in sector, country and cash weights with their
+  denominators and classification coverage. Link each change to its holdings.
+- Verify the calculation against the saved endpoints. Record a focused
+  synthetic check for missing data and changed quantities, plus a bounded
+  live check of the approved result.
 
-History shows the last retained Trading 212 snapshot for each of 90 UTC days,
-with exact GBP values, capture times and explicit gaps. Today is in progress.
-The cash, income and funding totals and their transaction drill-down remain
-accessible in the same workspace. Live publication has been verified. See
-[the history contract](api-and-ui.md#observed-account-history).
+## Risk evidence gate
 
-## Observed funding and performance
+Qualify a portfolio GBP total-return series with comparable session valuations,
+timed external funding evidence and UTC endpoints. For benchmark-relative
+statistics, line it up with a permitted GBP VUAG total-return series on the
+same reviewed session calendar. Check split and dividend treatment and use
+dated Bank Rate for rate-dependent measures. Load only approved source rows
+in the [daily risk input contract](api-and-ui.md#risk-tab).
 
-History marks dated Trading 212 deposits and withdrawals and opens their
-transaction evidence. It reports the longest eligible valuation stretch and
-the reasons an interval is unavailable. Eligible intervals get a labelled
-Modified Dietz approximation. MTD and YTD link eligible valuations from the
-relevant period boundary. See [the calculation method](calculation-contracts.md#observed-modified-dietz).
+The audit found no approved daily return intervals to backfill. The minimum
+is 60 eligible sessions per statistical estimate. Existing broker marks
+support the observed benchmark comparison and drawdown within their own
+coverage. Reuse the audited evidence until a new input becomes available.
+See the [calculation rules](calculation-contracts.md#risk-tab-coverage).
 
-## Following delivery
+Maintain sourced classifications for new holdings. Prioritise fund coverage
+gaps by invested value and preserve source date, basis and unallocated weight.
 
-Maintain the provisional daily VUAG comparison from approved Trading 212
-snapshots. If exchange-close comparison is desired, qualify a permitted VUAG
-GBP close series for both members with timestamp and split treatment. Longer
-comparisons require a supported portfolio period and benchmark endpoints. See the
-[calculation contracts](calculation-contracts.md#vuag-gbp-benchmark-proxy).
+## Project closeout · Monitoring and alerts
 
-Keep the private, dated classification catalogue current for new and existing
-holdings. Expand remaining coverage by invested value first. Manager fund
-breakdowns provide sector and market estimates. Constituent overlap and
-underlying economic currency need separate source coverage.
+The owner deferred new monitoring and alerts to closeout under
+[DC28](decisions-and-questions.md#confirmed-decisions). Revisit event
+rules, configurable weight limits, staleness and the existing two-trading-day
+portfolio drawdown threshold after the core dashboard work and its data gates
+have been reviewed. Use the eligibility and re-arming rules in the
+[alert specification](alerts.md). Delivery outside the application requires
+separate authorization.
 
-Subsequent phases cover risk from eligible daily price/FX series, then exposure
-thresholds, material changes and supported alerts. Cash-change and holding-quantity
-reconciliation remain deferred and are not gates for observed-value work. Tax
-remains deferred. Prefer Rust for new logic and retain existing integration.
+## Operating constraints
 
-Preserve Trading 212 authority, existing cash totals and drill-down, the shared
-two-member dashboard and three Workers, schema 0008 with native migration
-authority, ten-minute refresh and sixty-day detailed retention. Daily and latest
-snapshots, transaction/import/audit history and the private workbook stay intact.
+Use Trading 212 reported prices, cash and positions for the observed dashboard.
+Use Rust for new analytics and retain the existing Python/JavaScript service
+boundaries. Preserve the two-member session scope, three Workers, schema
+`0008`, ten-minute refresh, sixty-day detailed retention and retained daily
+anchors. Keep exact records and release receipts private. Cash-change and
+holding-quantity reconciliation and tax are deferred.
