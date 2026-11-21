@@ -23,6 +23,7 @@ struct Day {
     status: String,
     total_value: Option<String>,
     captured_at: Option<String>,
+    vuag_mark: Option<benchmark::BrokerMark>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -368,7 +369,7 @@ pub fn calculate_json(input: &str) -> Result<String> {
         "longest_eligible": longest_eligible,
         "month_to_date": month_to_date,
         "year_to_date": year_to_date,
-        "benchmark": benchmark::compare(chart_intervals, request.benchmark.as_ref(), request.benchmark_as_of.as_deref()),
+        "benchmark": benchmark::compare(chart_intervals, &request.days[chart_start..], request.benchmark.as_ref(), request.benchmark_as_of.as_deref()),
     }))
     .map_err(|_| Error("performance_output_invalid"))
 }

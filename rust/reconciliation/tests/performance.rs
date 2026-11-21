@@ -147,7 +147,7 @@ fn benchmark_compares_matching_gbp_closes_and_leaves_gaps() {
     assert_eq!(latest["portfolio_pct"], "3");
     assert_eq!(latest["benchmark_pct"], "2");
     assert_eq!(latest["difference_pp"], "1");
-    assert_eq!(latest["start_close"]["pricing_at"], "2026-02-27T16:35:00Z");
+    assert_eq!(latest["start_mark"]["at"], "2026-02-27T16:35:00Z");
     assert_eq!(comparisons[87]["reason"], "missing_benchmark_close");
     assert_eq!(comparisons[87]["benchmark_pct"], Value::Null);
 
@@ -160,5 +160,32 @@ fn benchmark_compares_matching_gbp_closes_and_leaves_gaps() {
     req["benchmark_as_of"] = json!("2026-02-28T23:00:00Z");
     let report = calculate(&req);
     assert_eq!(report["benchmark"]["state"], "invalid_series");
+    assert_eq!(report["latest_eligible"]["return_pct"], "3");
+}
+
+#[test]
+fn observed_broker_marks_compare_same_dates_without_mixing_sources() {
+    let mut req = request();
+    req["days"][89]["total_value"] = json!("103");
+    req["days"][88]["vuag_mark"] = json!({"at":"2026-02-27T16:00:01Z","price_gbp":"100"});
+    req["days"][89]["vuag_mark"] = json!({"at":"2026-02-28T16:00:01Z","price_gbp":"101.25"});
+    let report = calculate(&req);
+    let benchmark = &report["benchmark"];
+    assert_eq!(benchmark["state"], "broker_observed");
+    assert_eq!(benchmark["matched_intervals"], 1);
+    assert_eq!(benchmark["intervals"][88]["benchmark_pct"], "1.25");
+    assert_eq!(benchmark["intervals"][88]["difference_pp"], "1.75");
+    assert_eq!(
+        benchmark["intervals"][88]["end_mark"]["at"],
+        "2026-02-28T16:00:01Z"
+    );
+    assert_eq!(
+        benchmark["intervals"][87]["reason"],
+        "missing_benchmark_mark"
+    );
+
+    req["days"][89]["vuag_mark"]["at"] = json!("2026-02-27T23:59:00Z");
+    let report = calculate(&req);
+    assert_eq!(report["benchmark"]["matched_intervals"], 0);
     assert_eq!(report["latest_eligible"]["return_pct"], "3");
 }

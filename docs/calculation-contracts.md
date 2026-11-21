@@ -91,6 +91,15 @@ ratio less one. Difference is portfolio return less benchmark return in
 percentage points, calculated before display rounding. A missing endpoint
 stays blank. The dashboard does not bridge gaps to infer a daily result.
 
+When a reviewed close series is absent, History uses the per-share GBP
+`current_price` of the exact Trading 212 listing `VUAGl_EQ` from the same
+approved daily snapshots as account value. A reported ISIN must agree with
+IE00BFMXXD54. Older snapshots can qualify by exact broker listing and GBP support.
+Both dates need a valid stored position mark and an eligible portfolio return.
+A capture outside its UTC date leaves a gap. The visible timestamp is holdings
+retrieval completion. Quote age, exchange-close status and split adjustments
+are unverified. The broker series uses price ratios within that source only.
+
 ## Return series and risk conventions
 
 Risk uses approved daily data; default horizon 252 observations. For a positive GBP total-return series `P_t`, simple return is `P_t/P_(t−1)−1`; log return `l_t = log(P_t/P_(t−1))`. Require one extra price observation. An adjusted series and explicit dividends cannot both supply the same return component. The adapter records adjustment basis; raw valuation closes remain separate.

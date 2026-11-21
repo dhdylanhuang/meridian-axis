@@ -1,6 +1,6 @@
-//! Matched-date comparison to a reviewed VUAG GBP close series.
+//! Matched-date comparison to observed VUAG GBP marks or reviewed closes.
 
-use super::{pct, round, Interval};
+use super::{pct, round, Day, Interval};
 use crate::{decimal, instant, text};
 use bigdecimal::BigDecimal;
 use chrono::NaiveDate;
@@ -23,7 +23,8 @@ struct Series {
 #[serde(deny_unknown_fields)]
 struct Close {
     date: NaiveDate,
-    pricing_at: String,
+    #[serde(rename(deserialize = "pricing_at", serialize = "at"))]
+    at: String,
     price_gbp: String,
 }
 
@@ -34,8 +35,8 @@ struct Match<'a> {
     portfolio_start_at: &'a Option<String>,
     portfolio_end_at: &'a Option<String>,
     portfolio_pct: &'a Option<String>,
-    start_close: Option<&'a Close>,
-    end_close: Option<&'a Close>,
+    start_mark: Option<&'a Close>,
+    end_mark: Option<&'a Close>,
     benchmark_pct: Option<String>,
     difference_pp: Option<String>,
     reason: Option<&'static str>,
@@ -63,7 +64,7 @@ fn parse(input: &serde_json::Value, as_of: &str) -> Option<Series> {
         return None;
     }
     for row in &data.rows {
-        let priced = instant(&row.pricing_at).ok()?;
+        let priced = instant(&row.at).ok()?;
         if priced.offset().local_minus_utc() != 0
             || priced.date_naive() != row.date
             || priced > reviewed
@@ -75,44 +76,91 @@ fn parse(input: &serde_json::Value, as_of: &str) -> Option<Series> {
     Some(data)
 }
 
+#[derive(Deserialize)]
+pub(super) struct BrokerMark {
+    at: String,
+    price_gbp: String,
+}
+
+fn observed_marks(days: &[Day]) -> Vec<Close> {
+    days.iter()
+        .filter_map(|day| {
+            let mark = day.vuag_mark.as_ref()?;
+            let at = instant(&mark.at).ok()?;
+            if day.status != "observed"
+                || at.offset().local_minus_utc() != 0
+                || at.date_naive() != day.date
+                || decimal(&mark.price_gbp).ok()? <= 0
+            {
+                return None;
+            }
+            Some(Close {
+                date: day.date,
+                at: mark.at.clone(),
+                price_gbp: mark.price_gbp.clone(),
+            })
+        })
+        .collect()
+}
+
 pub(super) fn compare(
     chart: &[Interval],
+    days: &[Day],
     data: Option<&serde_json::Value>,
     as_of: Option<&str>,
 ) -> serde_json::Value {
     let series = data
         .zip(as_of)
         .and_then(|(input, cutoff)| parse(input, cutoff));
-    let state = match (&data, &series) {
-        (None, _) => "awaiting_approved_series",
-        (Some(_), None) => "invalid_series",
-        (_, Some(_)) => "qualified_series",
-    };
     let eligible = chart.iter().filter(|row| row.growth.is_some());
     let eligible_count = eligible.clone().count();
-    let Some(series) = &series else {
-        return serde_json::json!({"state":state,"eligible_intervals":eligible_count,"matched_intervals":0});
+    let observed;
+    let (state, source, basis, reviewed_at, marks) = if let Some(series) = &series {
+        (
+            "qualified_series",
+            series.source.as_str(),
+            series.basis.as_str(),
+            Some(series.reviewed_at.as_str()),
+            series.rows.as_slice(),
+        )
+    } else {
+        observed = observed_marks(days);
+        if observed.is_empty() {
+            let state = if data.is_some() {
+                "invalid_series"
+            } else {
+                "awaiting_approved_series"
+            };
+            return serde_json::json!({"state":state,"eligible_intervals":eligible_count,"matched_intervals":0});
+        }
+        (
+            "broker_observed",
+            "Trading 212 holdings snapshots",
+            "broker_observed_gbp_mark",
+            None,
+            observed.as_slice(),
+        )
     };
-    let index: BTreeMap<_, _> = series
-        .rows
-        .iter()
-        .map(|price| (price.date, price))
-        .collect();
+    let index: BTreeMap<_, _> = marks.iter().map(|price| (price.date, price)).collect();
     let comparisons: Vec<_> = eligible
         .map(|interval| {
-            let start_close = index.get(&interval.start_date).copied();
-            let end_close = index.get(&interval.end_date).copied();
+            let start_mark = index.get(&interval.start_date).copied();
+            let end_mark = index.get(&interval.end_date).copied();
             let mut row = Match {
                 start_date: interval.start_date,
                 end_date: interval.end_date,
                 portfolio_start_at: &interval.start_at,
                 portfolio_end_at: &interval.end_at,
                 portfolio_pct: &interval.return_pct,
-                start_close,
-                end_close,
+                start_mark,
+                end_mark,
                 benchmark_pct: None,
                 difference_pp: None,
-                reason: Some("missing_benchmark_close"),
+                reason: Some(if state == "broker_observed" {
+                    "missing_benchmark_mark"
+                } else {
+                    "missing_benchmark_close"
+                }),
             };
             // The UTC capture date must match the session label at both ends. A
             // snapshot whose account capture crossed midnight is a different date.
@@ -131,7 +179,7 @@ pub(super) fn compare(
                 return row;
             }
             if let (Some(first), Some(last), Some(portfolio)) =
-                (start_close, end_close, &interval.growth)
+                (start_mark, end_mark, &interval.growth)
             {
                 let first_price = decimal(&first.price_gbp).expect("validated positive close");
                 let last_price = decimal(&last.price_gbp).expect("validated positive close");
@@ -150,9 +198,9 @@ pub(super) fn compare(
         .count();
     serde_json::json!({
         "state":state,
-        "source":series.source,
-        "reviewed_at":series.reviewed_at,
-        "basis":series.basis,
+        "source":source,
+        "reviewed_at":reviewed_at,
+        "basis":basis,
         "eligible_intervals":eligible_count,
         "matched_intervals":matched,
         "intervals":comparisons,

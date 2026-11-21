@@ -242,27 +242,30 @@
   }
   function renderBenchmark(section, compare) {
     add(section, 'h3', 'VUAG · S&P 500 benchmark proxy');
-    if (!compare || compare.state !== 'qualified_series') {
+    const observed = compare?.state === 'broker_observed';
+    if (!observed && compare?.state !== 'qualified_series') {
       add(section, 'p', compare?.state === 'invalid_series'
         ? 'The supplied GBP close series could not be verified.'
-        : 'Benchmark returns await an approved GBP closing-price series.');
+        : 'VUAG returns need two saved GBP prices on dates with an eligible portfolio return.');
       return;
     }
-    add(section, 'p', `Provisional comparison · ${compare.matched_intervals} of ${compare.eligible_intervals} eligible portfolio intervals matched. VUAG is an accumulating ETF. Trading 212 capture times and London close times can differ.`);
-    add(section, 'p', `GBP London closing prices · ${compare.source} · reviewed ${utcStamp(compare.reviewed_at)} UTC.`);
+    add(section, 'p', `Provisional comparison · ${compare.matched_intervals} of ${compare.eligible_intervals} eligible portfolio intervals matched.`);
+    add(section, 'p', observed
+      ? 'VUAG GBP per-share prices come from saved Trading 212 holdings. Times show when holdings were captured. Quote age and split adjustments are unverified.'
+      : `GBP London closing prices · ${compare.source} · reviewed ${utcStamp(compare.reviewed_at)} UTC. Account capture and closing times can differ.`);
     if (!compare.intervals.length) return;
-    const body = exposureTable(section, ['UTC dates', 'Portfolio', 'VUAG', 'Difference', 'Account captures (UTC)', 'VUAG closes (UTC)'], 'Portfolio and VUAG matched returns');
+    const body = exposureTable(section, ['UTC dates', 'Portfolio', 'VUAG', 'Difference', 'Account captures (UTC)', observed ? 'VUAG captures (UTC)' : 'VUAG closes (UTC)'], 'Portfolio and VUAG matched returns');
     for (const item of [...compare.intervals].reverse()) {
       const row = add(body, 'tr');
       add(row, 'td', periodRange(item));
       add(row, 'td', percent(item.portfolio_pct));
       add(row, 'td', item.benchmark_pct == null ? 'Unavailable' : percent(item.benchmark_pct));
       add(row, 'td', item.difference_pp == null
-        ? (item.reason === 'portfolio_capture_date_mismatch' ? 'Account capture crossed UTC date' : 'Benchmark endpoint missing')
+        ? (item.reason === 'portfolio_capture_date_mismatch' ? 'Account capture crossed UTC date' : observed ? 'VUAG capture missing' : 'Benchmark endpoint missing')
         : `${decimal(item.difference_pp)} pp`);
       add(row, 'td', [item.portfolio_start_at, item.portfolio_end_at].map(utcStamp).join(' to '));
-      add(row, 'td', [item.start_close, item.end_close].map(close => close
-        ? `${decimal(close.price_gbp, 'GBP')} · ${utcStamp(close.pricing_at)}` : 'Missing').join(' to '));
+      add(row, 'td', [item.start_mark, item.end_mark].map(mark => mark
+        ? `${decimal(mark.price_gbp, 'GBP')} · ${utcStamp(mark.at)}` : 'Missing').join(' to '));
     }
   }
   function renderPerformance(data) {

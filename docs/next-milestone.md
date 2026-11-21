@@ -31,10 +31,10 @@ relevant period boundary. See [the calculation method](calculation-contracts.md#
 
 ## Following delivery
 
-Qualify a permitted VUAG GBP close series for the implemented daily comparison.
-Verify source permission for both members, exact price units, timestamp and split
-treatment before supplying the private binding. Longer comparisons require a
-supported portfolio period and matching benchmark endpoints. See the
+Maintain the provisional daily VUAG comparison from approved Trading 212
+snapshots. If exchange-close comparison is desired, qualify a permitted VUAG
+GBP close series for both members with timestamp and split treatment. Longer
+comparisons require a supported portfolio period and benchmark endpoints. See the
 [calculation contracts](calculation-contracts.md#vuag-gbp-benchmark-proxy).
 
 Keep the private, dated classification catalogue current for new and existing

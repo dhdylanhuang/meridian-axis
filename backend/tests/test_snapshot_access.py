@@ -288,7 +288,9 @@ def check_daily_selection(engine):
     earlier = midnight - timedelta(days=2)
     oldest = midnight - timedelta(days=89)
 
-    def save(db, key, observed, amount, *, digest_matches=True):
+    exact_price = "116.1234567890123456789"
+
+    def save(db, key, observed, amount, *, digest_matches=True, isin=None, currency="GBP"):
         captured = observed - timedelta(seconds=1)
         payload = json.dumps(
             {
@@ -297,6 +299,21 @@ def check_daily_selection(engine):
                 "currency": "GBP",
                 "total_value": amount,
                 "account_retrieval": {"retrieval_completed_at": captured.isoformat()},
+                "positions_retrieval": {"retrieval_completed_at": observed.isoformat()},
+                "positions": [
+                    {
+                        "ticker": "VUAGl_EQ",
+                        "isin": isin,
+                        "instrument_currency": currency,
+                        "current_price": exact_price,
+                    },
+                    {
+                        "ticker": "VUAA_USD",
+                        "isin": "IE00BFMXXD54",
+                        "instrument_currency": "USD",
+                        "current_price": "150",
+                    },
+                ],
             }
         )
         db.add(
@@ -328,14 +345,28 @@ def check_daily_selection(engine):
             db.flush()
         save(db, "too-old", oldest - timedelta(microseconds=1), "9")
         save(db, "first-day", oldest, "10")
+        save(db, "wrong-currency", oldest + timedelta(days=1), "11", currency="USD")
+        save(db, "wrong-isin", oldest + timedelta(days=2), "11", isin="conflicting")
         save(db, "valid", earlier, "12")
         save(db, "tampered", earlier + timedelta(hours=1), "13", digest_matches=False)
         save(db, "first-today", midnight, "14")
         save(db, "same-a", NOW, "15")
-        save(db, "same-z", NOW, exact)
+        save(db, "same-z", NOW, exact, isin="IE00BFMXXD54")
         save(db, "future", NOW + timedelta(microseconds=1), "99")
     with Session(engine) as db:
         history = read_history(db, "shared-isa", NOW)
+        with_benchmark = read_history(db, "shared-isa", NOW, include_benchmark=True)
+    assert with_benchmark["days"][0]["vuag_mark"] == {
+        "price_gbp": exact_price,
+        "at": oldest.isoformat(),
+    }
+    assert "vuag_mark" not in with_benchmark["days"][1]
+    assert "vuag_mark" not in with_benchmark["days"][2]
+    assert "vuag_mark" not in with_benchmark["days"][-3]
+    assert with_benchmark["days"][-1]["vuag_mark"] == {
+        "price_gbp": exact_price,
+        "at": NOW.isoformat(),
+    }
     assert len(history["days"]) == 90
     assert history["start_date"] == oldest.date().isoformat()
     assert history["end_date"] == midnight.date().isoformat()

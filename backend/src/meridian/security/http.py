@@ -282,6 +282,7 @@ class SessionHttp:
                         principal.account_id,
                         now,
                         day_count=count if calculate_performance else HISTORY_DAYS,
+                        include_benchmark=calculate_performance is not None,
                     )
                 report = None
                 state = "unavailable"
@@ -304,7 +305,10 @@ class SessionHttp:
                         state = "performance_service_timeout"
                     except Exception:
                         state = "performance_service_unavailable"
-                days = series["days"][-HISTORY_DAYS:]
+                days = [
+                    {key: value for key, value in day.items() if key != "vuag_mark"}
+                    for day in series["days"][-HISTORY_DAYS:]
+                ]
                 return private_response(
                     series
                     | {

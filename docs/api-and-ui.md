@@ -167,9 +167,12 @@ the 90-day account value response. See [the calculation rules](calculation-contr
 The optional History performance report includes `benchmark.state`,
 eligible and matched counts, and per-interval portfolio return, VUAG return,
 percentage-point difference, price and capture endpoints, and any gap reason.
-An absent approved series returns `awaiting_approved_series`. An invalid
-series returns `invalid_series`; the portfolio performance is still available.
-A benchmark comparison uses the existing private Rust service.
+With no valid reviewed close series, saved per-share GBP VUAG position marks
+can produce `broker_observed`. That basis reports holdings capture times and
+shows gaps for missing marks. Older snapshots qualify by the exact Trading 212
+ticker and GBP currency. Any reported ISIN must agree. Without qualifying marks,
+an absent or invalid close series leaves the benchmark unavailable. Portfolio
+performance still loads. The comparison uses the existing private Rust service.
 
 Supply the reviewed input as a private gateway binding `VUAG_GBP_BENCHMARK`
 using the existing raw JSON or `gzip:` base64 format. The binding is optional

@@ -278,13 +278,13 @@ test('History exposes funding evidence and explains ineligible returns without b
    funding_coverage:{start_at:days[0].date+'T00:00:00+00:00',end_at:end+'T16:00:00+00:00',completed_at:end+'T17:00:00+00:00'},
    intervals:[interval],latest_eligible:interval,longest_eligible:interval,longest_valuation:{start_date:start,end_date:end,days:2},
    month_to_date:{start_date:start,end_date:end,return_pct:null,intervals:0,reason:'missing_valuation'},year_to_date:null,
-   benchmark:{state:'qualified_series',matched_intervals:1,eligible_intervals:2,source:'Invented closes',reviewed_at:end+'T17:00:00+00:00',
+   benchmark:{state:'broker_observed',matched_intervals:1,eligible_intervals:2,source:'Invented closes',reviewed_at:end+'T17:00:00+00:00',
      intervals:[{portfolio_start_at:interval.start_at,portfolio_end_at:interval.end_at,portfolio_pct:interval.return_pct,
        start_date:start,end_date:end,benchmark_pct:'2',difference_pp:'0.727273',
-       start_close:{price_gbp:'100',pricing_at:start+'T16:35:00+00:00'},
-       end_close:{price_gbp:'102',pricing_at:end+'T16:35:00+00:00'}},
+       start_mark:{price_gbp:'100',at:start+'T16:35:00+00:00'},
+       end_mark:{price_gbp:'102',at:end+'T16:35:00+00:00'}},
        {portfolio_start_at:interval.start_at,portfolio_end_at:interval.end_at,portfolio_pct:'0',start_date:start,end_date:end,
-        benchmark_pct:null,difference_pp:null,reason:'missing_benchmark_close'}]},
+        benchmark_pct:null,difference_pp:null,reason:'missing_benchmark_mark'}]},
 
  };
  const data={source:'trading212',basis:'broker_reported',currency:'GBP',as_of:end+'T18:00:00+00:00',start_date:days[0].date,end_date:end,days,performance};
@@ -295,7 +295,7 @@ test('History exposes funding evidence and explains ineligible returns without b
  assert.equal(ui.el('history-point').children[0].href,'#history-funding-'+end);
  const text=node=>[node.textContent,...node.children.flatMap(text)];
  const results=text(ui.el('history-performance')).join(' ');
- for (const value of ['2.727273%','£20.123456789','invented-ref','Modified Dietz','A saved valuation is missing','0.727273 pp','Benchmark endpoint missing','1 of 2 eligible portfolio intervals matched','£102 · ']) assert.ok(results.includes(value), value);
+ for (const value of ['2.727273%','£20.123456789','invented-ref','Modified Dietz','A saved valuation is missing','0.727273 pp','VUAG capture missing','Quote age and split adjustments are unverified','1 of 2 eligible portfolio intervals matched','£102 · ']) assert.ok(results.includes(value), value);
  ui.view.clear();
  assert.equal(ui.el('history-performance').children.length,0);
  assert.equal(ui.el('history-funding-note').hidden,true);
