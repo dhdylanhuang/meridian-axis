@@ -24,6 +24,13 @@ the ISIN was added to the projection. Results show holdings capture times,
 unverified quote freshness and split treatment, and gaps where the mark is
 missing. No new broker calls, data provider or schema change is needed.
 
+Gateway and session owner source `1fc754e` were deployed on 21 November 2026.
+The sync release, bindings and schedule were verified. The authenticated
+History response used the broker-observed basis. Its eligible matched prices,
+capture timestamps and returns were independently checked against the approved
+retained snapshots. The short-lived test session was revoked. Focused SQLite,
+PostgreSQL, Rust, WASM and History UI checks passed.
+
 Gateway source `14732a9` was deployed on 21 November 2026. The four served
 assets, WASM readiness, anonymous denial, existing bindings and ten-minute
 schedule were verified. The session owner and sync releases stayed on their
