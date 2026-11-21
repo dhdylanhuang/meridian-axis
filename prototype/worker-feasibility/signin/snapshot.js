@@ -311,6 +311,79 @@
     need_tail:'Fewer than two tail observations',
     undefined:'Undefined for this sample',
   };
+  function renderSessionPerformance(section, performance) {
+    add(section, 'h3', 'Approved session performance');
+    if (!performance) {
+      add(section, 'p', 'Needs reviewed GBP session valuations and verified timing. The History tab shows the available broker observations.');
+      return;
+    }
+    add(section, 'p', 'Modified Dietz adjusts for the amount and timing of external funding. The figures use the latest uninterrupted eligible stretch inside the selected dates.');
+    const summaries = exposureTable(section, ['Series', 'UTC dates', 'Sessions', 'ISA', 'VUAG', 'Difference'], 'Approved performance');
+    for (const [label, stretch] of [['ISA', performance.latest_portfolio], ['Matched ISA and VUAG', performance.latest_matched]]) {
+      const row = add(summaries, 'tr');
+      add(row, 'td', label);
+      add(row, 'td', stretch ? periodRange(stretch) : 'Unavailable');
+      add(row, 'td', String(stretch?.sessions ?? 0));
+      add(row, 'td', percent(stretch?.portfolio_pct));
+      add(row, 'td', percent(stretch?.vuag_pct));
+      add(row, 'td', stretch?.spread_pp == null ? 'Unavailable' : signed(stretch.spread_pp) + ' pp');
+    }
+    if (!performance.rows.length) return;
+    const details = add(section, 'details');
+    add(details, 'summary', `Session evidence · ${performance.rows.length} intervals`);
+    const rows = exposureTable(details, ['Reviewed cutoffs (UTC)', 'External GBP funding', 'ISA', 'VUAG', 'VUAG closes (UTC)'], 'Reviewed session evidence');
+    const reasons = {
+      missing_session_valuation:'Missing approved valuation',
+      funding_coverage_unverified:'Funding history coverage unverified',
+      funding_valuation_order_unknown:'Funding and valuation order ambiguous',
+      unclassified_or_unsupported_funding:'Unsupported funding event',
+    };
+    for (const item of performance.rows) {
+      const row = add(rows, 'tr');
+      add(row, 'td', `${utcStamp(item.start_at)} → ${utcStamp(item.end_at)}`);
+      add(row, 'td', item.net_external_flow_gbp == null ? 'Unavailable'
+        : `${decimal(item.net_external_flow_gbp, 'GBP')} · ${item.external_flow_count} ${item.external_flow_count === 1 ? 'event' : 'events'}`);
+      add(row, 'td', item.reason ? reasons[item.reason] ?? 'Return unavailable' : percent(item.portfolio_pct));
+      add(row, 'td', percent(item.vuag_pct));
+      add(row, 'td', item.vuag_start_at && item.vuag_end_at
+        ? `${utcStamp(item.vuag_start_at)} → ${utcStamp(item.vuag_end_at)}` : 'Unavailable');
+    }
+  }
+
+  function renderHoldingCorrelation(section, report) {
+    add(section, 'h3', 'Holding correlation');
+    if (!report || report.state === 'awaiting_approved_holding_series') {
+      add(section, 'p', 'Needs approved GBP total-return marks for the held listings.');
+      return;
+    }
+    add(section, 'p', `Holdings as of ${utcStamp(report.holdings_as_of)} UTC · ${report.included_holdings} of ${report.universe_holdings} holdings · ${percent(report.included_weight_pct)} of ISA value included out of ${percent(report.universe_weight_pct)} submitted, excluding cash.`);
+    add(section, 'p', `${report.n} common return intervals${report.start_date ? ` · ${report.start_date} to ${report.end_date} UTC` : ''} · minimum ${report.minimum_daily}. Pearson correlation uses the same GBP log-return dates for every pair.`);
+    if (report.state === 'available') {
+      const rows = exposureTable(section, ['Holding pair', 'Correlation'], 'Highest holding correlations');
+      for (const pair of report.pairs) {
+        const row = add(rows, 'tr');
+        add(row, 'td', `${pair.first} and ${pair.second}`);
+        add(row, 'td', decimal(pair.correlation));
+      }
+      add(section, 'p', `Showing the ${report.pairs.length} highest correlations of ${report.pair_count} pairs.`);
+    } else add(section, 'p', report.state === 'needs_two_holdings'
+      ? 'At least two holdings need sufficient, variable returns.'
+      : 'The eligible holdings have too few shared return dates.');
+    if (report.excluded.length) {
+      const detail = add(section, 'details');
+      add(detail, 'summary', `Excluded holdings · ${report.excluded.length}`);
+      const rows = exposureTable(detail, ['Holding', 'ISA weight', 'Returns', 'Reason'], 'Holding correlation exclusions');
+      for (const item of report.excluded) {
+        const row = add(rows, 'tr');
+        add(row, 'td', item.ticker);
+        add(row, 'td', percent(item.weight_pct));
+        add(row, 'td', String(item.n));
+        add(row, 'td', item.reason === 'insufficient_returns' ? 'Insufficient returns'
+          : item.reason === 'constant_on_common_sample' ? 'Constant on common dates' : 'Constant returns');
+      }
+    }
+  }
+
   function renderRiskMetrics(section, metrics) {
     if (!metrics) return;
     add(section, 'h3', 'Observed losses');
@@ -325,6 +398,8 @@
     if (observed.worst) {
       add(section, 'p', `Worst interval · ${utcStamp(observed.worst.start_at)} to ${utcStamp(observed.worst.end_at)} UTC.`);
     }
+
+    renderSessionPerformance(section, metrics.session_performance);
 
     add(section, 'h3', 'Volatility, loss estimates and benchmark risk');
     if (metrics.daily_state === 'approved_series') {
@@ -358,6 +433,7 @@
       const tail = metric.tail_n == null ? '' : `${metric.tail_n} tail observations${metric.tail_n < 5 ? ' · thin coverage' : ''}`;
       add(row,'td',[riskReasons[metric.reason],tail].filter(Boolean).join(' · ') || '—');
     }
+    renderHoldingCorrelation(section, metrics.holding_correlation);
   }
   function renderRiskExposure(data) {
     const section = el('risk-exposures');

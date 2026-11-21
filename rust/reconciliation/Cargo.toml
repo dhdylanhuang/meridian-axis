@@ -2,6 +2,7 @@
 name = "axis-reconciliation"
 version = "0.1.0"
 edition = "2021"
+default-run = "axis-reconciliation"
 publish = false
 
 [lib]

@@ -41,6 +41,24 @@ versions above refer to the application source. The documentation revision is
 tracked separately in Git history.
 
 
+## Reviewed session performance and holding correlation
+
+Implemented the private reviewed session input and offline structural check.
+Rust calculates cash-flow-adjusted GBP ISA returns from approved NAVs and the
+existing completed funding traversal, preserves gaps, and separately compounds
+the latest matched VUAG stretch when comparable levels exist. Existing risk
+estimates consume those reviewed session factors. The Risk tab ranks holding
+correlations using a common reviewed GBP log-return sample and shows exclusions
+and weight coverage. See the [daily evidence contract](api-and-ui.md#risk-tab)
+and [correlation method](correlation.md#initial-risk-tab-delivery).
+
+The existing audit and the current source review leave live risk data gated.
+Trading 212 exposes current position prices without an exchange quote time.
+The issuer identifies VUAG's London GBP listing and accumulating share class.
+The project still needs an approved session NAV archive and appropriately
+permitted benchmark and holding return series. Deployment and authenticated
+gate verification are pending.
+
 ## Portfolio Changes sprint
 
 Implemented a dated comparison on the existing approved Trading 212 projections.

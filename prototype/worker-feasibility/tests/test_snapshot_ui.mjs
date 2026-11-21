@@ -319,7 +319,18 @@ test('Risk applies a dated range and clears private drawdown on sign-out',async(
    return {ok:true,status:200,json:async()=>({
      performance_state:'available',earliest_date:'2026-08-23',latest_date:'2026-11-20',range:{start,end},
      metrics:{observed:{eligible:1,requested:1,loss_intervals:1,worst:{return_pct:'-12',start_at:start+'T18:00:00+00:00',end_at:end+'T18:00:00+00:00'}},
-       daily_state:'awaiting_approved_series',minimum_daily:60,measures:[
+       daily_state:'awaiting_approved_series',minimum_daily:60,
+       session_performance: custom ? {
+         latest_portfolio:{start_date:start,end_date:end,sessions:1,portfolio_pct:'0.952381'},
+         rows:[{start_at:start+'T16:00:00Z',end_at:end+'T16:00:00Z',
+           net_external_flow_gbp:'100',external_flow_count:1,portfolio_pct:'0.952381'}],
+       } : null,
+       holding_correlation: custom ? {state:'available',holdings_as_of:end+'T16:00:00Z',
+         included_holdings:2,universe_holdings:2,included_weight_pct:'70',universe_weight_pct:'70',
+         n:60,minimum_daily:60,start_date:start,end_date:end,pair_count:1,
+         pairs:[{first:'AAA',second:'BBB',correlation:'0.9'}],excluded:[],
+       } : {state:'awaiting_approved_holding_series'},
+       measures:[
          {key:'volatility',n:0,value:null,reason:'need_portfolio'}]},
      drawdown:{start_at:start+'T18:00:00+00:00',as_of:end+'T18:00:00+00:00',
        intervals:1,current_pct:custom?'12':'5',worst_pct:'12',current_peak_at:start+'T18:00:00+00:00'},
@@ -340,6 +351,9 @@ test('Risk applies a dated range and clears private drawdown on sign-out',async(
  assert.ok(riskText.includes('12%'));
  assert.ok(riskText.includes('Worst observed interval return'));
  assert.ok(riskText.includes('Annualised volatility'));
+ assert.ok(riskText.includes('AAA and BBB'));
+ assert.ok(riskText.includes('0.952381%'));
+ assert.ok(riskText.includes('£100 · 1 event'));
  assert.ok(riskText.includes('Needs more approved portfolio returns'));
  ui.view.clear();
  assert.equal(ui.el('risk-results').children.length,0);

@@ -2,6 +2,18 @@
 
 Status: CONFIRMED key feature; ADOPTED method and reliability policies, with weekly defaults PROPOSED under Q12. Supports K01–K05 and A02.
 
+## Initial Risk tab delivery
+
+The Risk tab ranks the 20 highest Pearson pairs for the submitted frozen
+holdings universe. Each holding first needs at least 60 usable GBP log
+returns and a varying series. The reported pairs use one shared complete-case
+sample of at least 60 returns in the selected dates, from up to 252 reviewed
+session intervals. A constant on that sample is excluded without widening the
+sample. Excluded tickers, submitted and included ISA weights, and sample dates
+remain visible. Missing marks have no runtime imputation. The reviewed input
+retains the basis for any source alignment. The full matrix, rolling views,
+weekly mode and shrinkage remain in the broader roadmap below.
+
 ## Inputs and meaning
 
 Use approved daily total-return-compatible prices converted to GBP, never intraday quotes or unapproved `eod_poll` candidates. Include currently held nonzero risky positions and configured benchmark series. Cash, constants, nonpositive prices, unmapped listings and unsupported history are ineligible with explicit reasons and excluded-weight coverage.

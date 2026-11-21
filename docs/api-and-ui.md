@@ -204,21 +204,41 @@ metrics with observation counts and availability. Current concentration reuses
 the latest authenticated snapshot. History displays portfolio and benchmark
 performance.
 
-Optional daily evidence is read from the private gateway binding
-`RISK_DAILY_GBP` in the existing raw JSON or compressed format. The object has
-`basis: approved_gbp_session_total_return_v1`, a display `source` label, and
-`rows` of 2 to 367 distinct ascending session dates. Each row has `date`
-and nullable decimal strings `portfolio_index`, `vuag_index`,
-`bank_rate_pct` and `portfolio_value_gbp`. Each supplied index level requires
-the corresponding `portfolio_at` or `vuag_at` timestamp, in UTC on the
-same session date. The source review must establish
-the actual GBP session calendar, consistent timing, corporate actions,
-cash-flow-adjusted portfolio index, dividend treatment, and the effective
-Bank Rate at each session opening. Include any missing scheduled session as
-a row with null fields so there is no return across the gap. Approved Bank
-Rate history is published by the Bank of England. Keep portfolio evidence
-private. The approved levels still require an auditable source review before
-setting the binding.
+Approved session valuation evidence is supplied privately through
+`RISK_DAILY_GBP`. The existing approved index-only format remains readable.
+The preferred format is `reviewed_gbp_session_marks_v2`:
+
+| Field | Reviewed evidence |
+| --- | --- |
+| `basis`, `source`, `reviewed_at` | Schema name above, display source label and UTC review time |
+| `calendar_evidence`, `valuation_evidence` | Private references to the reviewed calendar and exact-time GBP total-account valuation source |
+| `benchmark_evidence` | Optional private reference to the GBP London VUAG listing (ISIN IE00BFMXXD54), the total-return and corporate-action review and the rights to serve the data or derived results to both members. Required to supply benchmark marks. |
+| `sessions` | 2–367 strictly ascending UTC dates. Each row has `date` and `cutoff_at`. An approved GBP NAV requires both `portfolio_value_gbp` and `portfolio_at` exactly at the cutoff. An approved VUAG level requires `vuag_index`, `vuag_at` and the scheduled `vuag_close_at`. The observed close must match the scheduled close and be at or before the ISA cutoff. |
+| `holdings` | Optional frozen universe with UTC `as_of`, private `evidence` reference and up to 128 `instruments`. Each has a unique broker `ticker`, positive `weight_pct` of ISA NAV, and `levels` aligned by index to every scheduled session. The holdings evidence covers the snapshot revision, mapping, GBP total-return adjustments, FX and close timing, and applicable use rights. Include unqualified held listings with null marks so coverage stays visible. |
+
+Values and weights are decimal strings. Missing marks are null, including for
+any unavailable scheduled session. Keep the session row so adjacent returns
+cannot span the gap. Closed-market dates follow the reviewed calendar. Keep
+the private source files, excluded dates and operator review with the manifest.
+Trading 212 snapshot retrieval times do not qualify as close-price evidence.
+
+Run the offline structural check on the private manifest before publication:
+`cargo run --manifest-path rust/reconciliation/Cargo.toml --locked --bin qualify_daily -- "$(date -u +%FT%TZ)" < /path/to/private/reviewed.json`.
+It reports counts and fixed failure codes. The operator reviews source rights,
+calendar completeness and input provenance separately. Publish only a reviewed
+result through the existing private gateway binding. It accepts raw JSON or a
+single `gzip:` base64 value. For larger inputs, set the root binding to
+`gzip-parts:N` and split the base64 of one gzip stream into consecutive
+`RISK_DAILY_GBP_01` through `RISK_DAILY_GBP_NN` secret values. Use up to 24
+parts of at most 5,120 characters each and at most 512 KiB uncompressed.
+Prepare and activate the complete set together. Keep all prepared secret data
+out of source, assets, and logs.
+
+The Risk tab reports approved ISA performance and its separate matched VUAG
+stretch, capture times, net external funding, missing inputs, and holding
+correlation with its common-sample coverage. For reviewed NAVs, the gateway
+combines the marks with the existing completed funding traversal in Rust.
+Observed broker drawdown and History remain available independently.
 
 AXIS reads History once on the first signed-in snapshot and shares that
 response with the History tab. It presents the most recent contiguous set of

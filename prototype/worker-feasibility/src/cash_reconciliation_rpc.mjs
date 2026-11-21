@@ -1,5 +1,5 @@
 import { WorkerEntrypoint } from 'cloudflare:workers';
-import { decodeReviewedBinding, heldClassifications } from './portfolio_classification_catalog.mjs';
+import { decodeDailyRisk, decodeReviewedBinding, heldClassifications } from './portfolio_classification_catalog.mjs';
 import { observedPerformanceJSON, portfolioExposuresJSON, reconcileCashJSON } from './cash_reconciliation.mjs';
 import { summarizeCashReport, summarizeActivityDetails } from './cash_reconciliation_summary.mjs';
 
@@ -22,10 +22,19 @@ export class CashReconciliation extends WorkerEntrypoint {
       try {
         const request = JSON.parse(input);
         const risk = Boolean(request.risk_range);
-        const supplied = risk ? this.env.RISK_DAILY_GBP : this.env.VUAG_GBP_BENCHMARK;
-        if (typeof supplied === 'string' && supplied) {
-          request[risk ? 'risk_daily' : 'benchmark'] = (await decodeReviewedBinding(supplied).catch(() => null)) ?? {};
-          if (!risk) request.benchmark_as_of = new Date().toISOString();
+        if (risk && this.env.RISK_DAILY_GBP) {
+          request.risk_daily = (await decodeDailyRisk(this.env).catch(() => null)) ?? {};
+          request.risk_as_of = new Date().toISOString();
+          const enriched = JSON.stringify(request);
+          if (new TextEncoder().encode(enriched).byteLength <= 640 * 1024) {
+            return observedPerformanceJSON(enriched);
+          }
+          request.risk_daily = {};
+          return observedPerformanceJSON(JSON.stringify(request));
+        }
+        if (!risk && this.env.VUAG_GBP_BENCHMARK) {
+          request.benchmark = (await decodeReviewedBinding(this.env.VUAG_GBP_BENCHMARK).catch(() => null)) ?? {};
+          request.benchmark_as_of = new Date().toISOString();
           const enriched = JSON.stringify(request);
           if (new TextEncoder().encode(enriched).byteLength <= 128 * 1024) {
             return observedPerformanceJSON(enriched);

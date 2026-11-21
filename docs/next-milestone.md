@@ -13,6 +13,12 @@ for the deployed sources, focused checks and live evidence.
 
 ## Risk evidence gate
 
+The reviewed-session software path accepts dated GBP NAV and benchmark marks,
+calculates external-flow-adjusted ISA session returns, and reports statistical
+risk and ranked holding pairs when their respective samples qualify. To activate
+this path with real data, complete the source review and supply the private
+manifest in the [daily risk input contract](api-and-ui.md#risk-tab).
+
 Qualify a portfolio GBP total-return series with comparable session valuations,
 timed external funding evidence and UTC endpoints. For benchmark-relative
 statistics, line it up with a permitted GBP VUAG total-return series on the

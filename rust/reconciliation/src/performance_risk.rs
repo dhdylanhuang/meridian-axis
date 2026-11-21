@@ -1,12 +1,17 @@
 //! Observed interval statistics and approved daily risk estimates.
-use super::{pct, Day, Interval, RiskRange};
+use super::{pct, CheckedEvent, Day, Interval, RiskRange};
+use crate::risk_sessions::{self, Reviewed};
 use crate::{decimal, instant};
 use bigdecimal::ToPrimitive;
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
+#[path = "approved_performance.rs"]
+mod approved;
 #[path = "official_bank_rate.rs"]
 mod bank_rate;
+#[path = "holding_correlation.rs"]
+mod holdings;
 
 const MIN_DAILY: usize = 60;
 const MAX_DAILY: usize = 252;
@@ -188,11 +193,48 @@ fn tail(
     [var, es]
 }
 
+pub(super) struct Evidence<'a> {
+    pub input: Option<&'a serde_json::Value>,
+    pub as_of: Option<&'a str>,
+    pub covered: approved::Coverage,
+    pub events: &'a [CheckedEvent<'a>],
+}
+
+struct Sample {
+    start: NaiveDate,
+    end: NaiveDate,
+    portfolio_ratio: f64,
+    vuag_ratio: Option<f64>,
+    rate_pct: Option<String>,
+    nav: Option<f64>,
+}
+
+fn legacy_samples(series: &Series, range: &RiskRange) -> Vec<Sample> {
+    let rows = &series.rows[series.rows.partition_point(|row| row.date < range.start)
+        ..series.rows.partition_point(|row| row.date <= range.end)];
+    rows[rows.len().saturating_sub(MAX_DAILY + 1)..]
+        .windows(2)
+        .filter_map(|rows| {
+            let (a, b) = (&rows[0], &rows[1]);
+            Some(Sample {
+                start: a.date,
+                end: b.date,
+                portfolio_ratio: price(&b.portfolio_index)? / price(&a.portfolio_index)?,
+                vuag_ratio: price(&b.vuag_index)
+                    .zip(price(&a.vuag_index))
+                    .map(|(b, a)| b / a),
+                rate_pct: a.bank_rate_pct.clone(),
+                nav: price(&b.portfolio_value_gbp),
+            })
+        })
+        .collect()
+}
+
 pub(super) fn calculate(
     intervals: &[Interval],
     days: &[Day],
     range: &RiskRange,
-    input: Option<&serde_json::Value>,
+    evidence: Evidence,
 ) -> serde_json::Value {
     let mut eligible = 0;
     let mut losses = 0;
@@ -215,7 +257,34 @@ pub(super) fn calculate(
                 "start_at":row.start_at,"end_at":row.end_at})),
     });
 
-    let series = input.and_then(validated);
+    let reviewed = evidence
+        .input
+        .zip(evidence.as_of)
+        .and_then(|(input, as_of)| {
+            (input.get("basis").and_then(|field| field.as_str()) == Some(risk_sessions::BASIS))
+                .then(|| Reviewed::parse(input, as_of).ok())
+                .flatten()
+        });
+    let series = evidence.input.and_then(validated);
+    let source = reviewed
+        .as_ref()
+        .map(|data| &data.source)
+        .or_else(|| series.as_ref().map(|data| &data.source));
+    let (samples, session_performance) = if let Some(data) = &reviewed {
+        approved::calculate(data, range, evidence.covered, evidence.events)
+    } else {
+        (
+            series
+                .as_ref()
+                .map(|series| legacy_samples(series, range))
+                .unwrap_or_default(),
+            serde_json::Value::Null,
+        )
+    };
+    let holding_correlation = reviewed.as_ref().map_or_else(
+        || serde_json::json!({"state":"awaiting_approved_holding_series"}),
+        |data| holdings::calculate(data, range.start, range.end),
+    );
     let mut portfolio = Vec::new();
     let mut excess = Vec::new();
     let mut matched_portfolio = Vec::new();
@@ -224,42 +293,29 @@ pub(super) fn calculate(
     let mut regression_vuag = Vec::new();
     let mut losses = Vec::new();
     let (mut first_date, mut last_date, mut nav) = (None, None, None);
-    if let Some(series) = &series {
-        let in_range = &series.rows[series.rows.partition_point(|row| row.date < range.start)
-            ..series.rows.partition_point(|row| row.date <= range.end)];
-        let bounded = &in_range[in_range.len().saturating_sub(MAX_DAILY + 1)..];
-        for rows in bounded.windows(2) {
-            let (a, b) = (&rows[0], &rows[1]);
-            let (Some(first), Some(last)) = (price(&a.portfolio_index), price(&b.portfolio_index))
-            else {
-                continue;
-            };
-            let ratio = last / first;
-            let p = ratio.ln();
-            if !p.is_finite() {
-                continue;
-            }
-            first_date.get_or_insert(a.date);
-            last_date = Some(b.date);
-            nav = price(&b.portfolio_value_gbp);
-            portfolio.push(p);
-            losses.push((1.0 - ratio) * 100.0);
-            let rf = bank_rate::opening_rate(a.date)
-                .map(|pct| (pct / 100.0).ln_1p() / ANNUAL_SESSIONS)
-                .or_else(|| rate(&a.bank_rate_pct));
+    for sample in samples {
+        let ratio = sample.portfolio_ratio;
+        let p = ratio.ln();
+        if !p.is_finite() {
+            continue;
+        }
+        first_date.get_or_insert(sample.start);
+        last_date = Some(sample.end);
+        nav = sample.nav;
+        portfolio.push(p);
+        losses.push((1.0 - ratio) * 100.0);
+        let rf = bank_rate::opening_rate(sample.start)
+            .map(|pct| (pct / 100.0).ln_1p() / ANNUAL_SESSIONS)
+            .or_else(|| rate(&sample.rate_pct));
+        if let Some(rf) = rf {
+            excess.push(p - rf);
+        }
+        if let Some(v) = sample.vuag_ratio.map(f64::ln).filter(|v| v.is_finite()) {
+            matched_portfolio.push(p);
+            matched_vuag.push(v);
             if let Some(rf) = rf {
-                excess.push(p - rf);
-            }
-            if let (Some(first), Some(last)) = (price(&a.vuag_index), price(&b.vuag_index)) {
-                let v = (last / first).ln();
-                if v.is_finite() {
-                    matched_portfolio.push(p);
-                    matched_vuag.push(v);
-                    if let Some(rf) = rf {
-                        regression_portfolio.push(p - rf);
-                        regression_vuag.push(v - rf);
-                    }
-                }
+                regression_portfolio.push(p - rf);
+                regression_vuag.push(v - rf);
             }
         }
     }
@@ -315,14 +371,15 @@ pub(super) fn calculate(
     losses.sort_by(f64::total_cmp);
     measures.extend(tail(&losses, 0.95, "var95", "es95", nav));
     measures.extend(tail(&losses, 0.99, "var99", "es99", nav));
-    let state = match (&series, &input) {
+    let state = match (source, evidence.input) {
         (Some(_), _) => "approved_series",
         (None, Some(_)) => "invalid_series",
         _ => "awaiting_approved_series",
     };
     serde_json::json!({
         "observed": observed, "daily_state": state,
-        "source": series.as_ref().map(|s| &s.source), "minimum_daily":MIN_DAILY,
+        "source": source, "minimum_daily":MIN_DAILY,
+        "session_performance":session_performance, "holding_correlation":holding_correlation,
         "daily_start":first_date,"daily_end":last_date, "measures":measures,
         "daily_coverage":{"portfolio":n,"vuag":m,"with_rate":excess.len(),
             "shortfall":MIN_DAILY.saturating_sub(n)},

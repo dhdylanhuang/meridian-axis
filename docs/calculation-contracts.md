@@ -140,6 +140,15 @@ concentration is dated separately and uses the latest approved holdings
 snapshot. HHI and effective holdings normalise by summed usable holdings
 values with cash excluded and require complete holding values.
 
+Reviewed-session ISA performance applies Modified Dietz to each adjacent
+scheduled interval using its exact UTC GBP valuations and complete timed
+external funding evidence. Retained investment income remains in the return.
+Missing valuations and incomplete or ambiguous funding break the chain.
+The comparison compounds the latest contiguous matched ISA and VUAG stretch
+and discloses both sets of UTC times. Portfolio-only performance compounds its
+own latest contiguous eligible stretch and is available before the 60-session
+risk minimum. The VUAG series uses approved positive GBP total-return levels.
+
 The daily statistical estimates require at least 60 approved sessions per
 estimate and use at most the latest 252 session intervals in the selected
 dates. Daily volatility and tracking error use annualised sample log-return

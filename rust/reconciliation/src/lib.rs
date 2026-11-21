@@ -5,6 +5,7 @@ mod wasm;
 pub mod changes;
 pub mod exposures;
 pub mod performance;
+pub mod risk_sessions;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};

@@ -23,6 +23,7 @@ pub struct Request {
     benchmark_as_of: Option<String>,
     risk_range: Option<RiskRange>,
     risk_daily: Option<serde_json::Value>,
+    risk_as_of: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -244,7 +245,7 @@ fn summarize(intervals: &[Interval], start: NaiveDate, end: NaiveDate) -> Summar
 }
 
 pub fn calculate_json(input: &str) -> Result<String> {
-    if input.len() > 128 * 1024 {
+    if input.len() > 640 * 1024 {
         return Err(Error("performance_input_limit"));
     }
     let request: Request = serde_json::from_str(input).map_err(|_| Error("request_invalid"))?;
@@ -334,7 +335,11 @@ pub fn calculate_json(input: &str) -> Result<String> {
         return serde_json::to_string(&serde_json::json!({
             "method": "modified_dietz_observed_v1",
             "drawdown": drawdown::calculate(selected),
-            "metrics": risk::calculate(selected, &request.days[first..=last+1], &range, request.risk_daily.as_ref()),
+            "metrics": risk::calculate(
+                selected, &request.days[first..=last+1], &range,
+                risk::Evidence { input: request.risk_daily.as_ref(), as_of: request.risk_as_of.as_deref(),
+                                covered, events: &events },
+            ),
         }))
         .map_err(|_| Error("performance_output_invalid"));
     }

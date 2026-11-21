@@ -315,3 +315,105 @@ fn daily_risk_uses_only_approved_aligned_samples() {
         entry("sharpe")["n"].as_u64().unwrap()
     );
 }
+
+fn approved_request() -> Value {
+    use chrono::{Datelike, Weekday};
+    let mut req = request();
+    req["risk_range"] = json!({"start":"2025-12-01","end":"2026-02-28"});
+    req["risk_as_of"] = json!("2026-02-28T23:30:00Z");
+    let rows: Vec<_> = req["days"].as_array().unwrap().iter().map(|row| {
+        row["date"].as_str().unwrap().parse::<NaiveDate>().unwrap()
+    }).filter(|date| !matches!(date.weekday(), Weekday::Sat | Weekday::Sun))
+      .enumerate().map(|(index, date)| {
+        let level = (1000 + (index * index % 37) + 15 * usize::from(index > 31)).to_string();
+        json!({"date":date,"cutoff_at":format!("{date}T16:00:00Z"),
+            "portfolio_value_gbp":level,"portfolio_at":format!("{date}T16:00:00Z"),
+            "vuag_index":level,"vuag_close_at":format!("{date}T15:30:00Z"),"vuag_at":format!("{date}T15:30:00Z")})
+    }).collect();
+    let levels: Vec<_> = rows.iter().map(|row| row["vuag_index"].clone()).collect();
+    let mut no_marks = levels.clone();
+    no_marks.fill(Value::Null);
+    req["risk_daily"] = json!({"basis":"reviewed_gbp_session_marks_v2","source":"Synthetic session archive",
+        "reviewed_at":"2026-02-28T23:00:00Z", "calendar_evidence":"test-calendar", "valuation_evidence":"test-nav",
+        "benchmark_evidence":"test-permitted-gbp-series", "sessions":rows,
+        "holdings":{"as_of":"2026-02-27T16:00:00Z","evidence":"test-composition-and-prices","instruments":[
+            {"ticker":"AAA","weight_pct":"40","levels":levels},
+            {"ticker":"BBB","weight_pct":"30","levels":levels},
+            {"ticker":"CCC","weight_pct":"10","levels":no_marks},
+        ]}
+    });
+    req
+}
+
+#[test]
+fn reviewed_returns_use_timed_external_flows_and_preserve_scheduled_gaps() {
+    let mut req = approved_request();
+    req["risk_daily"]["sessions"][1]["portfolio_value_gbp"] = json!("1110");
+    req["events"] = json!([event(
+        "DEPOSIT",
+        "100",
+        "2025-12-02T04:00:00Z",
+        "test-approval-funding"
+    )]);
+    req["risk_daily"]["sessions"][4]["portfolio_value_gbp"] = Value::Null;
+    req["risk_daily"]["sessions"][4]["portfolio_at"] = Value::Null;
+    let metrics = &calculate(&req)["metrics"];
+    let approved = &metrics["session_performance"];
+    assert_eq!(approved["rows"][0]["portfolio_pct"], "0.952381");
+    assert_eq!(approved["rows"][0]["net_external_flow_gbp"], "100");
+    for index in [3, 4] {
+        assert_eq!(
+            approved["rows"][index]["reason"],
+            "missing_session_valuation"
+        );
+    }
+    assert_eq!(approved["latest_portfolio"]["start_date"], "2025-12-08");
+    assert!(approved["latest_matched"]["spread_pp"].is_string());
+    assert_eq!(metrics["daily_coverage"]["portfolio"], 62);
+
+    req["coverage"] = Value::Null;
+    let metrics = &calculate(&req)["metrics"];
+    assert_eq!(
+        metrics["session_performance"]["rows"][0]["reason"],
+        "funding_coverage_unverified"
+    );
+    assert_eq!(metrics["daily_coverage"]["portfolio"], 0);
+
+    req["risk_daily"]["sessions"][1]["portfolio_at"] = json!("2025-12-02T16:00:01Z");
+    assert!(axis_reconciliation::risk_sessions::audit_json(
+        req["risk_daily"].to_string().as_bytes(),
+        "2026-02-28T23:30:00Z"
+    )
+    .is_err());
+    assert_eq!(calculate(&req)["metrics"]["daily_state"], "invalid_series");
+}
+
+#[test]
+fn reviewed_session_risk_and_holding_pairs_use_their_declared_samples() {
+    let mut req = approved_request();
+    let metrics = &calculate(&req)["metrics"];
+    assert_eq!(metrics["daily_coverage"]["portfolio"], 64);
+    let measures = metrics["measures"].as_array().unwrap();
+    let entry = |key| measures.iter().find(|row| row["key"] == key).unwrap();
+    for key in ["volatility", "sharpe", "sortino", "var95", "es95"] {
+        assert!(entry(key)["value"].is_string(), "{key}");
+    }
+    assert_eq!(entry("tracking_error")["value"], "0");
+    assert_eq!(entry("beta")["value"], "1");
+    let correlation = &metrics["holding_correlation"];
+    assert_eq!(correlation["n"], 64);
+    assert_eq!(
+        correlation["pairs"][0],
+        json!({"first":"AAA","second":"BBB","correlation":"1"})
+    );
+    assert_eq!(correlation["included_weight_pct"], "70");
+    assert_eq!(correlation["excluded"][0]["ticker"], "CCC");
+
+    for (instrument, mark) in [(0, 2), (0, 5), (1, 8), (1, 11)] {
+        req["risk_daily"]["holdings"]["instruments"][instrument]["levels"][mark] = Value::Null;
+    }
+    let correlation = &calculate(&req)["metrics"]["holding_correlation"];
+    assert_eq!(correlation["n"], 56);
+    assert_eq!(correlation["state"], "insufficient_common_sample");
+    assert_eq!(correlation["pairs"], json!([]));
+}
