@@ -1,9 +1,12 @@
 //! Observed interval statistics and approved daily risk estimates.
-use super::{pct, Interval, RiskRange};
-use crate::decimal;
+use super::{pct, Day, Interval, RiskRange};
+use crate::{decimal, instant};
 use bigdecimal::ToPrimitive;
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
+
+#[path = "official_bank_rate.rs"]
+mod bank_rate;
 
 const MIN_DAILY: usize = 60;
 const MAX_DAILY: usize = 252;
@@ -22,7 +25,9 @@ struct Series {
 struct Session {
     date: NaiveDate,
     portfolio_index: Option<String>,
+    portfolio_at: Option<String>,
     vuag_index: Option<String>,
+    vuag_at: Option<String>,
     bank_rate_pct: Option<String>,
     portfolio_value_gbp: Option<String>,
 }
@@ -63,6 +68,20 @@ fn validated(input: &serde_json::Value) -> Option<Series> {
         return None;
     }
     for row in &series.rows {
+        let timed = [
+            (&row.portfolio_index, &row.portfolio_at),
+            (&row.vuag_index, &row.vuag_at),
+        ];
+        if timed.into_iter().any(|(level, at)| {
+            level.is_some() != at.is_some()
+                || at.as_deref().is_some_and(|at| {
+                    instant(at).map_or(true, |time| {
+                        time.offset().local_minus_utc() != 0 || time.date_naive() != row.date
+                    })
+                })
+        }) {
+            return None;
+        }
         let prices = [
             &row.portfolio_index,
             &row.vuag_index,
@@ -171,6 +190,7 @@ fn tail(
 
 pub(super) fn calculate(
     intervals: &[Interval],
+    days: &[Day],
     range: &RiskRange,
     input: Option<&serde_json::Value>,
 ) -> serde_json::Value {
@@ -190,6 +210,7 @@ pub(super) fn calculate(
     }
     let observed = serde_json::json!({
         "eligible":eligible, "requested":intervals.len(), "loss_intervals":losses,
+        "valuation_dates":days.iter().filter(|row| row.status == "observed").count(),
         "worst":worst.map(|row| serde_json::json!({"return_pct":row.growth.as_ref().map(pct),
                 "start_at":row.start_at,"end_at":row.end_at})),
     });
@@ -223,7 +244,9 @@ pub(super) fn calculate(
             nav = price(&b.portfolio_value_gbp);
             portfolio.push(p);
             losses.push((1.0 - ratio) * 100.0);
-            let rf = rate(&a.bank_rate_pct);
+            let rf = bank_rate::opening_rate(a.date)
+                .map(|pct| (pct / 100.0).ln_1p() / ANNUAL_SESSIONS)
+                .or_else(|| rate(&a.bank_rate_pct));
             if let Some(rf) = rf {
                 excess.push(p - rf);
             }
@@ -301,5 +324,9 @@ pub(super) fn calculate(
         "observed": observed, "daily_state": state,
         "source": series.as_ref().map(|s| &s.source), "minimum_daily":MIN_DAILY,
         "daily_start":first_date,"daily_end":last_date, "measures":measures,
+        "daily_coverage":{"portfolio":n,"vuag":m,"with_rate":excess.len(),
+            "shortfall":MIN_DAILY.saturating_sub(n)},
+        "bank_rate":{"source":bank_rate::SOURCE,"url":bank_rate::URL,
+            "start_date":bank_rate::first_covered(),"verified_through":bank_rate::VERIFIED_THROUGH},
     })
 }

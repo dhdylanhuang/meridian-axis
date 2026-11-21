@@ -2,6 +2,25 @@
 
 Reviewed **20 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
+## Daily risk coverage and AXIS overview
+
+A bounded audit of the retained window confirmed that saved broker marks and
+dated funding support an observed performance comparison. It found no
+approved session-return series eligible for statistical backfill. The archive
+preserves the same broker observations, with daily anchors still retained
+in the database. The Risk tab now exposes saved valuation dates, approved
+portfolio and matched VUAG sessions, rate coverage, and the minimum shortfall.
+The [official dated Bank Rate](https://www.bankofengland.co.uk/boeapps/database/Bank-Rate.asp)
+covers the reviewed window. Approved portfolio and VUAG return levels require
+both dated UTC source marks on the session schedule and approved cash-flow
+and adjustment treatment.
+
+AXIS shows the portfolio value capture time, latest matched ISA and VUAG
+stretch and spread, current and worst drawdown with its cutoff, and
+current top-five concentration. It reuses the snapshot and one signed-in
+History read, with links to the evidence tabs.
+
+
 ## Observed portfolio drawdown
 
 The Risk tab reports current and worst drawdown within the latest contiguous

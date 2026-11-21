@@ -334,7 +334,7 @@ pub fn calculate_json(input: &str) -> Result<String> {
         return serde_json::to_string(&serde_json::json!({
             "method": "modified_dietz_observed_v1",
             "drawdown": drawdown::calculate(selected),
-            "metrics": risk::calculate(selected, &range, request.risk_daily.as_ref()),
+            "metrics": risk::calculate(selected, &request.days[first..=last+1], &range, request.risk_daily.as_ref()),
         }))
         .map_err(|_| Error("performance_output_invalid"));
     }

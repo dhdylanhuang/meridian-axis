@@ -145,7 +145,13 @@ estimate and use at most the latest 252 session intervals in the selected
 dates. Daily volatility and tracking error use annualised sample log-return
 standard deviation. Correlation is calculated on paired GBP log returns.
 Sharpe, Sortino and excess-return regression apply the Bank Rate effective at
-the start of each period. VaR and ES use historical one-session losses.
+the start of each period. The shipped Bank of England review is effective-dated
+through 21 November 2026. On a Bank Rate change date the official date-only
+history uses the previously confirmed opening rate to avoid looking ahead.
+Approved source rates can supply dates outside that reviewed range.
+[Bank of England Database](https://www.bankofengland.co.uk/boeapps/database/Bank-Rate.asp),
+reused under the [Open Government Licence](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
+VaR and ES use historical one-session losses.
 Fewer than five tail observations is thin coverage; ES needs at least two.
 GBP estimates require matching approved portfolio value at the last eligible
 session. Source or sample gaps remain visible.

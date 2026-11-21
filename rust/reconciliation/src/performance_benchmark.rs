@@ -40,6 +40,46 @@ struct Match<'a> {
     benchmark_pct: Option<String>,
     difference_pp: Option<String>,
     reason: Option<&'static str>,
+    #[serde(skip)]
+    portfolio_growth: Option<&'a BigDecimal>,
+    #[serde(skip)]
+    benchmark_growth: Option<BigDecimal>,
+}
+
+#[derive(Serialize)]
+struct MatchedStretch {
+    start_date: NaiveDate,
+    end_date: NaiveDate,
+    intervals: usize,
+    portfolio_pct: String,
+    benchmark_pct: String,
+    difference_pp: String,
+}
+
+fn latest_stretch(rows: &[Match]) -> Option<MatchedStretch> {
+    let last = rows
+        .iter()
+        .rposition(|row| row.benchmark_growth.is_some())?;
+    let mut first = last;
+    while first > 0
+        && rows[first - 1].end_date == rows[first].start_date
+        && rows[first - 1].benchmark_growth.is_some()
+    {
+        first -= 1;
+    }
+    let (mut portfolio, mut benchmark) = (BigDecimal::from(1), BigDecimal::from(1));
+    for row in &rows[first..=last] {
+        portfolio = round(&(portfolio * row.portfolio_growth?), 24);
+        benchmark = round(&(benchmark * row.benchmark_growth.as_ref()?), 24);
+    }
+    Some(MatchedStretch {
+        start_date: rows[first].start_date,
+        end_date: rows[last].end_date,
+        intervals: last - first + 1,
+        portfolio_pct: pct(&portfolio),
+        benchmark_pct: pct(&benchmark),
+        difference_pp: text(&round(&((portfolio - benchmark) * 100), 6)),
+    })
 }
 
 fn parse(input: &serde_json::Value, as_of: &str) -> Option<Series> {
@@ -155,6 +195,8 @@ pub(super) fn compare(
                 start_mark,
                 end_mark,
                 benchmark_pct: None,
+                portfolio_growth: interval.growth.as_ref(),
+                benchmark_growth: None,
                 difference_pp: None,
                 reason: Some(if state == "broker_observed" {
                     "missing_benchmark_mark"
@@ -187,6 +229,7 @@ pub(super) fn compare(
                 row.benchmark_pct = Some(pct(&benchmark));
                 let spread: BigDecimal = (portfolio - &benchmark) * 100;
                 row.difference_pp = Some(text(&round(&spread, 6)));
+                row.benchmark_growth = Some(benchmark);
                 row.reason = None;
             }
             row
@@ -203,6 +246,7 @@ pub(super) fn compare(
         "basis":basis,
         "eligible_intervals":eligible_count,
         "matched_intervals":matched,
+        "latest_stretch":latest_stretch(&comparisons),
         "intervals":comparisons,
     })
 }

@@ -3,7 +3,7 @@
   const el = id => document.getElementById(id);
   let snapshot = null, generation = 0, controller = null;
   let holdingScope = null;
-  let history = null, historyRequest = null, historyIndex = 0;
+  let history = null, historyRequest = null, historyIndex = 0, overviewRequested = false;
   let riskLoaded = false, riskRequest = null;
   const detailControllers = new Set();
   const add = (parent, tag, text) => {
@@ -334,6 +334,14 @@
         ? 'The supplied daily risk series did not pass validation.'
         : 'These estimates need approved daily GBP returns. Saved Trading 212 marks may span different lengths of time.');
     }
+    const coverage = metrics.daily_coverage;
+    if (coverage) add(section, 'p', `Selected dates · ${observed.valuation_dates} saved valuation dates · ${coverage.portfolio} approved portfolio sessions · ${coverage.vuag} matched VUAG · ${coverage.with_rate} with a risk-free rate. ${coverage.shortfall} more approved portfolio sessions needed for the minimum.`);
+    const bank = metrics.bank_rate;
+    if (bank) {
+      const note = add(section, 'p', `Bank Rate history verified for period openings from ${bank.start_date} through ${bank.verified_through}. `);
+      const link = add(note, 'a', bank.source);
+      link.href = bank.url;
+    }
     add(section, 'p', `Minimum: ${metrics.minimum_daily} eligible sessions per estimate. VaR is a one-session loss cutoff. Expected shortfall averages losses at or beyond it. Fewer than five tail observations indicates thin coverage.`);
     const rows = exposureTable(section, ['Measure','Estimate','Sessions','Coverage'], 'Daily risk metrics');
     const measures = new Map(metrics.measures.map(metric => [metric.key, metric]));
@@ -488,8 +496,36 @@
       add(row, 'td', adjustedReturn(item));
     }
   }
+  const overviewNumber = new Intl.NumberFormat('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const overviewPct = value => value == null ? 'Unavailable' : overviewNumber.format(Number(value)) + '%';
+  const overviewDifference = new Intl.NumberFormat('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2, signDisplay:'exceptZero'});
+  function renderOverview() {
+    const report = history?.performance;
+    const matched = report?.benchmark?.latest_stretch;
+    el('overview-comparison').textContent = matched
+      ? `${overviewPct(matched.portfolio_pct)} vs ${overviewPct(matched.benchmark_pct)}`
+      : 'Unavailable';
+    el('overview-comparison-period').textContent = matched
+      ? `${periodRange(matched)} UTC · ${overviewDifference.format(Number(matched.difference_pp))} pp · ${matched.intervals} matched intervals · provisional`
+      : 'Needs a matched portfolio and VUAG interval.';
+    const drawdown = report?.drawdown;
+    el('overview-drawdown').textContent = overviewPct(drawdown?.current_pct);
+    el('overview-risk-period').textContent = drawdown
+      ? `Worst ${overviewPct(drawdown.worst_pct)} · eligible through ${utcStamp(drawdown.as_of)} UTC${drawdown.later_unavailable_intervals ? ` · ${drawdown.later_unavailable_intervals} newer intervals unavailable` : ''}`
+      : 'Needs an eligible cash-flow-adjusted interval.';
+  }
+  function renderOverviewSnapshot(data) {
+    el('overview-account-time').textContent = `Captured ${utcStamp(data.account_retrieval.retrieval_completed_at)} UTC`;
+    const exposure = data.exposures;
+    const top = exposure?.concentration?.find(row => row.top === 5);
+    el('overview-concentration').textContent = overviewPct(top?.portfolio_pct);
+    el('overview-exposure-time').textContent = top?.portfolio_pct != null && exposure?.positions_as_of
+      ? `% of ISA value · holdings captured ${utcStamp(exposure.positions_as_of)} UTC`
+      : 'Needs a complete approved holdings snapshot.';
+  }
   function renderHistory(data) {
     history = data;
+    renderOverview();
     fundingDays.clear();
     for (const event of data.performance?.funding || []) {
       const day = event.at.slice(0, 10);
@@ -535,6 +571,11 @@
       renderHistory(data);
     } catch {
       if (historyRequest === request) {
+        if (!history) {
+          renderOverview();
+          el('overview-comparison-period').textContent = 'Saved History could not be loaded.';
+          el('overview-risk-period').textContent = 'Saved History could not be loaded.';
+        }
         el('history-status').textContent = history ? 'Reload failed. Showing the previously loaded observations.' : 'Saved history could not be loaded. Use Reload history to try again.';
       }
     } finally {
@@ -685,7 +726,9 @@
     if (el('cash-reconciliation')) { el('cash-reconciliation').replaceChildren(); el('cash-reconciliation').textContent = '—'; }
     el('snapshot-time').textContent = '—'; el('snapshot-status').textContent = ''; el('refresh-status').textContent = '';
     el('portfolio-exposures')?.replaceChildren();
-    historyRequest?.abort(); historyRequest = null; history = null;
+    historyRequest?.abort(); historyRequest = null; history = null; overviewRequested = false;
+    for (const id of ['overview-comparison','overview-drawdown','overview-concentration']) el(id).textContent = '—';
+    for (const id of ['overview-account-time','overview-comparison-period','overview-risk-period','overview-exposure-time']) el(id).textContent = '';
     riskRequest?.abort(); riskRequest = null; riskLoaded = false;
     el('risk-results').replaceChildren();
     el('risk-exposures').replaceChildren();
@@ -789,6 +832,11 @@
       failures = 0; nextRead = Date.now() + READ_COOLDOWN;
       renderCash(data);
       renderExposures(data);
+      renderOverviewSnapshot(data);
+      if (active && !overviewRequested && !history && !historyRequest) {
+        overviewRequested = true;
+        void loadHistory();
+      }
       if (!el('risk-panel').hidden) renderRiskExposure(data);
       health(data.refresh_health);
     } catch (error) {
@@ -833,6 +881,12 @@
   el('holding-search').addEventListener('input',renderHoldings); el('holding-sort').addEventListener('change',renderHoldings);
   el('reload-snapshot').addEventListener('click',load);
   el('reload-history').addEventListener('click',loadHistory);
+  for (const [button, tab] of [['overview-history','history-tab'],['overview-risk','risk-tab'],['overview-exposures','exposures-tab']]) {
+    el(button).addEventListener('click', () => {
+      selectTab(tab);
+      el(tab).focus?.();
+    });
+  }
   el('risk-filter').addEventListener('submit', event => {
     event.preventDefault();
     const start = el('risk-start').value;

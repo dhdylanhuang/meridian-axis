@@ -188,6 +188,14 @@ fn observed_broker_marks_compare_same_dates_without_mixing_sources() {
     let report = calculate(&req);
     assert_eq!(report["benchmark"]["matched_intervals"], 0);
     assert_eq!(report["latest_eligible"]["return_pct"], "3");
+    req["days"][89]["vuag_mark"]["at"] = json!("2026-02-28T16:00:01Z");
+    req["days"][87]["vuag_mark"] = json!({"at":"2026-02-26T16:00:01Z","price_gbp":"98"});
+    let report = calculate(&req);
+    let summary = &report["benchmark"]["latest_stretch"];
+    assert_eq!(summary["intervals"], 2);
+    assert_eq!(summary["portfolio_pct"], "3");
+    assert_eq!(summary["benchmark_pct"], "3.316327");
+    assert_eq!(summary["difference_pp"], "-0.316327");
 }
 
 #[test]
@@ -256,8 +264,9 @@ fn daily_risk_uses_only_approved_aligned_samples() {
             }
             let index = (1_000 + i % 7 * (i % 3 + 1)).to_string();
             Some(
-                json!({"date":date,"portfolio_index":index,"vuag_index":index,"bank_rate_pct":"3",
-            "portfolio_value_gbp":"1000"}),
+                json!({"date":date,"portfolio_index":index,"vuag_index":index,
+                    "portfolio_at":format!("{date}T17:00:00Z"),"vuag_at":format!("{date}T16:35:00Z"),
+                    "portfolio_value_gbp":"1000"}),
             )
         })
         .collect();
@@ -277,6 +286,10 @@ fn daily_risk_uses_only_approved_aligned_samples() {
             > 0.0
     );
     assert!(entry("sharpe")["value"].is_string());
+    assert_eq!(
+        report["metrics"]["bank_rate"]["verified_through"],
+        "2026-11-21"
+    );
     assert!(entry("sortino")["value"].is_string());
     assert_eq!(entry("beta")["value"], "1");
     assert_eq!(entry("jensen_alpha")["value"], "0");
@@ -287,7 +300,7 @@ fn daily_risk_uses_only_approved_aligned_samples() {
     assert_eq!(entry("es99")["reason"], "need_tail");
 
     req["risk_daily"]["rows"][1]["vuag_index"] = Value::Null;
-    req["risk_daily"]["rows"][1]["bank_rate_pct"] = Value::Null;
+    req["risk_daily"]["rows"][1]["vuag_at"] = Value::Null;
     let sparse = calculate(&req);
     let sparse = sparse["metrics"]["measures"].as_array().unwrap();
     assert_eq!(
@@ -299,6 +312,6 @@ fn daily_risk_uses_only_approved_aligned_samples() {
     );
     assert_eq!(
         sparse.iter().find(|row| row["key"] == "sharpe").unwrap()["n"],
-        entry("sharpe")["n"].as_u64().unwrap() - 1
+        entry("sharpe")["n"].as_u64().unwrap()
     );
 }

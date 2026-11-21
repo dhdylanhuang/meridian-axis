@@ -52,8 +52,8 @@ test('failed saved-snapshot reload retains last successful figures',async()=>{
 });
 
 test('snapshot and health share one request, polling waits ten minutes and pauses while hidden',async()=>{
- let reads=0;
- const ui=setup(async path=>{reads++;assert.equal(path,'/api/v1/portfolio/snapshot');return {ok:true,status:200,json:async()=>({...snapshot(),refresh_health:{jobs:{snapshot:{stale:false}}}})};});
+ let reads=0, historyReads=0;
+ const ui=setup(async path=>{if(path.endsWith('/history')){historyReads++;return {ok:false,status:503};}reads++;assert.equal(path,'/api/v1/portfolio/snapshot');return {ok:true,status:200,json:async()=>({...snapshot(),refresh_health:{jobs:{snapshot:{stale:false}}}})};});
  ui.view.start();await new Promise(resolve=>setImmediate(resolve));
  assert.equal(reads,1);assert.equal([...ui.timers.values()][0].delay,600_000);
  await ui.tick(599_999);assert.equal(reads,1);
@@ -61,11 +61,11 @@ test('snapshot and health share one request, polling waits ten minutes and pause
  await ui.visibility(true);assert.equal(ui.timers.size,0);
  await ui.tick(600_000);assert.equal(reads,2);
  await ui.visibility(false);assert.equal(reads,3);
- ui.view.clear();await ui.tick(600_000);assert.equal(reads,3);
+ ui.view.clear();await ui.tick(600_000);assert.equal(reads,3);assert.equal(historyReads,1);
 });
 test('outage backoff resists reload and visibility storms and retains last-good values',async()=>{
  let reads=0, fail=false;
- const ui=setup(async()=>{reads++;return fail?{ok:false,status:503}:{ok:true,status:200,json:async()=>snapshot()};});
+ const ui=setup(async path=>{if(path.endsWith('/history')) return {ok:false,status:503};reads++;return fail?{ok:false,status:503}:{ok:true,status:200,json:async()=>snapshot()};});
  ui.view.start();await new Promise(resolve=>setImmediate(resolve));fail=true;
  await ui.tick(600_000);assert.equal(reads,2);
  for(let i=0;i<5;i++){await ui.view.load();await ui.visibility(true);await ui.visibility(false);}
@@ -76,7 +76,7 @@ test('outage backoff resists reload and visibility storms and retains last-good 
 });
 test('repeated manual clicks queue once and do not immediately re-read the old snapshot',async()=>{
  let reads=0, posts=0;
- const ui=setup(async(path,options)=>{if(options?.method==='POST'){posts++;return {ok:true,status:202,json:async()=>({status:'queued'})};}reads++;return {ok:true,status:200,json:async()=>snapshot()};});
+ const ui=setup(async(path,options)=>{if(options?.method==='POST'){posts++;return {ok:true,status:202,json:async()=>({status:'queued'})};}if(path.endsWith('/history')) return {ok:false,status:503};reads++;return {ok:true,status:200,json:async()=>snapshot()};});
  ui.view.start();await new Promise(resolve=>setImmediate(resolve));
  ui.document.cookie='__Host-meridian_csrf=synthetic';
  await ui.el('refresh-broker').listeners.click();await ui.el('refresh-broker').listeners.click();
@@ -86,7 +86,7 @@ test('repeated manual clicks queue once and do not immediately re-read the old s
 
 test('failed manual request pauses further manual and saved-snapshot requests',async()=>{
  let calls=0;
- const ui=setup(async(path,options)=>{calls++;return options?.method==='POST'?{ok:false,status:503}:{ok:true,status:200,json:async()=>snapshot()};});
+ const ui=setup(async(path,options)=>{if(path.endsWith('/history')) return {ok:false,status:503};calls++;return options?.method==='POST'?{ok:false,status:503}:{ok:true,status:200,json:async()=>snapshot()};});
  ui.document.cookie='__Host-meridian_csrf=synthetic';
  ui.view.start();await new Promise(resolve=>setImmediate(resolve));
  await ui.el('refresh-broker').listeners.click();
@@ -281,6 +281,7 @@ test('History exposes funding evidence and explains ineligible returns without b
    drawdown:{start_at:interval.start_at,as_of:interval.end_at,intervals:1,current_pct:'5',current_peak_at:interval.start_at,
      worst_pct:'10',worst_peak_at:interval.start_at,worst_trough_at:interval.end_at,later_unavailable_intervals:1},
    benchmark:{state:'broker_observed',matched_intervals:1,eligible_intervals:2,source:'Invented closes',reviewed_at:end+'T17:00:00+00:00',
+     latest_stretch:{start_date:start,end_date:end,portfolio_pct:'2.727273',benchmark_pct:'2',difference_pp:'0.727273',intervals:1},
      intervals:[{portfolio_start_at:interval.start_at,portfolio_end_at:interval.end_at,portfolio_pct:interval.return_pct,
        start_date:start,end_date:end,benchmark_pct:'2',difference_pp:'0.727273',
        start_mark:{price_gbp:'100',at:start+'T16:35:00+00:00'},
@@ -298,9 +299,13 @@ test('History exposes funding evidence and explains ineligible returns without b
  const text=node=>[node.textContent,...node.children.flatMap(text)];
  const results=text(ui.el('history-performance')).join(' ');
  for (const value of ['2.727273%','£20.123456789','invented-ref','Modified Dietz','A saved valuation is missing','0.727273 pp','VUAG capture missing','Quote age and split adjustments are unverified','1 of 2 eligible portfolio intervals matched','£102 · ']) assert.ok(results.includes(value), value);
- ui.view.clear();
  assert.ok(!results.includes('Portfolio drawdown'));
+ assert.equal(ui.el('overview-comparison').textContent,'2.73% vs 2.00%');
+ assert.match(ui.el('overview-comparison-period').textContent,/0.73 pp/);
+ assert.equal(ui.el('overview-drawdown').textContent,'5.00%');
+ ui.view.clear();
  assert.equal(ui.el('history-performance').children.length,0);
+ assert.equal(ui.el('overview-comparison').textContent,'—');
  assert.equal(ui.el('history-funding-note').hidden,true);
 });
 

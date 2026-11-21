@@ -209,12 +209,23 @@ Optional daily evidence is read from the private gateway binding
 `basis: approved_gbp_session_total_return_v1`, a display `source` label, and
 `rows` of 2 to 367 distinct ascending session dates. Each row has `date`
 and nullable decimal strings `portfolio_index`, `vuag_index`,
-`bank_rate_pct` and `portfolio_value_gbp`. The source review must establish
+`bank_rate_pct` and `portfolio_value_gbp`. Each supplied index level requires
+the corresponding `portfolio_at` or `vuag_at` timestamp, in UTC on the
+same session date. The source review must establish
 the actual GBP session calendar, consistent timing, corporate actions,
 cash-flow-adjusted portfolio index, dividend treatment, and the effective
 Bank Rate at each session opening. Include any missing scheduled session as
 a row with null fields so there is no return across the gap. Approved Bank
-Rate history is published by the Bank of England. Keep evidence private.
+Rate history is published by the Bank of England. Keep portfolio evidence
+private. The approved levels still require an auditable source review before
+setting the binding.
+
+AXIS reads History once on the first signed-in snapshot and shares that
+response with the History tab. It presents the most recent contiguous set of
+matched ISA and VUAG returns, the eligible drawdown and its cutoff, and the
+latest top-five concentration from the normal snapshot. The comparison uses
+the unrounded return factors and stops at any missing interval. Figures link
+to History, Risk, and Exposures for evidence and precise amounts.
 
 ## Authenticated broker refresh — 13 November 2026
 
