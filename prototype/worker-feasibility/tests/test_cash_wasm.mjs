@@ -110,4 +110,16 @@ test('WASM exports observed performance through the existing module initializati
   assert.equal(report.latest_eligible.return_pct, '2.727273');
   assert.equal(report.funding[0].amount, '20');
   assert.equal(report.intervals.length, 89);
+  assert.equal(report.benchmark.state, 'awaiting_approved_series');
+  const matched = JSON.parse(observed_performance_json(JSON.stringify({
+    days, coverage:{start_at:'2026-01-01T00:00:00Z',end_at:days[89].date+'T19:00:00Z',completed_at:days[89].date+'T20:00:00Z'},
+    events:[], benchmark_as_of:days[89].date+'T19:00:00Z',
+    benchmark:{ticker:'VUAG',isin:'IE00BFMXXD54',currency:'GBP',basis:'split_adjusted_lse_market_close_accumulating',
+      source:'Invented',reviewed_at:days[89].date+'T18:00:00Z',rows:days.slice(-2).map((day,i)=>({
+        date:day.date,pricing_at:day.date+'T16:35:00Z',price_gbp:i ? '102':'100',
+      }))},
+  }))).benchmark;
+  assert.equal(matched.matched_intervals, 1);
+  assert.equal(matched.intervals[0].benchmark_pct, '2');
+  assert.equal(matched.intervals[0].difference_pp, '21');
 });

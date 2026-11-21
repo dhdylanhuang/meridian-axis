@@ -5,11 +5,16 @@ use chrono::{DateTime, Datelike, FixedOffset, NaiveDate};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
+#[path = "performance_benchmark.rs"]
+mod benchmark;
+
 #[derive(Deserialize)]
 pub struct Request {
     days: Vec<Day>,
     coverage: Option<Coverage>,
     events: Vec<Event>,
+    benchmark: Option<serde_json::Value>,
+    benchmark_as_of: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -363,6 +368,7 @@ pub fn calculate_json(input: &str) -> Result<String> {
         "longest_eligible": longest_eligible,
         "month_to_date": month_to_date,
         "year_to_date": year_to_date,
+        "benchmark": benchmark::compare(chart_intervals, request.benchmark.as_ref(), request.benchmark_as_of.as_deref()),
     }))
     .map_err(|_| Error("performance_output_invalid"))
 }

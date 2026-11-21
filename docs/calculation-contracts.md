@@ -74,6 +74,23 @@ required. Today can be provisional. The 90-day chart does not cap the internal
 year-boundary check. A scheduled non-capture date breaks the chain under the
 initial UTC-date convention.
 
+### VUAG GBP benchmark proxy
+
+Compare eligible observed daily returns to the GBP London Stock Exchange
+listing of Vanguard S&P 500 UCITS ETF (VUAG, ISIN IE00BFMXXD54). The input is
+a reviewed split-adjusted series of market closes for the accumulating share
+class. Dividends are retained in the fund and receive no separate adjustment.
+The ETF proxies the S&P 500 through an investable fund with market prices and
+fund expenses. The chosen series represents the fund share.
+
+Both dates must have a portfolio observation and a qualified GBP close.
+Each portfolio account capture must also fall on the UTC date of its respective
+benchmark endpoint. The comparison is provisional and shows both capture
+times and benchmark price times. The benchmark return is the closing price
+ratio less one. Difference is portfolio return less benchmark return in
+percentage points, calculated before display rounding. A missing endpoint
+stays blank. The dashboard does not bridge gaps to infer a daily result.
+
 ## Return series and risk conventions
 
 Risk uses approved daily data; default horizon 252 observations. For a positive GBP total-return series `P_t`, simple return is `P_t/P_(t−1)−1`; log return `l_t = log(P_t/P_(t−1))`. Require one extra price observation. An adjusted series and explicit dividends cannot both supply the same return component. The adapter records adjustment basis; raw valuation closes remain separate.

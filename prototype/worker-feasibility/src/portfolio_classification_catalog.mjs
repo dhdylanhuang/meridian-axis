@@ -3,7 +3,7 @@
 const BINDING_LIMIT = 5_120;
 const CATALOG_LIMIT = 128 * 1024;
 
-async function decodeCatalog(value) {
+export async function decodeReviewedBinding(value) {
   if (typeof value !== 'string' || !value || value.length > BINDING_LIMIT) return null;
   if (!value.startsWith('gzip:')) return JSON.parse(value);
   const bytes = Uint8Array.from(atob(value.slice(5)), character => character.charCodeAt(0));
@@ -31,7 +31,7 @@ export async function heldClassifications(env, positions) {
   const selected = Object.create(null);
   for (const binding of [env.PORTFOLIO_FUND_CLASSIFICATIONS, env.PORTFOLIO_ISSUER_CLASSIFICATIONS]) {
     try {
-      const catalog = await decodeCatalog(binding);
+      const catalog = await decodeReviewedBinding(binding);
       if (!catalog || Array.isArray(catalog) || typeof catalog !== 'object') continue;
       for (const isin of keys) {
         if (Object.hasOwn(catalog, isin)) selected[isin] = catalog[isin];

@@ -2,6 +2,21 @@
 
 Reviewed **20 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
+## GBP benchmark comparison
+
+History has a provisional VUAG comparison path for eligible daily intervals.
+Rust produces exact-decimal benchmark returns and percentage-point differences
+for dates with compatible endpoints. The UI shows both pricing and account capture
+times, and explicitly reports gaps. See the
+[method](calculation-contracts.md#vuag-gbp-benchmark-proxy) and
+[private input contract](api-and-ui.md#vuag-benchmark-availability).
+
+The issuer confirms the GBP London listing and accumulating dividend treatment.
+Its published price history is subject to site terms that restrict reuse.
+Shared dashboard use requires a source with suitable permission and confirmed
+pricing times and split treatment. No approved live benchmark input is loaded.
+
+
 ## Observed funding and performance
 
 History adds the funding timeline, per-transaction evidence, valuation

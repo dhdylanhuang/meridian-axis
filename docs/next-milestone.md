@@ -31,11 +31,11 @@ relevant period boundary. See [the calculation method](calculation-contracts.md#
 
 ## Following delivery
 
-Qualify benchmarks and calculated returns where the inputs and methods in the
-[calculation contracts](calculation-contracts.md) support them. Approved
-exchange closes, verified cash-flow inputs and benchmark series require their
-own evidence. Flag additional provider work, infrastructure or cost before
-expanding scope.
+Qualify a permitted VUAG GBP close series for the implemented daily comparison.
+Verify source permission for both members, exact price units, timestamp and split
+treatment before supplying the private binding. Longer comparisons require a
+supported portfolio period and matching benchmark endpoints. See the
+[calculation contracts](calculation-contracts.md#vuag-gbp-benchmark-proxy).
 
 Keep the private, dated classification catalogue current for new and existing
 holdings. Expand remaining coverage by invested value first. Manager fund

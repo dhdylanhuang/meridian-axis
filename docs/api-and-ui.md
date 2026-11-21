@@ -162,6 +162,34 @@ needed. The private service passes the bounded Rust JSON to the session
 application. A failed read reports a fixed `performance_state` and preserves
 the 90-day account value response. See [the calculation rules](calculation-contracts.md#observed-modified-dietz).
 
+### VUAG benchmark availability
+
+The optional History performance report includes `benchmark.state`,
+eligible and matched counts, and per-interval portfolio return, VUAG return,
+percentage-point difference, price and capture endpoints, and any gap reason.
+An absent approved series returns `awaiting_approved_series`. An invalid
+series returns `invalid_series`; the portfolio performance is still available.
+A benchmark comparison uses the existing private Rust service.
+
+Supply the reviewed input as a private gateway binding `VUAG_GBP_BENCHMARK`
+using the existing raw JSON or `gzip:` base64 format. The binding is optional
+and capped at 5,120 characters. The object accepts exactly these keys:
+
+| Key | Value |
+| --- | --- |
+| `ticker`, `isin`, `currency` | `VUAG`, `IE00BFMXXD54`, `GBP` |
+| `basis` | `split_adjusted_lse_market_close_accumulating` |
+| `source` | Display label of the approved dated source |
+| `reviewed_at` | UTC ISO 8601 review timestamp |
+| `rows` | Between 2 and 367 rows ordered by distinct date, each with `date`, UTC `pricing_at` on the same date, and positive exact-decimal string `price_gbp` |
+
+Source qualification must cover the right to serve prices and derived returns
+to both members, the GBP listing and pricing time convention, and split treatment.
+Keep review and provenance evidence private and retain the revision covering
+the requested dates. The input is deployment-managed with no provider polling.
+Daily comparison is the initial scope. Longer benchmarks require an eligible
+portfolio period and matching benchmark evidence.
+
 ## Authenticated broker refresh — 13 November 2026
 
 | Route | Deployed contract |

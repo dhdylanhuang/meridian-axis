@@ -240,6 +240,31 @@
     if (event.kind === 'WITHDRAW') return 'Withdrawal';
     return event.kind === 'TRANSFER' ? 'Transfer' : event.kind;
   }
+  function renderBenchmark(section, compare) {
+    add(section, 'h3', 'VUAG · S&P 500 benchmark proxy');
+    if (!compare || compare.state !== 'qualified_series') {
+      add(section, 'p', compare?.state === 'invalid_series'
+        ? 'The supplied GBP close series could not be verified.'
+        : 'Benchmark returns await an approved GBP closing-price series.');
+      return;
+    }
+    add(section, 'p', `Provisional comparison · ${compare.matched_intervals} of ${compare.eligible_intervals} eligible portfolio intervals matched. VUAG is an accumulating ETF. Trading 212 capture times and London close times can differ.`);
+    add(section, 'p', `GBP London closing prices · ${compare.source} · reviewed ${utcStamp(compare.reviewed_at)} UTC.`);
+    if (!compare.intervals.length) return;
+    const body = exposureTable(section, ['UTC dates', 'Portfolio', 'VUAG', 'Difference', 'Account captures (UTC)', 'VUAG closes (UTC)'], 'Portfolio and VUAG matched returns');
+    for (const item of [...compare.intervals].reverse()) {
+      const row = add(body, 'tr');
+      add(row, 'td', periodRange(item));
+      add(row, 'td', percent(item.portfolio_pct));
+      add(row, 'td', item.benchmark_pct == null ? 'Unavailable' : percent(item.benchmark_pct));
+      add(row, 'td', item.difference_pp == null
+        ? (item.reason === 'portfolio_capture_date_mismatch' ? 'Account capture crossed UTC date' : 'Benchmark endpoint missing')
+        : `${decimal(item.difference_pp)} pp`);
+      add(row, 'td', [item.portfolio_start_at, item.portfolio_end_at].map(utcStamp).join(' to '));
+      add(row, 'td', [item.start_close, item.end_close].map(close => close
+        ? `${decimal(close.price_gbp, 'GBP')} · ${utcStamp(close.pricing_at)}` : 'Missing').join(' to '));
+    }
+  }
   function renderPerformance(data) {
     const section = el('history-performance');
     section.replaceChildren();
@@ -269,6 +294,7 @@
       add(row, 'td', item ? String(item.intervals ?? 1) : '—');
       add(row, 'td', adjustedReturn(item));
     }
+    renderBenchmark(section, report.benchmark);
     const funding = add(section, 'details');
     funding.id = 'history-funding';
     add(funding, 'summary', `Funding transactions · ${report.funding.length} in this window`);

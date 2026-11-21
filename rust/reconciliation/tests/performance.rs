@@ -119,3 +119,46 @@ fn longer_year_series_does_not_expand_chart_or_expose_old_transactions() {
     assert_eq!(report["year_to_date"]["intervals"], 181);
     assert_ne!(report["year_to_date"]["return_pct"], "0");
 }
+
+#[test]
+fn benchmark_compares_matching_gbp_closes_and_leaves_gaps() {
+    let mut req = request();
+    req["days"][89]["total_value"] = json!("103");
+    assert_eq!(
+        calculate(&req)["benchmark"]["state"],
+        "awaiting_approved_series"
+    );
+    req["benchmark_as_of"] = json!("2026-03-02T08:00:00Z");
+    req["benchmark"] = json!({
+        "ticker":"VUAG","isin":"IE00BFMXXD54","currency":"GBP",
+        "basis":"split_adjusted_lse_market_close_accumulating",
+        "source":"Synthetic closes","reviewed_at":"2026-03-01T18:00:00Z",
+        "rows":[
+            {"date":"2026-02-27","pricing_at":"2026-02-27T16:35:00Z","price_gbp":"100"},
+            {"date":"2026-02-28","pricing_at":"2026-02-28T16:35:00Z","price_gbp":"102"}
+        ]
+    });
+    let report = calculate(&req);
+    let benchmark = &report["benchmark"];
+    assert_eq!(benchmark["state"], "qualified_series");
+    assert_eq!(benchmark["matched_intervals"], 1);
+    let comparisons = benchmark["intervals"].as_array().unwrap();
+    let latest = comparisons.last().unwrap();
+    assert_eq!(latest["portfolio_pct"], "3");
+    assert_eq!(latest["benchmark_pct"], "2");
+    assert_eq!(latest["difference_pp"], "1");
+    assert_eq!(latest["start_close"]["pricing_at"], "2026-02-27T16:35:00Z");
+    assert_eq!(comparisons[87]["reason"], "missing_benchmark_close");
+    assert_eq!(comparisons[87]["benchmark_pct"], Value::Null);
+
+    req["days"][89]["captured_at"] = json!("2026-02-27T23:58:00Z");
+    let report = calculate(&req);
+    assert_eq!(
+        report["benchmark"]["intervals"][88]["reason"],
+        "portfolio_capture_date_mismatch"
+    );
+    req["benchmark_as_of"] = json!("2026-02-28T23:00:00Z");
+    let report = calculate(&req);
+    assert_eq!(report["benchmark"]["state"], "invalid_series");
+    assert_eq!(report["latest_eligible"]["return_pct"], "3");
+}
