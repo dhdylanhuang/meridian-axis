@@ -6,7 +6,7 @@ Reviewed **20 November 2026**. This file is the authoritative implementation sna
 
 The Risk tab reports current and worst drawdown within the latest contiguous
 cash-flow-adjusted stretch inside the selected dates. Its UTC date controls
-cover the last 90 days. It includes the running peak, worst peak and
+default to 90 days and allow selection within the last 367 UTC dates. It includes the running peak, worst peak and
 trough, cutoff and coverage. See the
 [drawdown method](calculation-contracts.md#observed-portfolio-drawdown).
 
@@ -19,6 +19,12 @@ Gateway source `9ac15f3` was deployed. One focused Rust test and one History
 render test passed. The authenticated live check reproduced the drawdowns and
 matched the interval boundaries. The other Workers, protected bindings and
 refresh schedule were verified.
+
+Risk also shows observed loss intervals and current portfolio concentration.
+HHI and effective holdings require a compatible saved exposure projection.
+Volatility, Sharpe, Sortino, historical VaR and ES at 95% and 99%, beta,
+annualised log alpha, R², correlation and tracking error show evidence
+coverage. Daily estimates await an approved comparable session series.
 
 ## GBP benchmark comparison
 

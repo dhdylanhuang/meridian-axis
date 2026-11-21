@@ -3,7 +3,7 @@
 import asyncio
 import hashlib
 import json
-from datetime import timedelta
+from datetime import date, timedelta
 
 import httpx
 from sqlalchemy.orm import Session
@@ -160,6 +160,9 @@ def test_history_performance_keeps_public_window_and_fails_soft(engine):
             assert response.headers["cache-control"] == "no-store"
             assert response.json()["range"] == response.json()["drawdown"] == selected
             assert "days" not in response.json()
+            assert date.fromisoformat(response.json()["earliest_date"]) == now.date() - timedelta(
+                days=366
+            )
             for query in (
                 "?account=foreign",
                 "?start=2026-11-18&end=2026-11-21",

@@ -2,7 +2,7 @@
 mod classification;
 
 use crate::{currency, decimal, identity, instant, text, Error, Result};
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, RoundingMode};
 use classification::{Allocation, AllocationBuilder, Classification};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -80,6 +80,8 @@ pub struct Report {
     fund_markets: Allocation,
     concentration: Vec<Concentration>,
     cash_component_pct: BTreeMap<String, Option<String>>,
+    holdings_hhi: Option<String>,
+    effective_holdings: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -245,6 +247,24 @@ pub fn calculate(request: Request) -> Result<Report> {
         })
         .collect();
 
+    let (holdings_hhi, effective_holdings) = if missing_values == 0 && observed > 0 {
+        let squares: BigDecimal = positions
+            .iter()
+            .filter_map(|row| row.2.as_ref())
+            .map(|value| value * value)
+            .sum();
+        let total_squared = &observed * &observed;
+        (
+            Some(text(
+                &(&squares / &total_squared).with_scale_round(6, RoundingMode::HalfEven),
+            )),
+            Some(text(
+                &(total_squared / squares).with_scale_round(2, RoundingMode::HalfEven),
+            )),
+        )
+    } else {
+        (None, None)
+    };
     let cash_component_pct = ["availableToTrade", "inPies", "reservedForOrders"]
         .into_iter()
         .map(|key| {
@@ -270,5 +290,7 @@ pub fn calculate(request: Request) -> Result<Report> {
         fund_markets: fund_markets.finish(&exposure),
         concentration,
         cash_component_pct,
+        holdings_hhi,
+        effective_holdings,
     })
 }

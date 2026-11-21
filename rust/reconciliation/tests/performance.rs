@@ -228,3 +228,77 @@ fn drawdown_uses_flow_adjusted_growth_and_resets_after_gaps() {
     req["coverage"] = Value::Null;
     assert!(calculate(&req)["drawdown"].is_null());
 }
+
+#[test]
+fn daily_risk_uses_only_approved_aligned_samples() {
+    use chrono::{Datelike, Weekday};
+    let mut req = request();
+    req["risk_range"] = json!({"start":"2025-12-01","end":"2026-02-28"});
+    req["days"][89]["total_value"] = json!("90");
+    let no_daily = calculate(&req);
+    assert_eq!(
+        no_daily["metrics"]["observed"]["worst"]["return_pct"],
+        "-10"
+    );
+    assert_eq!(
+        no_daily["metrics"]["daily_state"],
+        "awaiting_approved_series"
+    );
+    let mut rows: Vec<_> = req["days"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .enumerate()
+        .filter_map(|(i, day)| {
+            let date: NaiveDate = day["date"].as_str().unwrap().parse().unwrap();
+            if matches!(date.weekday(), Weekday::Sat | Weekday::Sun) {
+                return None;
+            }
+            let index = (1_000 + i % 7 * (i % 3 + 1)).to_string();
+            Some(
+                json!({"date":date,"portfolio_index":index,"vuag_index":index,"bank_rate_pct":"3",
+            "portfolio_value_gbp":"1000"}),
+            )
+        })
+        .collect();
+    let final_row = rows.last_mut().unwrap();
+    final_row["portfolio_index"] = json!("950");
+    final_row["vuag_index"] = json!("950");
+    req["risk_daily"] = json!({"basis":"approved_gbp_session_total_return_v1","source":"Synthetic approved data","rows":rows});
+    let report = calculate(&req);
+    let entries = report["metrics"]["measures"].as_array().unwrap();
+    let entry = |key| entries.iter().find(|row| row["key"] == key).unwrap();
+    assert!(
+        entry("volatility")["value"]
+            .as_str()
+            .unwrap()
+            .parse::<f64>()
+            .unwrap()
+            > 0.0
+    );
+    assert!(entry("sharpe")["value"].is_string());
+    assert!(entry("sortino")["value"].is_string());
+    assert_eq!(entry("beta")["value"], "1");
+    assert_eq!(entry("jensen_alpha")["value"], "0");
+    assert_eq!(entry("r_squared")["value"], "1");
+    assert_eq!(entry("tracking_error")["value"], "0");
+    assert!(entry("var95")["value_gbp"].is_string());
+    assert!(entry("es95")["value_gbp"].is_string());
+    assert_eq!(entry("es99")["reason"], "need_tail");
+
+    req["risk_daily"]["rows"][1]["vuag_index"] = Value::Null;
+    req["risk_daily"]["rows"][1]["bank_rate_pct"] = Value::Null;
+    let sparse = calculate(&req);
+    let sparse = sparse["metrics"]["measures"].as_array().unwrap();
+    assert_eq!(
+        sparse
+            .iter()
+            .find(|row| row["key"] == "correlation")
+            .unwrap()["n"],
+        entry("correlation")["n"].as_u64().unwrap() - 2
+    );
+    assert_eq!(
+        sparse.iter().find(|row| row["key"] == "sharpe").unwrap()["n"],
+        entry("sharpe")["n"].as_u64().unwrap() - 1
+    );
+}

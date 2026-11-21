@@ -18,18 +18,21 @@ export class CashReconciliation extends WorkerEntrypoint {
   }
   async observedPerformance(input) {
     if (this.env.RECONCILIATION_ENVIRONMENT !== 'live') throw new Error('performance_unavailable');
-    const supplied = this.env.VUAG_GBP_BENCHMARK;
-    if (typeof supplied === 'string' && supplied) {
+    if (this.env.VUAG_GBP_BENCHMARK || this.env.RISK_DAILY_GBP) {
       try {
         const request = JSON.parse(input);
-        request.benchmark = (await decodeReviewedBinding(supplied).catch(() => null)) ?? {};
-        request.benchmark_as_of = new Date().toISOString();
-        const enriched = JSON.stringify(request);
-        if (new TextEncoder().encode(enriched).byteLength <= 128 * 1024) {
-          return observedPerformanceJSON(enriched);
+        const risk = Boolean(request.risk_range);
+        const supplied = risk ? this.env.RISK_DAILY_GBP : this.env.VUAG_GBP_BENCHMARK;
+        if (typeof supplied === 'string' && supplied) {
+          request[risk ? 'risk_daily' : 'benchmark'] = (await decodeReviewedBinding(supplied).catch(() => null)) ?? {};
+          if (!risk) request.benchmark_as_of = new Date().toISOString();
+          const enriched = JSON.stringify(request);
+          if (new TextEncoder().encode(enriched).byteLength <= 128 * 1024) {
+            return observedPerformanceJSON(enriched);
+          }
         }
       } catch {
-        // An unusable optional input must not suppress portfolio returns.
+        // Optional inputs must leave observed performance available.
       }
     }
     return observedPerformanceJSON(input);

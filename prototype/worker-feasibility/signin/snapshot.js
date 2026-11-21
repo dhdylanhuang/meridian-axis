@@ -137,7 +137,10 @@
       el(section).hidden = other !== tab;
     }
     if (tab === 'history-tab' && !history) void loadHistory();
-    if (tab === 'risk-tab' && !riskLoaded && !riskRequest) void loadRisk();
+    if (tab === 'risk-tab') {
+      renderRiskExposure(snapshot);
+      if (!riskLoaded && !riskRequest) void loadRisk();
+    }
   }
   const historyLabel = point => point.status === 'missing' ? 'No saved snapshot' : 'Saved snapshot unavailable';
   const utcStamp = value => value.replace('T', ' ').replace(/\+00:00$/, '');
@@ -290,6 +293,94 @@
       add(section, 'p', 'The selected range extends beyond the last eligible capture.');
     }
   }
+  const riskMeasures = [
+    ['volatility','Annualised volatility','%'],['sharpe','Sharpe ratio',''],['sortino','Sortino ratio',''],
+    ['var95','One-session VaR · 95%','%'],['es95','Expected shortfall · 95%','%'],
+    ['var99','One-session VaR · 99%','%'],['es99','Expected shortfall · 99%','%'],
+    ['beta','Beta vs VUAG',''],['jensen_alpha','Annualised log alpha vs VUAG','%'],
+    ['r_squared','R² vs VUAG',''],['correlation','Correlation with VUAG',''],
+    ['tracking_error','Annualised tracking error vs VUAG','%'],
+  ];
+  const riskReasons = {
+    need_portfolio:'Needs more approved portfolio returns',
+    need_rate:'Needs more portfolio returns with dated Bank Rate',
+    need_regression:'Needs more aligned portfolio and VUAG returns with dated Bank Rate',
+    need_vuag:'Needs more aligned portfolio and VUAG returns',
+    need_tail:'Fewer than two tail observations',
+    undefined:'Undefined for this sample',
+  };
+  function renderRiskMetrics(section, metrics) {
+    if (!metrics) return;
+    add(section, 'h3', 'Observed losses');
+    const observed = metrics.observed;
+    const list = add(section, 'dl');
+    add(list, 'dt', 'Eligible return intervals');
+    add(list, 'dd', `${observed.eligible} of ${observed.requested}`);
+    add(list, 'dt', 'Intervals with a loss');
+    add(list, 'dd', observed.eligible ? `${observed.loss_intervals} of ${observed.eligible}` : 'Unavailable');
+    add(list, 'dt', 'Worst observed interval return');
+    add(list, 'dd', observed.worst ? percent(observed.worst.return_pct) : observed.eligible ? 'No loss' : 'Unavailable');
+    if (observed.worst) {
+      add(section, 'p', `Worst interval · ${utcStamp(observed.worst.start_at)} to ${utcStamp(observed.worst.end_at)} UTC.`);
+    }
+
+    add(section, 'h3', 'Volatility, loss estimates and benchmark risk');
+    if (metrics.daily_state === 'approved_series') {
+      add(section, 'p', metrics.daily_start
+        ? `Approved daily data · ${metrics.daily_start} to ${metrics.daily_end} · ${metrics.source}.`
+        : `Approved series · ${metrics.source} · No eligible daily periods in the selected dates.`);
+    } else {
+      add(section, 'p', metrics.daily_state === 'invalid_series'
+        ? 'The supplied daily risk series did not pass validation.'
+        : 'These estimates need approved daily GBP returns. Saved Trading 212 marks may span different lengths of time.');
+    }
+    add(section, 'p', `Minimum: ${metrics.minimum_daily} eligible sessions per estimate. VaR is a one-session loss cutoff. Expected shortfall averages losses at or beyond it. Fewer than five tail observations indicates thin coverage.`);
+    const rows = exposureTable(section, ['Measure','Estimate','Sessions','Coverage'], 'Daily risk metrics');
+    const measures = new Map(metrics.measures.map(metric => [metric.key, metric]));
+    for (const [key, label, unit] of riskMeasures) {
+      const metric = measures.get(key);
+      if (!metric) continue;
+      const row = add(rows,'tr');
+      add(row,'td',label);
+      const estimate = metric.value == null ? 'Unavailable' : decimal(metric.value) + unit;
+      add(row,'td',metric.value_gbp == null ? estimate : `${estimate} · ${decimal(metric.value_gbp,'GBP')}`);
+      add(row,'td',String(metric.n));
+      const tail = metric.tail_n == null ? '' : `${metric.tail_n} tail observations${metric.tail_n < 5 ? ' · thin coverage' : ''}`;
+      add(row,'td',[riskReasons[metric.reason],tail].filter(Boolean).join(' · ') || '—');
+    }
+  }
+  function renderRiskExposure(data) {
+    const section = el('risk-exposures');
+    section.replaceChildren();
+    add(section, 'h3', 'Current concentration');
+    const report = data?.exposures;
+    if (!report?.concentration) {
+      add(section, 'p', 'Concentration needs an approved holdings snapshot.');
+      return;
+    }
+    add(section, 'p', `Latest saved holdings · ${when(report.positions_as_of)}. These weights are independent of the historical date filter.`);
+    const list = add(section,'dl');
+    for (const measure of report.concentration) {
+      const ticker = measure.top === 1 && measure.portfolio_pct != null ? report.holdings?.[0]?.ticker : null;
+      const title = measure.top === 1 ? 'Largest position' : `Top ${measure.top} positions`;
+      const holding = ticker ? data.positions?.find(position => position.ticker === ticker) : null;
+      add(list,'dt',title + (ticker ? ` · ${holding?.name || ticker}` : '') + ' · % of portfolio');
+      add(list,'dd',percent(measure.portfolio_pct));
+    }
+    for (const [label, value] of [
+      ['Holdings HHI · securities only',report.holdings_hhi], ['Effective number of holdings',report.effective_holdings],
+    ]) {
+      add(list,'dt',label);
+      add(list,'dd',value == null ? 'Unavailable' : decimal(value));
+    }
+    add(list,'dt','Available cash · % of portfolio');
+    add(list,'dd',percent(report.cash_component_pct?.availableToTrade));
+    if (report.missing_values) add(section,'p',`${report.missing_values} holdings lack usable GBP values.`);
+    const link = add(section, 'button', 'View sector, country and currency exposures');
+    link.type = 'button';
+    link.className = 'holding-link';
+    link.addEventListener('click', () => selectTab('exposures-tab'));
+  }
   async function loadRisk(start, end) {
     riskRequest?.abort();
     const request = new AbortController();
@@ -303,7 +394,7 @@
       if (riskRequest !== request) return;
       if ([401,403].includes(response.status)) { clear(); window.dispatchEvent(new Event('meridian-session-ended')); return; }
       if (response.status === 400) {
-        status.textContent = 'Choose a start date before the end date within the last 90 UTC days.';
+        status.textContent = 'Choose a start date before the end date within the available UTC dates.';
         return;
       }
       if (!response.ok) throw new Error('unavailable');
@@ -320,6 +411,7 @@
       const results = el('risk-results');
       results.replaceChildren();
       renderDrawdown(results, data.drawdown);
+      renderRiskMetrics(results, data.metrics);
       riskLoaded = true;
     } catch {
       if (riskRequest === request) status.textContent = riskLoaded
@@ -596,6 +688,7 @@
     historyRequest?.abort(); historyRequest = null; history = null;
     riskRequest?.abort(); riskRequest = null; riskLoaded = false;
     el('risk-results').replaceChildren();
+    el('risk-exposures').replaceChildren();
     el('risk-status').textContent = '';
     el('risk-start').value = ''; el('risk-end').value = '';
     el('risk-apply').disabled = false;
@@ -696,6 +789,7 @@
       failures = 0; nextRead = Date.now() + READ_COOLDOWN;
       renderCash(data);
       renderExposures(data);
+      if (!el('risk-panel').hidden) renderRiskExposure(data);
       health(data.refresh_health);
     } catch (error) {
       if (version === generation && error.name !== 'AbortError') {

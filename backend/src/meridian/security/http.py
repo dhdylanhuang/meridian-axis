@@ -273,6 +273,7 @@ class SessionHttp:
                 risk = operation == "risk"
                 if risk:
                     start, end = earliest, today
+                    earliest = today - timedelta(days=366)
                     if request.url.query:
                         match = re.fullmatch(
                             r"start=(\d{4}-\d{2}-\d{2})&end=(\d{4}-\d{2}-\d{2})",
@@ -288,7 +289,9 @@ class SessionHttp:
                 year_open = today.replace(month=1, day=1)
                 # Keep enough approved observations for the year chain. Only the
                 # last 90 date rows cross the browser boundary.
-                count = max(HISTORY_DAYS, (now.date() - year_open).days + 2)
+                count = max(
+                    HISTORY_DAYS, (today - start).days + 1 if risk else (today - year_open).days + 2
+                )
                 with self.database() as db, db.begin():
                     principal = self.service.authenticate(db, token, now=now)
                     calculate_performance = (
@@ -298,7 +301,7 @@ class SessionHttp:
                         db,
                         principal.account_id,
                         now,
-                        day_count=count if calculate_performance and not risk else HISTORY_DAYS,
+                        day_count=count if calculate_performance else HISTORY_DAYS,
                         include_benchmark=calculate_performance is not None and not risk,
                     )
                 if risk:
@@ -331,6 +334,7 @@ class SessionHttp:
                             "latest_date": today.isoformat(),
                             "range": risk_range,
                             "drawdown": report.get("drawdown") if report else None,
+                            "metrics": report.get("metrics") if report else None,
                             "performance_state": state,
                         }
                     )

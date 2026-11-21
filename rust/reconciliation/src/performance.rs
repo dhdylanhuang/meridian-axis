@@ -11,6 +11,9 @@ mod benchmark;
 #[path = "performance_drawdown.rs"]
 mod drawdown;
 
+#[path = "performance_risk.rs"]
+mod risk;
+
 #[derive(Deserialize)]
 pub struct Request {
     days: Vec<Day>,
@@ -19,6 +22,7 @@ pub struct Request {
     benchmark: Option<serde_json::Value>,
     benchmark_as_of: Option<String>,
     risk_range: Option<RiskRange>,
+    risk_daily: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize)]
@@ -316,21 +320,21 @@ pub fn calculate_json(input: &str) -> Result<String> {
     }
     let chart_intervals = &intervals[chart_start..];
     if let Some(range) = request.risk_range {
-        let start = chart_intervals
+        let start = intervals
             .iter()
             .position(|row| row.start_date == range.start);
-        let end = chart_intervals
-            .iter()
-            .position(|row| row.end_date == range.end);
+        let end = intervals.iter().position(|row| row.end_date == range.end);
         let (Some(first), Some(last)) = (start, end) else {
             return Err(Error("risk_range_invalid"));
         };
         if first > last {
             return Err(Error("risk_range_invalid"));
         }
+        let selected = &intervals[first..=last];
         return serde_json::to_string(&serde_json::json!({
             "method": "modified_dietz_observed_v1",
-            "drawdown": drawdown::calculate(&chart_intervals[first..=last]),
+            "drawdown": drawdown::calculate(selected),
+            "metrics": risk::calculate(selected, &range, request.risk_daily.as_ref()),
         }))
         .map_err(|_| Error("performance_output_invalid"));
     }

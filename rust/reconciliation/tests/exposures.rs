@@ -39,6 +39,8 @@ fn uses_broker_controls_with_exact_amounts_and_independent_cash_components() {
         "101.00000000000000000001"
     );
     assert_eq!(result["quote_currencies"][1]["quote_currency"], Value::Null);
+    assert_eq!(result["holdings_hhi"], "0.504455");
+    assert_eq!(result["effective_holdings"], "1.98");
     assert_eq!(result["concentration"][1]["top"], 5);
     assert_eq!(result["concentration"][2]["position_count"], 3);
     assert_eq!(result["concentration"][2]["invested_pct"], "58.67");
@@ -62,6 +64,7 @@ fn incompatible_values_and_denominators_are_visible_without_renormalizing() {
     assert_eq!(result["quote_currencies"][0]["missing_values"], 1);
     assert!(result["quote_currencies"][1]["value"].is_null());
     assert!(result["concentration"][0]["value"].is_null());
+    assert!(result["holdings_hhi"].is_null());
 
     input["portfolio_value"] = json!("299");
     assert!(report(input.clone())["portfolio_denominator"].is_null());

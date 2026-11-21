@@ -104,7 +104,7 @@ are unverified. The broker series uses price ratios within that source only.
 
 `observed_flow_adjusted_drawdown_v1` chains the latest uninterrupted eligible
 stretch within the selected dates from a starting wealth of 1. The Risk tab
-allows a start and end within the last 90 UTC dates. It reports
+defaults to 90 UTC dates and allows selection across up to 367 UTC dates. It reports
 current and worst percentage declines from running peaks, with UTC capture
 times and the number of intervals. Ties retain the earlier peak and trough.
 A missing interval breaks the stretch. If newer intervals are unavailable,
@@ -130,6 +130,25 @@ ADOPTED annualisation factor: A=252 for daily and 52 for weekly. Use effective-d
 | Regression edge cases | Benchmark variance>0 and sufficient rank/sample | Do not regress against synthetic zeros or give beta=0 for missing observations |
 
 Low tail sample support must be visible, especially 99% VaR over one year. A numerically available quantile is not automatically reliable. Configure minimum observations and tail-count warnings independently. Estimate outputs only for supported samples; no probability-of-safety claims.
+
+### Risk tab coverage
+
+Observed losses show the count of negative eligible intervals and the worst
+observed return with its actual capture times. Intervals can have different
+durations. Drawdown retains the latest uninterrupted chain. Current holdings
+concentration is dated separately and uses the latest approved holdings
+snapshot. HHI and effective holdings normalise by summed usable holdings
+values with cash excluded and require complete holding values.
+
+The daily statistical estimates require at least 60 approved sessions per
+estimate and use at most the latest 252 session intervals in the selected
+dates. Daily volatility and tracking error use annualised sample log-return
+standard deviation. Correlation is calculated on paired GBP log returns.
+Sharpe, Sortino and excess-return regression apply the Bank Rate effective at
+the start of each period. VaR and ES use historical one-session losses.
+Fewer than five tail observations is thin coverage; ES needs at least two.
+GBP estimates require matching approved portfolio value at the last eligible
+session. Source or sample gaps remain visible.
 
 ## Concentration, overlap and currency
 

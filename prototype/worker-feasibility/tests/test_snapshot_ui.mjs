@@ -313,6 +313,9 @@ test('Risk applies a dated range and clears private drawdown on sign-out',async(
    const end=custom?'2026-11-19':'2026-11-20';
    return {ok:true,status:200,json:async()=>({
      performance_state:'available',earliest_date:'2026-08-23',latest_date:'2026-11-20',range:{start,end},
+     metrics:{observed:{eligible:1,requested:1,loss_intervals:1,worst:{return_pct:'-12',start_at:start+'T18:00:00+00:00',end_at:end+'T18:00:00+00:00'}},
+       daily_state:'awaiting_approved_series',minimum_daily:60,measures:[
+         {key:'volatility',n:0,value:null,reason:'need_portfolio'}]},
      drawdown:{start_at:start+'T18:00:00+00:00',as_of:end+'T18:00:00+00:00',
        intervals:1,current_pct:custom?'12':'5',worst_pct:'12',current_peak_at:start+'T18:00:00+00:00'},
    })};
@@ -328,7 +331,11 @@ test('Risk applies a dated range and clears private drawdown on sign-out',async(
  assert.deepEqual(requests,['/api/v1/portfolio/risk','/api/v1/portfolio/risk?start=2026-11-18&end=2026-11-19']);
  assert.match(ui.el('risk-status').textContent,/2026-11-18 to 2026-11-19/);
  const text=node=>[node.textContent,...node.children.flatMap(text)];
- assert.ok(text(ui.el('risk-results')).includes('12%'));
+ const riskText=text(ui.el('risk-results'));
+ assert.ok(riskText.includes('12%'));
+ assert.ok(riskText.includes('Worst observed interval return'));
+ assert.ok(riskText.includes('Annualised volatility'));
+ assert.ok(riskText.includes('Needs more approved portfolio returns'));
  ui.view.clear();
  assert.equal(ui.el('risk-results').children.length,0);
  assert.equal(ui.el('risk-start').value,'');

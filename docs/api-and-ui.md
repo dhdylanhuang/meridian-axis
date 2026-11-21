@@ -199,8 +199,22 @@ portfolio period and matching benchmark evidence.
 no-store drawdown result from the private Rust calculation. It accepts either
 the default 90-day window or exactly `?start=YYYY-MM-DD&end=YYYY-MM-DD`.
 The dates are UTC snapshot dates, inclusive, and must span at least two dates
-within the supported window. Only the applicable drawdown and coverage are
-returned. History continues to show portfolio and benchmark performance.
+within the last 367 UTC dates. Risk returns drawdown, observed losses and daily
+metrics with observation counts and availability. Current concentration reuses
+the latest authenticated snapshot. History displays portfolio and benchmark
+performance.
+
+Optional daily evidence is read from the private gateway binding
+`RISK_DAILY_GBP` in the existing raw JSON or compressed format. The object has
+`basis: approved_gbp_session_total_return_v1`, a display `source` label, and
+`rows` of 2 to 367 distinct ascending session dates. Each row has `date`
+and nullable decimal strings `portfolio_index`, `vuag_index`,
+`bank_rate_pct` and `portfolio_value_gbp`. The source review must establish
+the actual GBP session calendar, consistent timing, corporate actions,
+cash-flow-adjusted portfolio index, dividend treatment, and the effective
+Bank Rate at each session opening. Include any missing scheduled session as
+a row with null fields so there is no return across the gap. Approved Bank
+Rate history is published by the Bank of England. Keep evidence private.
 
 ## Authenticated broker refresh — 13 November 2026
 
