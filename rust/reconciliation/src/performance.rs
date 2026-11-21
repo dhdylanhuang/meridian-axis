@@ -244,23 +244,23 @@ fn summarize(intervals: &[Interval], start: NaiveDate, end: NaiveDate) -> Summar
     result
 }
 
-pub fn calculate_json(input: &str) -> Result<String> {
-    if input.len() > 640 * 1024 {
-        return Err(Error("performance_input_limit"));
+type FundingWindow = Option<(DateTime<FixedOffset>, DateTime<FixedOffset>)>;
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FundingEvidence {
+    coverage: Option<Coverage>,
+    events: Vec<Event>,
+}
+
+fn checked_funding<'a>(
+    coverage: Option<&Coverage>,
+    rows: &'a [Event],
+) -> Result<(FundingWindow, Vec<CheckedEvent<'a>>)> {
+    if rows.len() > 1024 {
+        return Err(Error("performance_funding_limit"));
     }
-    let request: Request = serde_json::from_str(input).map_err(|_| Error("request_invalid"))?;
-    if !(90..=367).contains(&request.days.len())
-        || request.events.len() > 1024
-        || request
-            .days
-            .windows(2)
-            .any(|pair| pair[0].date.succ_opt() != Some(pair[1].date))
-    {
-        return Err(Error("performance_window_invalid"));
-    }
-    let covered = request
-        .coverage
-        .as_ref()
+    let covered = coverage
         .map(|coverage| {
             let start = instant(&coverage.start_at)?;
             let end = instant(&coverage.end_at)?;
@@ -270,10 +270,9 @@ pub fn calculate_json(input: &str) -> Result<String> {
             Ok((start, end))
         })
         .transpose()?;
-    let marks = request.days.iter().map(mark).collect::<Result<Vec<_>>>()?;
-    let mut events = Vec::with_capacity(request.events.len());
+    let mut events = Vec::with_capacity(rows.len());
     let mut seen = BTreeSet::new();
-    for row in &request.events {
+    for row in rows {
         identity(&row.reference)?;
         currency(&row.currency)?;
         if !seen.insert(&row.reference) {
@@ -290,6 +289,98 @@ pub fn calculate_json(input: &str) -> Result<String> {
             .cmp(&a.time)
             .then(a.row.reference.cmp(&b.row.reference))
     });
+    Ok((covered, events))
+}
+
+pub(crate) fn session_readiness(
+    raw: &serde_json::Value,
+    review: &crate::risk_sessions::Reviewed,
+    as_of: &str,
+    funding: Option<&[u8]>,
+) -> Result<serde_json::Value> {
+    use serde_json::json;
+    let supplied = funding
+        .map(|bytes| {
+            if bytes.len() > 128 * 1024 {
+                return Err(Error("performance_funding_limit"));
+            }
+            serde_json::from_slice::<FundingEvidence>(bytes)
+                .map_err(|_| Error("performance_funding_invalid"))
+        })
+        .transpose()?;
+    let (coverage, rows) = supplied.as_ref().map_or((None, &[][..]), |data| {
+        (data.coverage.as_ref(), data.events.as_slice())
+    });
+    let (covered, events) = checked_funding(coverage, rows)?;
+    let cutoff = instant(as_of)?;
+    if coverage.is_some_and(|data| instant(&data.completed_at).ok() > Some(cutoff))
+        || events.iter().any(|event| event.time > cutoff)
+    {
+        return Err(Error("performance_funding_after_cutoff"));
+    }
+    let dates = &review.sessions;
+    let range = RiskRange {
+        start: dates[0].date,
+        end: dates[dates.len() - 1].date,
+    };
+    let report = risk::calculate(
+        &[],
+        &[],
+        &range,
+        risk::Evidence {
+            input: Some(raw),
+            as_of: Some(as_of),
+            covered,
+            events: &events,
+        },
+    );
+    let mut reasons = std::collections::BTreeMap::<&str, usize>::new();
+    for row in report["session_performance"]["rows"]
+        .as_array()
+        .into_iter()
+        .flatten()
+    {
+        if let Some(reason) = row["reason"].as_str() {
+            *reasons.entry(reason).or_default() += 1;
+        }
+    }
+    let measures: serde_json::Map<String, serde_json::Value> = report["measures"]
+        .as_array().into_iter().flatten().filter_map(|row| {
+            Some((row["key"].as_str()?.to_owned(), json!({
+                "eligible":row["n"], "available":!row["value"].is_null(), "reason":row["reason"],
+            })))
+        }).collect();
+    let holdings = &report["holding_correlation"];
+    Ok(json!({
+        "funding_window_available":covered.is_some(),
+        "portfolio_and_benchmark":report["daily_coverage"],
+        "isa_gap_reasons":reasons,
+        "daily_risk":measures,
+        "holding_correlation":{
+            "state":holdings["state"],
+            "common_returns":holdings["n"],
+            "included_holdings":holdings["included_holdings"],
+            "submitted_holdings":holdings["universe_holdings"],
+        },
+    }))
+}
+
+pub fn calculate_json(input: &str) -> Result<String> {
+    if input.len() > 640 * 1024 {
+        return Err(Error("performance_input_limit"));
+    }
+    let request: Request = serde_json::from_str(input).map_err(|_| Error("request_invalid"))?;
+    if !(90..=367).contains(&request.days.len())
+        || request.events.len() > 1024
+        || request
+            .days
+            .windows(2)
+            .any(|pair| pair[0].date.succ_opt() != Some(pair[1].date))
+    {
+        return Err(Error("performance_window_invalid"));
+    }
+    let (covered, events) = checked_funding(request.coverage.as_ref(), &request.events)?;
+    let marks = request.days.iter().map(mark).collect::<Result<Vec<_>>>()?;
     let chart_start = request.days.len() - 90;
     let first_chart_date = request.days[chart_start].date;
     let mut intervals = Vec::with_capacity(89);

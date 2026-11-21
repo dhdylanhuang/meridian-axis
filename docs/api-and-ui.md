@@ -222,10 +222,18 @@ cannot span the gap. Closed-market dates follow the reviewed calendar. Keep
 the private source files, excluded dates and operator review with the manifest.
 Trading 212 snapshot retrieval times do not qualify as close-price evidence.
 
-Run the offline structural check on the private manifest before publication:
+Run the offline readiness check on the private manifest before publication:
 `cargo run --manifest-path rust/reconciliation/Cargo.toml --locked --bin qualify_daily -- "$(date -u +%FT%TZ)" < /path/to/private/reviewed.json`.
-It reports counts and fixed failure codes. The operator reviews source rights,
-calendar completeness and input provenance separately. Publish only a reviewed
+For a funding-aware rehearsal, pass a second argument containing the private
+funding JSON path. Use the completed Trading 212 traversal projected by
+`performance_input`, retaining only its `coverage` and `events` fields.
+The command reports eligible ISA and VUAG returns, rejection counts, each
+risk measure's sample and availability, and the shared holdings sample. It
+uses the same funding validation and analytics as the Risk tab and writes
+only aggregate counts and fixed categories. With no funding file, the check
+still exercises holding coverage and leaves ISA returns gated. The operator
+reviews source rights, calendar completeness and input provenance before
+publication. The local check does not confer source approval. Publish only a reviewed
 result through the existing private gateway binding. It accepts raw JSON or a
 single `gzip:` base64 value. For larger inputs, set the root binding to
 `gzip-parts:N` and split the base64 of one gzip stream into consecutive

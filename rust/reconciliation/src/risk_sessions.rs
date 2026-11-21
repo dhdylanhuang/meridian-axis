@@ -173,16 +173,22 @@ impl Holdings {
 /// Structural check only. The operator signs off the underlying source, calendar,
 /// coverage and usage rights before supplying the private manifest.
 pub fn audit_json(input: &[u8], as_of: &str) -> Result<Value> {
+    audit_with_funding(input, as_of, None)
+}
+
+pub fn audit_with_funding(input: &[u8], as_of: &str, funding: Option<&[u8]>) -> Result<Value> {
     if input.len() > 512 * 1024 {
         return Err(Error("session_evidence_limit"));
     }
     let raw = serde_json::from_slice(input).map_err(|_| Error("session_evidence_invalid"))?;
     let data = Reviewed::parse(&raw, as_of)?;
+    let readiness = crate::performance::session_readiness(&raw, &data, as_of, funding)?;
     Ok(json!({
         "validation": "passed",
         "scheduled_sessions": data.sessions.len(),
         "portfolio_marks": data.sessions.iter().filter(|row| row.portfolio_value_gbp.is_some()).count(),
         "benchmark_marks": data.sessions.iter().filter(|row| row.vuag_index.is_some()).count(),
         "holding_series": data.holdings.as_ref().map_or(0, |holdings| holdings.instruments.len()),
+        "readiness": readiness,
     }))
 }

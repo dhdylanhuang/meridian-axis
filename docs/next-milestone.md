@@ -26,6 +26,14 @@ same reviewed session calendar. Check split and dividend treatment and use
 dated Bank Rate for rate-dependent measures. Load only approved source rows
 in the [daily risk input contract](api-and-ui.md#risk-tab).
 
+The [qualification follow-up](market-data-and-polling.md#session-input-qualification)
+verified funding coverage for eight saved observation dates and confirmed
+VUAG's listing identity. It found zero approved NAV and VUAG session marks.
+The next source check is an original one-day Trading 212 Stocks ISA statement
+with its valuation convention and a permitted historical market-data sample.
+The offline readiness check can rehearse each estimate as soon as the inputs
+are available.
+
 The audit found no approved daily return intervals to backfill. The minimum
 is 60 eligible sessions per statistical estimate. Existing broker marks
 support the observed benchmark comparison and drawdown within their own

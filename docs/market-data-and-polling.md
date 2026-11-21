@@ -65,6 +65,42 @@ Retention cleanup preserves daily-selection and alert evidence beyond tick expir
 
 Every polling cycle, including failures, writes `import_log` with `operation_type=price_poll`, start/end, success/failure counts, source and redacted error. Treat a cycle as one poll run; observations link to it. Keep default import-history views focused on financial imports, with polling operations separately filterable. Configure log retention separately from immutable financial audit; record cleanup outcomes without recursively auditing every deleted tick.
 
+## Session input qualification
+
+Reviewed 21 November 2026. The [Trading 212 activity statement](https://helpcentre.trading212.com/hc/en-us/articles/15757156925469-What-is-an-account-activity-statement)
+is the next candidate for ISA valuations. The [document catalogue](https://helpcentre.trading212.com/hc/en-us/articles/11700508002845-What-documents-can-I-get-from-Trading-212)
+includes account activity and monthly valuation statements. It does not
+document a complete daily NAV series or exact valuation semantics. Review
+an original one-day Stocks ISA statement first, and establish total GBP value
+including cash, the valuation timestamp and price/FX convention, coverage
+on sessions without a trade, and treatment of corrections. Trading 212
+explicitly [flags discrepancies in regenerated historical balances after trade corrections](https://helpcentre.trading212.com/hc/en-us/articles/34853863246749-Trade-Transaction-Corrections).
+The existing private statements supply period-end controls and cash evidence,
+as recorded in the [statement review](statement-source-contract.md). The
+broker [positions API](https://docs.trading212.com/api/positions/getpositions)
+describes a current price and position opening time. The saved capture time
+therefore remains evidence of retrieval.
+
+The [London Stock Exchange listing](https://www.londonstockexchange.com/en/quote/etps/VUAG/vanguard-funds-plc)
+verifies VUAG as GBP, XLON and ISIN IE00BFMXXD54, with retained income.
+The [exchange business-day calendar](https://www.londonstockexchange.com/en/resources/markets-products/business-days)
+is a source for LSE holidays and half days. Close instants still require
+the applicable trading service rules and the multivenue ISA cutoff remains
+a separate review. Public listing fields establish identity, with adjusted
+history and reuse permissions still needed. [Vanguard site terms](https://www.vanguard.co.uk/professional/terms-and-conditions)
+do not establish permission for shared dashboard reuse. Twelve Data publishes
+[historical EOD capabilities and usage restrictions](https://support.twelvedata.com/en/articles/12682324-end-of-day-eod-pricing-market-data).
+Its individual personal-plan scope leaves shared use unverified. Any proposed
+feed must demonstrate coverage of the GBP XLON listing and the held listings,
+split and distribution handling, FX timing, and permission for both members.
+No feed was acquired.
+
+Use the [Risk preflight](api-and-ui.md#risk-tab) to measure eligible samples
+with reviewed marks and the completed funding projection before any data
+release. The existing source audit and preflight cover separate questions:
+whether a source establishes the intended observation, and whether those
+observations support the requested calculations.
+
 ## Session-close selection
 
 At a session end, a final eligible quote can create a daily candidate with source `eod_poll`, quote/fetch time and `quality=provisional`. Candidate quality depends on its proximity to the session end and FX coverage. A morning quote after an afternoon outage is not a credible closing candidate. The allowable age is a validated setting, with no candidate selected if coverage fails.

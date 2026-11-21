@@ -417,3 +417,57 @@ fn reviewed_session_risk_and_holding_pairs_use_their_declared_samples() {
     assert_eq!(correlation["state"], "insufficient_common_sample");
     assert_eq!(correlation["pairs"], json!([]));
 }
+
+#[test]
+fn qualification_reports_real_sample_gates_without_exposing_source_rows() {
+    use axis_reconciliation::risk_sessions::audit_with_funding;
+
+    let req = approved_request();
+    let manifest = req["risk_daily"].to_string();
+    let cutoff = req["risk_as_of"].as_str().unwrap();
+    let awaiting = audit_with_funding(manifest.as_bytes(), cutoff, None).unwrap();
+    assert_eq!(
+        awaiting["readiness"]["portfolio_and_benchmark"]["portfolio"],
+        0
+    );
+    assert_eq!(
+        awaiting["readiness"]["isa_gap_reasons"]["funding_coverage_unverified"],
+        64
+    );
+    assert_eq!(
+        awaiting["readiness"]["holding_correlation"]["common_returns"],
+        64
+    );
+
+    let evidence = json!({"coverage":req["coverage"], "events":req["events"]});
+    let verified = audit_with_funding(
+        manifest.as_bytes(),
+        cutoff,
+        Some(evidence.to_string().as_bytes()),
+    )
+    .unwrap();
+    assert_eq!(
+        verified["readiness"]["portfolio_and_benchmark"]["portfolio"],
+        64
+    );
+    assert_eq!(
+        verified["readiness"]["daily_risk"]["volatility"]["available"],
+        true
+    );
+    assert_eq!(verified["readiness"]["daily_risk"]["beta"]["eligible"], 64);
+    let receipt = verified.to_string();
+    assert!(!receipt.contains("AAA"));
+    assert!(!receipt.contains("2026-"));
+    assert!(!receipt.contains("Synthetic session archive"));
+
+    let future = json!({"coverage":{
+        "start_at":"2025-12-01T16:00:00Z","end_at":"2026-02-27T16:00:00Z",
+        "completed_at":"2026-03-01T00:00:00Z"
+    },"events":[]});
+    assert!(audit_with_funding(
+        manifest.as_bytes(),
+        cutoff,
+        Some(future.to_string().as_bytes())
+    )
+    .is_err());
+}

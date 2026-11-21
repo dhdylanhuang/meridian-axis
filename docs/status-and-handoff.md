@@ -41,6 +41,25 @@ versions above refer to the application source. The documentation revision is
 tracked separately in Git history.
 
 
+## Session input qualification follow-up
+
+A bounded, read-only hosted check of 90 completed UTC dates verified an
+available completed Trading 212 funding window. Nine dates had usable saved
+GBP account observations, eight within that funding window. Nine dates had
+a broker-observed VUAG price. The retained projections supplied zero
+approved session NAVs and zero approved VUAG close marks. The aggregate
+receipt is private. No broker refresh or financial write ran.
+
+The [source qualification record](market-data-and-polling.md#session-input-qualification)
+verifies the VUAG listing identity and the exchange calendar source. It also
+records the remaining ISA statement and market-data checks. No source data
+was installed in the dashboard. The local `qualify_daily` command now
+rehearses exact eligibility against a private completed funding projection,
+and reports per-measure sample support and common holding coverage without
+emitting private rows. The existing runtime source remains deployed. The
+focused Rust performance target passed ten checks, including a sanitized
+funding-aware preflight and future-evidence rejection.
+
 ## Reviewed session performance and holding correlation
 
 Implemented the private reviewed session input and offline structural check.
