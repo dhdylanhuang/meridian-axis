@@ -26,6 +26,13 @@ Volatility, Sharpe, Sortino, historical VaR and ES at 95% and 99%, beta,
 annualised log alpha, R², correlation and tracking error show evidence
 coverage. Daily estimates await an approved comparable session series.
 
+Gateway and session owner source `f25d3bf` were deployed. The final authenticated
+check verified the extended date range, observed loss report, guarded daily
+estimates and saved top-position concentration. HHI and effective holdings
+await a new compatible saved exposure projection. Protected bindings and
+the ten-minute schedule were verified. Focused Rust, backend and Risk tab
+checks passed.
+
 ## GBP benchmark comparison
 
 History has a provisional VUAG comparison path for eligible daily intervals.
