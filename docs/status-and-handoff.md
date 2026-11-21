@@ -16,6 +16,16 @@ Its published price history is subject to site terms that restrict reuse.
 Shared dashboard use requires a source with suitable permission and confirmed
 pricing times and split treatment. No approved live benchmark input is loaded.
 
+Gateway source `14732a9` was deployed on 21 November 2026. The four served
+assets, WASM readiness, anonymous denial, existing bindings and ten-minute
+schedule were verified. The session owner and sync releases stayed on their
+existing versions. A first authenticated post-deploy assertion was undiagnosed.
+The diagnostic retry confirmed portfolio returns and the benchmark waiting
+state together in the live History response. The test session was revoked.
+Matched values, missing closes and timing checks passed in the synthetic
+Rust, generated WASM and dashboard tests. Live benchmark values await source
+qualification.
+
 
 ## Observed funding and performance
 
