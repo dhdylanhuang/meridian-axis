@@ -189,3 +189,36 @@ fn observed_broker_marks_compare_same_dates_without_mixing_sources() {
     assert_eq!(report["benchmark"]["matched_intervals"], 0);
     assert_eq!(report["latest_eligible"]["return_pct"], "3");
 }
+
+#[test]
+fn drawdown_uses_flow_adjusted_growth_and_resets_after_gaps() {
+    let mut req = request();
+    req["days"][84]["status"] = json!("missing");
+    for (index, amount) in [
+        (85, "100"),
+        (86, "120"),
+        (87, "108"),
+        (88, "114"),
+        (89, "100"),
+    ] {
+        req["days"][index]["total_value"] = json!(amount);
+    }
+    req["events"] = json!([event(
+        "DEPOSIT",
+        "20",
+        "2026-02-25T04:00:00Z",
+        "test-funding"
+    )]);
+    req["coverage"]["end_at"] = json!("2026-02-28T15:00:00Z");
+    let report = calculate(&req);
+    let drawdown = &report["drawdown"];
+    assert_eq!(drawdown["start_at"], "2026-02-24T16:00:00+00:00");
+    assert_eq!(drawdown["intervals"], 3);
+    assert_eq!(drawdown["current_pct"], "5");
+    assert_eq!(drawdown["worst_pct"], "10");
+    assert_eq!(drawdown["worst_peak_at"], "2026-02-24T16:00:00+00:00");
+    assert_eq!(drawdown["worst_trough_at"], "2026-02-26T16:00:00+00:00");
+    assert_eq!(drawdown["later_unavailable_intervals"], 1);
+    req["coverage"] = Value::Null;
+    assert!(calculate(&req)["drawdown"].is_null());
+}

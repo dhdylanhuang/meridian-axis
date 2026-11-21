@@ -100,6 +100,16 @@ A capture outside its UTC date leaves a gap. The visible timestamp is holdings
 retrieval completion. Quote age, exchange-close status and split adjustments
 are unverified. The broker series uses price ratios within that source only.
 
+### Observed portfolio drawdown
+
+`observed_flow_adjusted_drawdown_v1` chains the latest uninterrupted eligible
+stretch within the 90-day window from a starting wealth of 1. It reports
+current and worst percentage declines from running peaks, with UTC capture
+times and the number of intervals. Ties retain the earlier peak and trough.
+A missing interval breaks the stretch. If newer intervals are unavailable,
+the last eligible capture remains the explicit cutoff. This descriptive
+series uses the observed performance timing rather than an exchange clock.
+
 ## Return series and risk conventions
 
 Risk uses approved daily data; default horizon 252 observations. For a positive GBP total-return series `P_t`, simple return is `P_t/P_(t−1)−1`; log return `l_t = log(P_t/P_(t−1))`. Require one extra price observation. An adjusted series and explicit dividends cannot both supply the same return component. The adapter records adjustment basis; raw valuation closes remain separate.

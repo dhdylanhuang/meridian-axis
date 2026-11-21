@@ -268,6 +268,26 @@
         ? `${decimal(mark.price_gbp, 'GBP')} · ${utcStamp(mark.at)}` : 'Missing').join(' to '));
     }
   }
+  function renderDrawdown(section, drawdown) {
+    add(section, 'h3', 'Portfolio drawdown');
+    if (!drawdown) {
+      add(section, 'p', 'Drawdown needs an eligible cash-flow-adjusted return interval.');
+      return;
+    }
+    const utc = value => utcStamp(value) + ' UTC';
+    const list = add(section, 'dl');
+    add(list, 'dt', 'Drawdown at latest eligible capture');
+    add(list, 'dd', percent(drawdown.current_pct));
+    add(list, 'dt', 'Worst drawdown in this stretch');
+    add(list, 'dd', percent(drawdown.worst_pct));
+    add(section, 'p', `Flow-adjusted stretch · ${utc(drawdown.start_at)} to ${utc(drawdown.as_of)} · ${drawdown.intervals} eligible intervals. Latest running peak captured ${utc(drawdown.current_peak_at)}.`);
+    if (drawdown.worst_peak_at && drawdown.worst_trough_at) {
+      add(section, 'p', `Worst decline · peak ${utc(drawdown.worst_peak_at)} · trough ${utc(drawdown.worst_trough_at)}.`);
+    }
+    if (drawdown.later_unavailable_intervals > 0) {
+      add(section, 'p', 'Newer dates have unverified returns. Drawdown is shown through the last eligible capture.');
+    }
+  }
   function renderPerformance(data) {
     const section = el('history-performance');
     section.replaceChildren();
@@ -297,6 +317,7 @@
       add(row, 'td', item ? String(item.intervals ?? 1) : '—');
       add(row, 'td', adjustedReturn(item));
     }
+    renderDrawdown(section, report.drawdown);
     renderBenchmark(section, report.benchmark);
     const funding = add(section, 'details');
     funding.id = 'history-funding';

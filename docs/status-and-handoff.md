@@ -2,6 +2,13 @@
 
 Reviewed **20 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
+## Observed portfolio drawdown
+
+History reports current and worst drawdown within the latest contiguous
+cash-flow-adjusted stretch. It includes the running peak, worst peak and
+trough, cutoff and coverage. See the
+[drawdown method](calculation-contracts.md#observed-portfolio-drawdown).
+
 ## GBP benchmark comparison
 
 History has a provisional VUAG comparison path for eligible daily intervals.

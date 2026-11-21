@@ -8,6 +8,9 @@ use std::collections::BTreeSet;
 #[path = "performance_benchmark.rs"]
 mod benchmark;
 
+#[path = "performance_drawdown.rs"]
+mod drawdown;
+
 #[derive(Deserialize)]
 pub struct Request {
     days: Vec<Day>,
@@ -369,6 +372,7 @@ pub fn calculate_json(input: &str) -> Result<String> {
         "longest_eligible": longest_eligible,
         "month_to_date": month_to_date,
         "year_to_date": year_to_date,
+        "drawdown": drawdown::calculate(chart_intervals),
         "benchmark": benchmark::compare(chart_intervals, &request.days[chart_start..], request.benchmark.as_ref(), request.benchmark_as_of.as_deref()),
     }))
     .map_err(|_| Error("performance_output_invalid"))

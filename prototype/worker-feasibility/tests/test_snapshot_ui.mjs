@@ -278,6 +278,8 @@ test('History exposes funding evidence and explains ineligible returns without b
    funding_coverage:{start_at:days[0].date+'T00:00:00+00:00',end_at:end+'T16:00:00+00:00',completed_at:end+'T17:00:00+00:00'},
    intervals:[interval],latest_eligible:interval,longest_eligible:interval,longest_valuation:{start_date:start,end_date:end,days:2},
    month_to_date:{start_date:start,end_date:end,return_pct:null,intervals:0,reason:'missing_valuation'},year_to_date:null,
+   drawdown:{start_at:interval.start_at,as_of:interval.end_at,intervals:1,current_pct:'5',current_peak_at:interval.start_at,
+     worst_pct:'10',worst_peak_at:interval.start_at,worst_trough_at:interval.end_at,later_unavailable_intervals:1},
    benchmark:{state:'broker_observed',matched_intervals:1,eligible_intervals:2,source:'Invented closes',reviewed_at:end+'T17:00:00+00:00',
      intervals:[{portfolio_start_at:interval.start_at,portfolio_end_at:interval.end_at,portfolio_pct:interval.return_pct,
        start_date:start,end_date:end,benchmark_pct:'2',difference_pp:'0.727273',
@@ -295,7 +297,7 @@ test('History exposes funding evidence and explains ineligible returns without b
  assert.equal(ui.el('history-point').children[0].href,'#history-funding-'+end);
  const text=node=>[node.textContent,...node.children.flatMap(text)];
  const results=text(ui.el('history-performance')).join(' ');
- for (const value of ['2.727273%','£20.123456789','invented-ref','Modified Dietz','A saved valuation is missing','0.727273 pp','VUAG capture missing','Quote age and split adjustments are unverified','1 of 2 eligible portfolio intervals matched','£102 · ']) assert.ok(results.includes(value), value);
+ for (const value of ['2.727273%','£20.123456789','invented-ref','Modified Dietz','A saved valuation is missing','0.727273 pp','Worst drawdown in this stretch','Worst decline · peak','through the last eligible capture','VUAG capture missing','Quote age and split adjustments are unverified','1 of 2 eligible portfolio intervals matched','£102 · ']) assert.ok(results.includes(value), value);
  ui.view.clear();
  assert.equal(ui.el('history-performance').children.length,0);
  assert.equal(ui.el('history-funding-note').hidden,true);
