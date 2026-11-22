@@ -5,8 +5,6 @@ import json
 from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as postgres_insert
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from meridian.adapters.broker_evidence import canonical, instant, number
@@ -55,7 +53,10 @@ def save_observation(engine, target, started, captured, total_value):
         payload = canonical(row)
         digest = hashlib.sha256(payload.encode()).hexdigest()
         run_id = _run_id(target)
-        insert = postgres_insert if engine.dialect.name == "postgresql" else sqlite_insert
+        if engine.dialect.name == "postgresql":
+            from sqlalchemy.dialects.postgresql import insert
+        else:
+            from sqlalchemy.dialects.sqlite import insert
         with Session(engine) as db, db.begin():
             accepted = db.scalar(
                 insert(ImportRun)

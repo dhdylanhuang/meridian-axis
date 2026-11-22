@@ -8,7 +8,6 @@ from sqlalchemy import LargeBinary, cast, func, select
 from sqlalchemy.orm import Session
 
 from meridian.adapters.broker_evidence import identifier, instant, number
-from meridian.application.cutoff_pilot import read_pilot
 from meridian.persistence.models import ImportRun, SourceRecord
 from meridian.persistence.types import decimal_text
 
@@ -147,8 +146,11 @@ async def performance_report(engine, history, calculate):
                 value = performance_input(db, history)
                 if "risk_range" in history:
                     try:
-                        with db.begin_nested():
-                            pilot = read_pilot(db, history["as_of"], value["coverage"])
+                        from meridian.application.cutoff_pilot import read_pilot
+
+                        # No further queries use this transaction. A pilot read
+                        # failure is contained by the explicit rollback below.
+                        pilot = read_pilot(db, history["as_of"], value["coverage"])
                     except Exception:
                         pilot = {"state": "unavailable"}
             connection.rollback()
