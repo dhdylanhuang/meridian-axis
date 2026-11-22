@@ -8,6 +8,7 @@ from sqlalchemy import LargeBinary, cast, func, select
 from sqlalchemy.orm import Session
 
 from meridian.adapters.broker_evidence import identifier, instant, number
+from meridian.application.cutoff_pilot import read_pilot
 from meridian.persistence.models import ImportRun, SourceRecord
 from meridian.persistence.types import decimal_text
 
@@ -132,6 +133,7 @@ async def performance_report(engine, history, calculate):
         or not 90 <= len(history["days"]) <= 367
     ):
         raise ValueError("performance_history_invalid")
+    pilot = None
     try:
         with engine.connect() as connection:
             if connection.dialect.name == "postgresql":
@@ -143,6 +145,12 @@ async def performance_report(engine, history, calculate):
                 connection.exec_driver_sql("BEGIN")
             with Session(bind=connection) as db:
                 value = performance_input(db, history)
+                if "risk_range" in history:
+                    try:
+                        with db.begin_nested():
+                            pilot = read_pilot(db, history["as_of"], value["coverage"])
+                    except Exception:
+                        pilot = {"state": "unavailable"}
             connection.rollback()
         encoded = json.dumps(value, separators=(",", ":"), ensure_ascii=False)
         if len(encoded.encode()) > MAX_REQUEST_BYTES:
@@ -156,6 +164,16 @@ async def performance_report(engine, history, calculate):
         raise PerformanceUnavailable("calculation_timeout") from None
     except Exception:
         raise PerformanceUnavailable("calculation_unavailable") from None
+    if pilot is not None and isinstance(result, str) and len(result.encode()) <= MAX_REQUEST_BYTES:
+        try:
+            report = json.loads(result)
+            if isinstance(report.get("metrics"), dict):
+                report["metrics"]["cutoff_pilot"] = pilot
+                enriched = json.dumps(report, ensure_ascii=False, separators=(",", ":"))
+                if len(enriched.encode()) <= MAX_REQUEST_BYTES:
+                    result = enriched
+        except (ValueError, AttributeError):
+            pass
     if not isinstance(result, str) or len(result.encode()) > MAX_REQUEST_BYTES:
         raise PerformanceUnavailable("calculation_response_invalid")
     return result

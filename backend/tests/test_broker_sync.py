@@ -77,7 +77,13 @@ class API:
         pass
 
     async def account_summary(self):
-        return SimpleNamespace(raw_payload=self.rows["account_summary"]["records"][0])
+        row = self.rows["account_summary"]["records"][0]
+        return SimpleNamespace(
+            raw_payload=row,
+            account_id=row["id"],
+            currency=row["currency"],
+            total_value=row["totalValue"],
+        )
 
     async def positions(self):
         if self.fail_positions:
@@ -632,3 +638,113 @@ def test_exposures_publish_atomically_and_fail_open(setup):
     assert asyncio.run(service.refresh())["status"] == "failed"
     with Session(engine) as db:
         assert read_snapshot(db, "shared-isa") == snapshot
+
+
+def test_cutoff_pilot_reuses_scheduled_account_request_and_keeps_gaps(setup, monkeypatch):
+    from datetime import UTC, datetime
+
+    from meridian.application.cutoff_pilot import read_pilot
+    from meridian.security import hosted_sync
+
+    engine, clock, jobs = setup
+    clock[0] = datetime(2026, 11, 23, 22, 0, 8, tzinfo=UTC)
+    calls = []
+
+    class ClosedAPI(API):
+        async def account_summary(self):
+            calls.append("account")
+            return await super().account_summary()
+
+        async def history_page(self, *args):
+            return [], None
+
+    api = ClosedAPI()
+    monkeypatch.setattr(hosted_sync, "create_binding_engine", lambda *args, **kwargs: engine)
+    monkeypatch.setattr(hosted_sync, "Trading212Client", lambda **kwargs: api)
+    monkeypatch.setattr(hosted_sync, "BrokerJobs", lambda *args: jobs)
+    monkeypatch.setattr(hosted_sync, "session_state", lambda *args: "closed")
+
+    async def skip_metadata(*args):
+        pass
+
+    monkeypatch.setattr(hosted_sync, "refresh_metadata", skip_metadata)
+
+    def run():
+        return asyncio.run(
+            hosted_sync.run_sync(
+                None,
+                api_key="synthetic",
+                api_secret="synthetic",
+                environment="live",
+                scheduled=True,
+            )
+        )
+
+    assert run()["status"] == "outside_session"
+    assert calls == ["account"]
+    clock[0] += timedelta(seconds=1)
+    api.rows["account_summary"]["records"][0]["totalValue"] = "999"
+    assert run()["status"] == "outside_session"
+    clock[0] += timedelta(days=2)
+    api.rows["account_summary"]["records"][0]["totalValue"] = "10.123456789"
+    assert run()["status"] == "outside_session"
+    coverage = {"start_at": "2026-11-01T00:00:00Z", "end_at": "2026-11-30T00:00:00Z"}
+    with Session(engine) as db:
+        report = read_pilot(db, "2026-11-25T22:03:00Z", coverage)
+        rows = report["observations"]
+        assert len(rows) == 10 and [row["status"] for row in rows[:4]] == [
+            "observed",
+            "missing",
+            "observed",
+            "pending",
+        ]
+        assert rows[0]["total_value_gbp"] != "999"
+        assert rows[2]["total_value_gbp"] == "10.123456789"
+        assert rows[2]["funding_coverage"] == "no_previous_observation"
+        assert db.scalar(select(func.count()).select_from(BrokerSnapshot)) == 0
+
+
+def test_pilot_keeps_valid_account_capture_when_positions_fail(setup):
+    from datetime import UTC, datetime
+
+    from meridian.application.cutoff_pilot import read_pilot, target_at
+
+    engine, clock, _ = setup
+    clock[0] = datetime(2026, 11, 23, 22, 0, 5, tzinfo=UTC)
+    target = target_at(clock[0])
+    assert target and target_at(clock[0] + timedelta(minutes=2)) is None
+    api = API()
+    api.fail_positions = True
+    assert asyncio.run(sync(setup, api).refresh(pilot_target=target))["status"] == "failed"
+    with Session(engine) as db:
+        assert (
+            read_pilot(db, "2026-11-23T22:02:00Z", None)["observations"][0]["status"] == "observed"
+        )
+        assert db.scalar(select(func.count()).select_from(BrokerSnapshot)) == 0
+
+
+@pytest.mark.postgres
+def test_cutoff_pilot_can_save_and_read_with_native_sync_role(native_engine):
+    from datetime import UTC, datetime
+    from decimal import Decimal
+
+    from meridian.application.cutoff_pilot import read_pilot, save_observation
+
+    with Session(native_engine) as db, db.begin():
+        db.add(Account(id="shared-isa", environment="live", private_reference="synthetic-broker"))
+    with native_engine.connect() as connection:
+        schema = connection.scalar(text("SELECT current_schema()"))
+
+    def restrict(connection):
+        connection.exec_driver_sql(f'SET LOCAL ROLE "meridian_sync_{schema}"')
+
+    event.listen(native_engine, "begin", restrict)
+    try:
+        target = datetime(2026, 11, 23, 22, tzinfo=UTC)
+        save_observation(native_engine, target, target, target, Decimal("123.456789"))
+        save_observation(native_engine, target, target, target, Decimal("999"))
+        with Session(native_engine) as db:
+            row = read_pilot(db, "2026-11-23T22:02:00Z", None)["observations"][0]
+            assert (row["status"], row["total_value_gbp"]) == ("observed", "123.456789")
+    finally:
+        event.remove(native_engine, "begin", restrict)

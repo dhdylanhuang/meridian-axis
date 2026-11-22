@@ -23,9 +23,11 @@ serves the dashboard. The existing session and sync Workers enforce the
 two-member scope around database and broker work. Schema `0008` and the
 ten-minute refresh with sixty-day detailed retention are the operating baseline.
 
-**Open evidence gates.** No approved session return series was available in the
-backfill audit. Volatility, risk-adjusted ratios, historical VaR and expected
-shortfall, and benchmark statistics therefore show coverage and missing inputs.
+**Open evidence gates.** The retained broker snapshots provided zero eligible
+session returns in the backfill audit. Separate broker statements now supply
+two verified ISA returns. Volatility, risk-adjusted ratios, historical VaR
+and expected shortfall, and benchmark statistics still show coverage and
+missing inputs.
 The minimum is 60 eligible sessions per estimate. The dated Bank of England
 review is verified through 21 November 2026. VUAG's broker-observed returns use
 saved GBP holding marks with unknown quote age. HHI and effective holdings
@@ -71,6 +73,74 @@ including boundary events and preserving an existing file. The source
 assessment still needs an original one-day Stocks ISA valuation statement and
 a permitted adjusted market-data sample.
 
+On 22 November the owner supplied matched Activity and Transactions Statement
+exports covering a multiday period ending on a Saturday. The Activity
+Statement prints an exact UTC period boundary and defines account value as
+positions plus cash at period end. The sum of reported GBP position values
+and total GBP cash matched the Stocks ISA account value exactly. The other
+statement showed the same account value, and all six ISA interest rows matched
+in amount and printed time across the reports. This corroborates one
+period-end control. The exports contain no intervening daily valuation
+series and do not establish the market-mark timing convention. The owner
+confirmed that separate one-day statements are available. Review a pair for
+consecutive trading dates before populating the session manifest.
+
+Two separately generated one-day Stocks ISA Activity Statements for
+19 and 20 November 2026 printed the same 21:59 UTC period-end cutoff, at
+minute precision. The reported GBP account value in each exactly matched
+the sum of 80 GBP holdings values and total cash. Completed broker funding
+coverage bounded the entire interval. The only in-interval event was
+interest, which matched the ending statement and remains investment income.
+The Rust WASM produced one eligible ISA statement-cutoff return, independently
+reproduced with exact decimal arithmetic. The reviewed marks and receipt
+remain private. The quote and FX times for individual constituents are
+unverified, and the check does not qualify exchange closes or VUAG.
+The one-session sample leaves 59 additional eligible ISA returns before
+the statistical minimum. The feature was verified locally.
+
+A longer Activity Statement provided one additional reported ISA valuation at
+its 18 November period end at 21:59 UTC. The owner confirmed the shared
+Trading 212 statement cutoff and use of broker-reported values. Completed
+funding coverage supported both intervals from 18 through 20 November.
+The private Rust run produced two eligible returns, leaving 58 to the ISA
+statistical minimum. The earlier days in the longer statement supplied no
+additional valuation rows. The extended manifest and receipt are private.
+
+The two verified ISA statement-cutoff returns were published through the
+existing signed-in Risk service as a private data-only gateway revision.
+One authenticated request matched both returns, the cutoffs, the cumulative
+result and the statistical shortfall against the local receipt. The session
+was revoked. Existing bindings and the refresh schedule were verified.
+The initial binding-only attempt failed the signed-in performance check and
+was rolled back. The normal gateway release path then published the binding
+using the same verified source. Daily risk estimates and benchmark comparison await additional approved data.
+
+The owner reported that Trading 212 support cannot supply bulk daily ISA
+valuations. A read-only audit found one of ten recent weekdays with a saved
+account capture within ten minutes of 21:59 UTC and zero during 21:59 UTC
+itself. None of the inspected late-day captures had a market quote timestamp.
+The private timing receipt contains aggregate counts only. The next work is
+a prospective fixed-cutoff broker observation pilot. The audit left the
+dashboard and broker schedule intact.
+
+## Fixed-cutoff broker capture pilot
+
+The pilot targets 22:00 UTC on ten weekdays from 23 November to 4 December
+2026, using the [LSE business-day calendar](https://www.londonstockexchange.com/en/resources/markets-products/business-days)
+as the UK session-date grid. The existing scheduled account summary response
+supplies the capture, both during a normal refresh and in the closed-session
+branch. The first valid GBP response within two minutes of the target is
+retained immutably under a deterministic per-date key. A missed window
+produces a gap. Captures are provisional and keep their actual UTC time and
+unknown quote timing. The Risk tab reports the pilot separately and shows
+completed funding-window coverage between consecutive captures. Pilot data
+does not enter the reviewed statement series or statistical estimates.
+
+The pilot uses current schema grants and the existing scheduled path.
+Each accepted date adds one private run and source record. No new broker
+calls, schedule or schema are needed. Publication and the initial hosted
+check are pending.
+
 ## Reviewed session performance and holding correlation
 
 Implemented the private reviewed session input and offline structural check.
@@ -100,7 +170,7 @@ Vanguard identifies VUAG's London GBP listing and accumulating share class.
 The project needs an approved GBP session NAV archive, dated funding coverage
 for the chosen interval and appropriately permitted benchmark and holding
 return series. The full matrix, rolling correlation and shrinkage remain
-later work. No daily evidence binding was populated.
+later work. The original code release supplied no daily evidence binding.
 
 ## Portfolio Changes sprint
 

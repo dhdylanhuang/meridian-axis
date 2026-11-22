@@ -11,6 +11,7 @@ from meridian.application.broker_jobs import BrokerJobs
 from meridian.application.broker_metadata import latest_metadata, refresh_metadata
 from meridian.application.broker_sessions import relevant_session
 from meridian.application.broker_sync import BrokerSync
+from meridian.application.cutoff_pilot import save_observation, target_at
 from meridian.persistence.models import Account, BrokerSnapshot, BrokerSyncJob
 from meridian.security.hosted import create_binding_engine
 
@@ -83,13 +84,25 @@ async def run_sync(
                 cash_reconciler=reconcile_cash,
                 exposure_calculator=calculate_exposures,
             )
-            state = session_state(engine, "shared-isa", jobs.clock()) if scheduled else "manual"
-            result = await service.refresh() if state != "closed" else {"status": "outside_session"}
+            invoked_at = jobs.clock()
+            pilot_target = target_at(invoked_at) if scheduled else None
+            state = session_state(engine, "shared-isa", invoked_at) if scheduled else "manual"
+            result = (
+                await service.refresh(pilot_target=pilot_target)
+                if state != "closed"
+                else {"status": "outside_session"}
+            )
             if scheduled:
                 if state == "closed":
+                    started = jobs.clock()
                     summary = await api.account_summary()
+                    captured = jobs.clock()
                     if (summary.account_id, summary.currency) != (reference, "GBP"):
                         raise ValueError("broker_account_scope_invalid")
+                    if pilot_target is not None:
+                        save_observation(
+                            engine, pilot_target, started, captured, summary.total_value
+                        )
                 elif result.get("status") != "succeeded":
                     return result | {"session": state}
                 # One history page per ten-minute slot, rotating families.

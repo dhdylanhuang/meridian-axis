@@ -212,3 +212,25 @@ def test_session_funding_export_retains_boundary_and_never_overwrites(engine, tm
     assert main(arguments) == 2
     assert capsys.readouterr().err == "session_funding_export_failed\n"
     assert json.loads(output.read_bytes()) == result
+
+
+def test_pilot_is_attached_to_risk_response_outside_rust_input(engine):
+    from meridian.application.performance_evidence import performance_report
+
+    now = NOW.replace(month=11, day=22)
+    with Session(engine) as db:
+        history = read_history(db, "shared-isa", now)
+    history["risk_range"] = {"start": "2026-11-18", "end": "2026-11-20"}
+
+    async def calculate(encoded):
+        assert "cutoff_pilot" not in json.loads(encoded)
+        return (
+            '{"method":"modified_dietz_observed_v1","metrics":{"daily_coverage":{"portfolio":2}}}'
+        )
+
+    result = json.loads(asyncio.run(performance_report(engine, history, calculate)))
+    assert result["metrics"]["daily_coverage"]["portfolio"] == 2
+    pilot = result["metrics"]["cutoff_pilot"]
+    assert pilot["basis"] == "provisional_broker_capture"
+    assert len(pilot["observations"]) == 10
+    assert all(row["status"] == "pending" for row in pilot["observations"])

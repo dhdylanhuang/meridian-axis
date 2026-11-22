@@ -145,7 +145,7 @@
     }
   }
   const historyLabel = point => point.status === 'missing' ? 'No saved snapshot' : 'Saved snapshot unavailable';
-  const utcStamp = value => value.replace('T', ' ').replace(/\+00:00$/, '');
+  const utcStamp = value => value.replace('T', ' ').replace(/(?:\+00:00|Z)$/, '');
   const historyAmount = point => decimal(point.total_value, 'GBP');
   const fundingDays = new Map();
   const plot = {left: 175, right: 942, top: 24, bottom: 218};
@@ -384,6 +384,27 @@
     }
   }
 
+  function renderCutoffPilot(section, report) {
+    if (!report) return;
+    add(section, 'h3', 'Fixed-cutoff broker capture pilot');
+    if (report.state === 'unavailable') {
+      add(section, 'p', 'Pilot observations could not be loaded.');
+      return;
+    }
+    add(section, 'p', 'Trading 212 reported ISA values captured after 22:00 UTC. These provisional observations have unknown quote timing and are excluded from statistical risk.');
+    const rows = exposureTable(section, ['Target (UTC)', 'Actual capture (UTC)', 'Reported ISA value', 'Status', 'Funding coverage'], 'Broker capture pilot');
+    const states = {observed:'Provisional observation', pending:'Scheduled', missing:'Missed window', unavailable:'Evidence unavailable'};
+    const funding = {covered:'Completed history covers interval', unverified:'Unverified', no_previous_observation:'No preceding capture'};
+    for (const item of report.observations) {
+      const row = add(rows, 'tr');
+      add(row, 'td', dateCapture(item.target_at));
+      add(row, 'td', item.captured_at ? dateCapture(item.captured_at) : '—');
+      add(row, 'td', decimal(item.total_value_gbp, 'GBP'));
+      add(row, 'td', states[item.status]);
+      add(row, 'td', funding[item.funding_coverage] || '—');
+    }
+  }
+
   function renderRiskMetrics(section, metrics) {
     if (!metrics) return;
     add(section, 'h3', 'Observed losses');
@@ -400,6 +421,7 @@
     }
 
     renderSessionPerformance(section, metrics.session_performance);
+    renderCutoffPilot(section, metrics.cutoff_pilot);
 
     add(section, 'h3', 'Volatility, loss estimates and benchmark risk');
     if (metrics.daily_state === 'approved_series') {

@@ -22,6 +22,7 @@ FILES = (
     "application/history_evidence.py",
     "application/cash_history.py",
     "application/cash_activity.py",
+    "application/cutoff_pilot.py",
     "application/cash_reconciliation.py",
     "application/broker_snapshot.py",
     "application/snapshot_publish.py",

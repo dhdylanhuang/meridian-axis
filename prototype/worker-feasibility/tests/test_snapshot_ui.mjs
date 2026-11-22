@@ -320,6 +320,11 @@ test('Risk applies a dated range and clears private drawdown on sign-out',async(
      performance_state:'available',earliest_date:'2026-08-23',latest_date:'2026-11-20',range:{start,end},
      metrics:{observed:{eligible:1,requested:1,loss_intervals:1,worst:{return_pct:'-12',start_at:start+'T18:00:00+00:00',end_at:end+'T18:00:00+00:00'}},
        daily_state:'awaiting_approved_series',minimum_daily:60,
+       cutoff_pilot:{observations:[
+         {target_at:'2026-11-23T22:00:00Z',captured_at:'2026-11-23T22:00:14Z',
+          total_value_gbp:'123.456789',status:'observed',funding_coverage:'covered'},
+         {target_at:'2026-11-24T22:00:00Z',status:'missing'},
+       ]},
        session_performance: custom ? {
          latest_portfolio:{start_date:start,end_date:end,sessions:1,portfolio_pct:'0.952381'},
          rows:[{start_at:start+'T16:00:00Z',end_at:end+'T16:00:00Z',
@@ -351,6 +356,9 @@ test('Risk applies a dated range and clears private drawdown on sign-out',async(
  assert.ok(riskText.includes('12%'));
  assert.ok(riskText.includes('Worst observed interval return'));
  assert.ok(riskText.includes('Annualised volatility'));
+ assert.ok(riskText.includes('£123.456789'));
+ assert.ok(riskText.includes('Missed window'));
+ assert.ok(riskText.includes('2026-11-23 22:00:14 UTC'));
  assert.ok(riskText.includes('AAA and BBB'));
  assert.ok(riskText.includes('0.952381%'));
  assert.ok(riskText.includes('£100 · 1 event'));

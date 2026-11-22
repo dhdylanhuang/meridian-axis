@@ -26,19 +26,22 @@ same reviewed session calendar. Check split and dividend treatment and use
 dated Bank Rate for rate-dependent measures. Load only approved source rows
 in the [daily risk input contract](api-and-ui.md#risk-tab).
 
-The [qualification follow-up](market-data-and-polling.md#session-input-qualification)
-verified funding coverage for eight saved observation dates and confirmed
-VUAG's listing identity. It found zero approved NAV and VUAG session marks.
-The next source check is an original one-day Trading 212 Stocks ISA statement
-with its valuation convention and a permitted historical market-data sample.
-The offline readiness check can rehearse each estimate as soon as the inputs
-are available.
+The signed-in Risk tab shows two verified ISA statement-cutoff returns.
+The owner reported that Trading 212 support cannot supply a bulk daily
+account-value series. A bounded recent timing audit found one of ten
+weekdays within ten minutes of the 21:59 UTC statement cutoff and zero
+captures during the cutoff minute. Existing polling is unsuitable for
+reliable fixed-cutoff capture. The pilot targets one provisional
+account observation at 22:00 UTC on each of ten reviewed weekdays, 23
+November through 4 December 2026. The existing sync tick supplies the capture.
+The Risk tab reports actual capture times, missed windows, and funding coverage.
+Review the prospective series before considering it for statistical risk.
 
-The audit found no approved daily return intervals to backfill. The minimum
-is 60 eligible sessions per statistical estimate. Existing broker marks
-support the observed benchmark comparison and drawdown within their own
-coverage. Reuse the audited evidence until a new input becomes available.
-See the [calculation rules](calculation-contracts.md#risk-tab-coverage).
+The ISA sample needs 58 more eligible returns for statistical risk. VUAG
+and holding correlation require separately qualified total-return data.
+The existing broker observations continue to support the observed comparison
+and drawdown within their coverage. See the
+[calculation rules](calculation-contracts.md#risk-tab-coverage).
 
 Maintain sourced classifications for new holdings. Prioritise fund coverage
 gaps by invested value and preserve source date, basis and unallocated weight.

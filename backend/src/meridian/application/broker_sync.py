@@ -14,6 +14,7 @@ from meridian.adapters.trading212 import PREFIX, BrokerError
 from meridian.application.broker_jobs import BrokerJobs
 from meridian.application.broker_snapshot import broker_snapshot, prepare_exposures
 from meridian.application.cash_reconciliation import prepare_cash_summary
+from meridian.application.cutoff_pilot import save_observation
 from meridian.application.snapshot_publish import project_snapshot, publish_snapshot
 from meridian.persistence.models import (
     Account,
@@ -115,7 +116,7 @@ class BrokerSync:
         db.flush()
         return run
 
-    async def refresh(self):
+    async def refresh(self, *, pilot_target=None):
         task = "snapshot"
         token = self.jobs.acquire(task)
         if token is None:
@@ -143,12 +144,19 @@ class BrokerSync:
                     ("account_summary", self.api.account_summary),
                     ("positions", self.api.positions),
                 ):
-                    start = self.jobs.clock().isoformat()
+                    started = self.jobs.clock()
                     values = await method()
+                    captured = self.jobs.clock()
+                    if pilot_target is not None and family == "account_summary":
+                        if (values.account_id, values.currency) != (self.reference, "GBP"):
+                            raise BrokerError("account_identity_mismatch")
+                        save_observation(
+                            self.engine, pilot_target, started, captured, values.total_value
+                        )
                     rows = [values] if family == "account_summary" else values
                     observations[family] = {
-                        "retrieval_started_at": start,
-                        "retrieval_completed_at": self.jobs.clock().isoformat(),
+                        "retrieval_started_at": started.isoformat(),
+                        "retrieval_completed_at": captured.isoformat(),
                         "traversal_complete": True,
                         "records": [decimal_strings(row.raw_payload) for row in rows],
                     }
