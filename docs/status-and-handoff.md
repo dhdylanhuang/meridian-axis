@@ -17,7 +17,7 @@ deployed work and the evidence available to the next contributor.
 | Holdings and Exposures | Searchable holdings, sector, issuer domicile and fund-market allocations, currency and cash components, largest/top-five/top-ten weights, coverage and holding drill-down |
 | Portfolio Changes | Two approved UTC dates, ranked signed GBP holding changes, quantity flags, cash and concentration, and comparable saved classification weights with dated holding evidence |
 
-**Deployed sources at handoff** are gateway and sync `de470af`, with session
+**Deployed sources at handoff** are gateway and sync `907b8d7`, with session
 owner `3aa8cd5`. The gateway runs the private Rust WASM service and
 serves the dashboard. The existing session and sync Workers enforce the
 two-member scope around database and broker work. Schema `0008` and the
@@ -169,8 +169,19 @@ series. The approved statement series remains separate.
 The private effective-dated approval policy is implemented, with no policy
 installed for this release. It supports publishing newly eligible approved
 intervals automatically after valuation-basis review, and can feed a
-separate ISA risk table on reaching 60 eligible approved returns. The first
-active capture and release verification are pending. See the
+separate ISA risk table on reaching 60 eligible approved returns.
+
+Gateway and sync source `907b8d7` was deployed. Both active versions,
+the four served assets, protected bindings, anonymous denial and the
+ten-minute schedule were verified. A signed-in Risk request confirmed the
+upcoming slots, both existing statement returns and the automatic approval
+gate. The verification session was revoked. No automatic capture had yet
+occurred. The first live computed interval remains pending.
+
+Focused checks passed for eleven Rust performance cases, six Python cases,
+two browser cases and a generated WASM calculation. These covered the
+calendar beyond the initial window, funding-adjusted returns, missed dates,
+and the separate cutoff approval gate. See the
 [daily return contract](api-and-ui.md#risk-tab).
 
 ## Reviewed session performance and holding correlation
