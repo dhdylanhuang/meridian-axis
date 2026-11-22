@@ -5,6 +5,7 @@ const ROUTES = new Map([
   ["/api/v1/portfolio/history", "GET"],
   ["/api/v1/portfolio/changes", "GET"],
   ["/api/v1/portfolio/risk", "GET"],
+  ["/api/v1/portfolio/projections", "POST"],
   ["/api/v1/portfolio/refresh", "POST"],
   ["/api/v1/portfolio/cash-activity", "POST"],
   ["/api/v1/portfolio/refresh/status", "GET"],
@@ -83,13 +84,49 @@ async function boundedBody(request, maximum) {
   }
 }
 
+async function calculatePlan(app, origin, headers, body, calculate) {
+  let input;
+  try {
+    input = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(body));
+  } catch {
+    return failure("request_invalid", 400);
+  }
+  if (typeof input?.capture_time !== "string" || typeof input?.positions_time !== "string" ||
+      !input.assumptions || typeof input.assumptions !== "object") {
+    return failure("request_invalid", 400);
+  }
+  const source = await app.fetch(new Request(origin.origin + "/api/v1/portfolio/snapshot", {
+    method: "GET", headers: { Host: origin.host, Cookie: headers.get("cookie") ?? "" }, redirect: "manual",
+  }));
+  if (!source.ok) {
+    return new Response(source.body, { status: source.status, headers: privateHeaders(source.headers) });
+  }
+  const snapshot = await source.json();
+  if (snapshot.account_retrieval?.retrieval_completed_at !== input.capture_time ||
+      snapshot.positions_retrieval?.retrieval_completed_at !== input.positions_time) {
+    return failure("snapshot_changed", 409);
+  }
+  if (!calculate) return failure("calculation_unavailable", 503);
+  try {
+    const result = calculate(JSON.stringify({ snapshot, assumptions: input.assumptions }));
+    return new Response(result, { headers: privateHeaders({ "Content-Type": "application/json" }) });
+  } catch (error) {
+    const validation = new Set([
+      "projection_request_invalid", "growth_invalid", "deposit_limit", "deposit_amount_invalid",
+      "deposit_date_invalid", "allocation_limit", "destination_invalid", "allocation_amount_invalid",
+      "allocation_total_invalid", "projection_horizon_unavailable",
+    ]);
+    return validation.has(error) ? failure(error, 422) : failure("calculation_unavailable", 503);
+  }
+}
+
 export default {
   async scheduled(controller, env, ctx) {
     const id = env.SYNC.idFromName("shared-isa");
     const response = await env.SYNC.get(id).fetch(new Request("https://sync.internal/scheduled", {method:"POST"}));
     if (!response.ok) throw new Error("broker_sync_unavailable");
   },
-  async fetch(request, env, calculateChanges) {
+  async fetch(request, env, calculateChanges, planning = {}) {
     const origin = configuredOrigin(env.PUBLIC_ORIGIN);
     if (!origin) return failure("session_configuration_unavailable", 503);
     try {
@@ -104,7 +141,7 @@ export default {
       if (((changes || request.url.includes("?")) && !dateRange) || request.url.includes("#")) {
         return failure("request_invalid", 400);
       }
-      if (["/", "/signin.js", "/signin.css", "/snapshot.js"].includes(url.pathname) && env.ASSETS) {
+      if (["/", "/signin.js", "/signin.css", "/snapshot.js", "/planning.js"].includes(url.pathname) && env.ASSETS) {
         if (request.method !== "GET") return failure("method_not_allowed", 405, { Allow: "GET" });
         const supplied = request.headers.get("origin");
         if (supplied !== null && supplied !== origin.origin) return failure("origin_invalid", 403);
@@ -129,12 +166,20 @@ export default {
       if ((csrf !== null && !NONCE.test(csrf)) || (method === "POST" && csrf === null)) {
         return failure("csrf_invalid", 403);
       }
+      const calculator = url.pathname === "/api/v1/portfolio/projections" ? "projections" : null;
+      if (calculator) {
+        const csrfCookies = (request.headers.get("cookie") ?? "").split(";")
+          .map(value => value.trim()).filter(value => value.startsWith("__Host-meridian_csrf="));
+        if (csrfCookies.length !== 1 || csrfCookies[0] !== "__Host-meridian_csrf=" + csrf) {
+          return failure("csrf_invalid", 403);
+        }
+      }
       const login = ["/api/v1/session/login", "/api/v1/session/setup"].includes(url.pathname);
       const activity = url.pathname === "/api/v1/portfolio/cash-activity";
-      if ((login || activity) && request.headers.get("content-type") !== "application/json") {
+      if ((login || activity || calculator) && request.headers.get("content-type") !== "application/json") {
         return failure("request_invalid", 400);
       }
-      const body = await boundedBody(request, login ? 8192 : activity ? 2048 : 0);
+      const body = await boundedBody(request, login ? 8192 : activity ? 2048 : calculator ? 96 * 1024 : 0);
       const headers = new Headers({ Host: origin.host });
       for (const name of ["origin", "cookie", "x-csrf-token"]) {
         const value = request.headers.get(name);
@@ -145,7 +190,11 @@ export default {
         method, headers, redirect: "manual", ...((login || activity) ? { body } : {}),
       });
       const id = env.APP.idFromName("meridian-session-application");
-      const response = await env.APP.get(id).fetch(upstream);
+      const app = env.APP.get(id);
+      if (calculator) {
+        return await calculatePlan(app, origin, headers, body, planning[calculator]);
+      }
+      const response = await app.fetch(upstream);
       if (changes && response.ok) {
         try {
           if (!calculateChanges) throw new Error("changes_unavailable");

@@ -3,22 +3,30 @@ import test from 'node:test';
 import vm from 'node:vm';
 import fs from 'node:fs';
 const source=fs.readFileSync(new URL('../signin/snapshot.js',import.meta.url),'utf8');
+const planning = fs.readFileSync(new URL('../signin/planning.js', import.meta.url), 'utf8');
 class Element {
-  constructor(){this.textContent='';this.value='';this.children=[];this.listeners={};this.attributes={};}
-  append(child){this.children.push(child);}
+  constructor(tag){this.tag=tag;this.textContent='';this.value='';this.children=[];this.listeners={};this.attributes={};this.dataset={};}
+  append(child){child.parentElement=this;this.children.push(child);}
+  remove(){this.parentElement.children=this.parentElement.children.filter(child=>child!==this);}
+  querySelectorAll(selector){
+    const key=selector.slice(6,-1).replace(/-([a-z])/g, (_, letter)=>letter.toUpperCase());
+    return this.children.flatMap(child=>[...(key in child.dataset?[child]:[]),...child.querySelectorAll(selector)]);
+  }
   replaceChildren(...children){this.children=children.flatMap(child=>child.fragment?child.children:[child]);}
   addEventListener(name,fn){this.listeners[name]=fn;}
   setAttribute(name,value){this.attributes[name]=value;}
 }
-function setup(fetcher){
+function setup(fetcher, withPlanning = false){
   const elements=new Map();const window=new EventTarget();
   let now = 1_000_000, nextTimer = 0;
   const timers = new Map(), events = {};
   class Clock extends Date { constructor(...args){super(...(args.length ? args : [now]));} static now(){return now;} }
   const setTimeout = (fn, delay) => {const id=++nextTimer;timers.set(id,{fn,at:now+delay,delay});return id;};
   const clearTimeout = id => timers.delete(id);
-  const document={hidden:false,addEventListener(name,fn){events[name]=fn;},getElementById(id){if(!elements.has(id))elements.set(id,new Element());return elements.get(id);},createElement(){return new Element();},createDocumentFragment(){const e=new Element();e.fragment=true;return e;},body:{classList:{add(){},remove(){}}}};
-  vm.runInNewContext(source,{document,window,fetch:fetcher,AbortController,Event,BigInt,Date:Clock,setTimeout,clearTimeout});
+  const document={hidden:false,addEventListener(name,fn){events[name]=fn;},getElementById(id){if(!elements.has(id))elements.set(id,new Element());return elements.get(id);},createElement(tag){return new Element(tag);},createDocumentFragment(){const e=new Element();e.fragment=true;return e;},body:{classList:{add(){},remove(){}}}};
+  const context = vm.createContext({document,window,fetch:fetcher,AbortController,Event,BigInt,Date:Clock,setTimeout,clearTimeout});
+  if (withPlanning) vm.runInContext(planning, context);
+  vm.runInContext(source, context);
   return {view:window.meridianSnapshot,el:id=>document.getElementById(id),window,timers,document,
     advance(ms){now+=ms;},
     async tick(ms){now+=ms;for(const [id,timer] of [...timers])if(timer.at<=now){timers.delete(id);await timer.fn();}},
@@ -421,4 +429,53 @@ test('Portfolio Changes identifies gaps and links exposure rows to dated holding
   assert.equal(descendants(results).find(node=>node.id==='change-holding-0').open, true);
   ui.view.clear();
   assert.equal(results.children.length, 0);
+});
+
+function findNode(root, predicate) {
+  if (predicate(root)) return root;
+  for (const child of root.children) {
+    const found = findNode(child, predicate);
+    if (found) return found;
+  }
+}
+const planningSnapshot = () => ({ ...snapshot(), total_value: '1000' });
+
+test('Projections tab accepts deposits, renders comparisons and shows allocation errors', async () => {
+  const starting = planningSnapshot();
+  const result = {target_value:'1100',deposits:'100',growth:'0',goal_difference:'-98900',
+    series:[{date:'2026-01-02',value:'1000'},{date:'2030-04-30',value:'1100'}],
+    schedule:[{date:'2030-04-30',total:'100',amounts:[{kind:'cash',amount:'100',growth_pct:'0'}]}]};
+  let submitted = [];
+  const ui = setup(async (path, options) => {
+    if (path.endsWith('/snapshot')) return Response.json(starting);
+    assert.match(path, /\/projections$/);
+    const payload = JSON.parse(options.body);
+    submitted.push(payload);
+    if (payload.assumptions.plans[0].deposits[0].allocations[0].share === '90') {
+      return Response.json({error:'allocation_total_invalid'},{status:422});
+    }
+    return Response.json({method:'dated_isa_projection_v1',currency:'GBP',capture_time:payload.capture_time,
+      opening_growth_pct:'0',goal:'100000',baseline:{...result,target_value:'1000',deposits:'0',schedule:[]},
+      plans:[result,{...result,schedule:[]}]});
+  }, true);
+  ui.document.cookie = '__Host-meridian_csrf=synthetic';
+  await ui.view.load();
+  ui.el('projections-tab').listeners.click();
+  assert.equal(ui.el('projections-panel').hidden, false);
+  assert.equal(ui.el('risk-panel').hidden, true);
+  const form = ui.el('projections-form');
+  findNode(form, node => node.textContent === 'Add deposit').listeners.click();
+  const field = label => findNode(form, node => node.textContent === label).children[0];
+  field('Deposit amount (GBP)').value = '100';
+  field('Date or first month').value = '2030-04-30';
+  await form.onsubmit({preventDefault(){}});
+  assert.equal(submitted[0].assumptions.plans[0].deposits[0].allocations[0].kind, 'cash');
+  assert.match(content(ui.el('projections-capture')), /2026-01-02T12:00:00/);
+  assert.match(content(ui.el('projections-results')), /Plan A.*£1,100.*cash-flow schedule/s);
+  field('Allocation').value = '90';
+  form.oninput();
+  await form.onsubmit({preventDefault(){}});
+  assert.match(ui.el('projections-status').textContent, /add up to 100%/);
+  ui.view.clear();
+  assert.equal(form.children.length, 0);
 });

@@ -268,3 +268,40 @@ test('Portfolio Changes only returns calculated output from the authorized endpo
   assert.equal((await gateway.fetch(req(),state.env)).status,503);
   assert.equal((await gateway.fetch(request(path+'&account=other',{method:'GET'}),state.env)).status,400);
 });
+
+test("projections use the authenticated saved snapshot and reject a changed capture", async () => {
+  const state = setup();
+  const snapshot = {
+    account_retrieval: { retrieval_completed_at: "2029-04-30T10:00:00Z" },
+    positions_retrieval: { retrieval_completed_at: "2029-04-30T10:00:01Z" },
+    total_value: "1000",
+  };
+  let reads = 0;
+  state.env.APP.get = () => ({ async fetch(upstream) {
+    assert.equal(new URL(upstream.url).pathname, "/api/v1/portfolio/snapshot");
+    assert.equal(upstream.method, "GET");
+    assert.match(upstream.headers.get("cookie"), /meridian_session=synthetic/);
+    assert.equal(await upstream.text(), "");
+    reads++;
+    return Response.json(snapshot);
+  } });
+  const send = (capture, csrf = CSRF) => request("/api/v1/portfolio/projections", {
+    headers: { cookie: "__Host-meridian_session=synthetic; __Host-meridian_csrf=" + csrf },
+    body: JSON.stringify({capture_time: capture, positions_time: "2029-04-30T10:00:01Z",
+      assumptions: {}, snapshot: {total_value: "9999"}}),
+  });
+  const calculators = { projections(input) {
+    assert.deepEqual(JSON.parse(input), {snapshot, assumptions: {}});
+    return '{"method":"dated_isa_projection_v1"}';
+  } };
+  const forward = req => gateway.fetch(req, state.env, undefined, calculators);
+  const response = await forward(send("2029-04-30T10:00:00Z"));
+  assert.equal(response.status, 200);
+  privateResponse(response);
+  assert.equal((await response.json()).method, "dated_isa_projection_v1");
+  assert.equal((await forward(send("2029-04-30T09:00:00Z"))).status, 409);
+  assert.equal((await forward(send("2029-04-30T10:00:00Z", "x".repeat(43)))).status, 403);
+  assert.equal(reads, 2);
+  calculators.projections = () => { throw "allocation_total_invalid"; };
+  assert.equal((await forward(send("2029-04-30T10:00:00Z"))).status, 422);
+});

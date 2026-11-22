@@ -44,3 +44,19 @@ body.signed-in main{max-width:1180px}.workspace-head{display:flex;align-items:ce
 #changes-results details small{display:block}
 #changes-results details ul{margin:.4rem 0;padding-left:1.25rem}
 #changes-results details:target{outline:2px solid currentColor;outline-offset:3px}
+
+.planning-form { max-width: none; }
+.planning-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); gap: 1rem; margin-block: 1rem; }
+.planning-form fieldset { min-width: 0; border: 1px solid #496150; border-radius: .5rem; padding: .75rem; }
+.planning-form .plan-entry { margin-bottom: .75rem; }
+.planning-form input, .planning-form select { display: block; width: 100%; margin: .25rem 0 .65rem; }
+.planning-form select { background: #0d1710; color: #ecf0ed; border: 1px solid #496150; border-radius: .3rem; padding: .55rem; }
+.planning-form button { margin: .25rem .5rem .25rem 0; }
+.planning-chart { display: block; width: 100%; height: auto; background: #0d1710; margin-block: .65rem; }
+.planning-key { display: inline-block; margin-right: 1rem; }
+.planning-key::before { content: ''; display: inline-block; width: 1rem; height: .2rem; margin-right: .35rem; vertical-align: middle; background: currentColor; }
+.planning-key-0 { color: #a0aec0; }
+.planning-key-1 { color: #59dcc3; }
+.planning-key-2 { color: #ffb274; }
+.planning-form button[type="button"] { width: auto; padding-inline: .8rem; background: #283d2d; color: #e4efdf; }
+#projections-results details td:last-child { white-space: normal; min-width: 15rem; }

@@ -37,6 +37,10 @@
     const formatted = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (fraction === undefined ? '' : '.' + fraction);
     return (negative ? '−' : '') + (currency === 'GBP' ? '£' : '') + formatted + (currency && currency !== 'GBP' ? ' ' + currency : '');
   }
+  window.meridianPlanning?.configure(decimal, () => {
+    clear();
+    window.dispatchEvent(new Event('meridian-session-ended'));
+  });
   function renderCash(data) {
     const container = el('cash-reconciliation');
     if (!container) return;
@@ -131,7 +135,7 @@
     const [x,y] = parts.map(([whole, fraction='']) => BigInt(whole + fraction.padEnd(scale, '0')));
     return x < y ? -1 : x > y ? 1 : 0;
   }
-  const tabs = [['axis-tab','axis-panel'],['exposures-tab','portfolio-exposures'],['holdings-tab','holdings-panel'],['history-tab','history-panel'],['risk-tab','risk-panel'],['changes-tab','changes-panel']];
+  const tabs = [['axis-tab','axis-panel'],['exposures-tab','portfolio-exposures'],['holdings-tab','holdings-panel'],['history-tab','history-panel'],['risk-tab','risk-panel'],['changes-tab','changes-panel'],['projections-tab','projections-panel']];
   function selectTab(tab) {
     for (const [other, section] of tabs) {
       el(other).setAttribute('aria-pressed',String(other === tab));
@@ -1017,6 +1021,7 @@
   function clear() {
     active = false; clearTimeout(timer); failures = 0; nextRead = 0; nextManual = 0;
     generation++; controller?.abort(); cancelDetails(); snapshot = null;
+    window.meridianPlanning?.clear();
     amounts.forEach(id => el(id).textContent = '—');
     el('holdings-body').replaceChildren(); el('holding-count').textContent = '';
     if (el('cash-reconciliation')) { el('cash-reconciliation').replaceChildren(); el('cash-reconciliation').textContent = '—'; }
@@ -1123,6 +1128,7 @@
       if (version !== generation) return;
       if (data.source !== 'trading212' || data.basis !== 'broker_reported' || !Array.isArray(data.positions)) throw new Error('invalid');
       snapshot = data;
+      window.meridianPlanning?.setSnapshot(data);
       const values = [data.total_value,data.investments.currentValue,data.cash_components.availableToTrade,data.investments.unrealizedProfitLoss,data.cash_components.inPies,data.cash_components.reservedForOrders,data.investments.totalCost,data.investments.realizedProfitLoss];
       amounts.forEach((id,index) => el(id).textContent = decimal(values[index],data.currency));
       el('snapshot-time').textContent = `Trading 212 · ${data.environment.toUpperCase()} account · Account captured ${when(data.account_retrieval.retrieval_completed_at)}; holdings captured ${when(data.positions_retrieval.retrieval_completed_at)}.`;
