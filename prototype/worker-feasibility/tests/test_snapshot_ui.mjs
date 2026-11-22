@@ -210,9 +210,20 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
       ]},
     issuer_domiciles:{classified:missing,observed,sources:{},
       buckets:[{label:null,...observed,members:{SYNTH:{value,holding_pct:'100'},MISSING:{value:null,holding_pct:'100'}}}]},
+    fund_markets:{classified:observed,observed,sources:{},
+      buckets:[{label:'Synthetic region',...observed,members:{SYNTH:{value,holding_pct:'100'}}}]},
     cash_component_pct:{availableToTrade:'0',inPies:null,reservedForOrders:null},
   };
   const ui = setup(async () => ({ok:true,status:200,json:async()=>data}));
+  const createElement = ui.document.createElement;
+  let arcs = 0;
+  ui.document.createElement = tag => {
+    const element = createElement(tag);
+    if (tag === 'canvas') element.getContext = () => ({
+      clearRect() {}, beginPath() {}, stroke() {}, arc() { arcs++; },
+    });
+    return element;
+  };
   await ui.view.load();
   const section = ui.el('portfolio-exposures');
   const find = (node, value) => node.textContent === value ? node
@@ -221,6 +232,22 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
   assert.ok(find(section, '10.1%'));
   assert.ok(find(section, 'Largest position'));
   assert.ok(find(section, 'Equity sectors'));
+  const charts = section.children.filter(node => node.tag === 'figure');
+  assert.deepEqual(charts.map(chart => chart.children[0].textContent), [
+    'Concentration · each ring is a share of ISA value',
+    'Holdings · share of observed GBP position values',
+    'Listing currencies · share of observed GBP values',
+    'Equity sectors · share of observed GBP values',
+    'Direct shares · issuer domicile · share of observed GBP values',
+    'Funds · underlying markets · share of observed GBP values',
+    'Cash components · each ring is a share of ISA value',
+  ]);
+  assert.ok(find(charts[0], 'Unavailable'));
+  assert.ok(find(charts[3], 'Unclassified'));
+  assert.ok(find(charts[5], 'Synthetic region'));
+  assert.ok(find(charts[6], '0%'));
+  assert.ok(find(charts[6], 'Unavailable'));
+  assert.equal(arcs, 7);
   const legend = ui.el('overview-allocation-legend');
   assert.ok(find(legend, 'Industrials'));
   assert.ok(find(legend, '£5.000000000000000000001'));
@@ -234,18 +261,19 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
   assert.equal(ui.el('holdings-body').children.length, 1);
   ui.el('exposures-tab').listeners.click();
   assert.equal(section.hidden,false);
-  find(section, 'Industrials').listeners.click();
+  const link = label => findNode(section, node => node.tag === 'button' && node.textContent === label);
+  link('Industrials').listeners.click();
   const contributing = ui.el('holdings-body').children[0];
   assert.ok(find(contributing, 'Bucket contribution: £5.000000000000000000001 · 50% of position'));
   assert.ok(find(contributing, 'Source categories · ICB · Industrials'));
   assert.equal(find(contributing, 'Source · 1 Jan 2026').href, 'https://example.test/fact');
-  find(section, 'Unclassified quote currency').listeners.click();
+  link('Unclassified quote currency').listeners.click();
   assert.equal(ui.el('holdings-panel').hidden,false);
   assert.equal(ui.el('holdings-body').children.length,1);
   assert.equal(ui.el('holdings-body').children[0].children[0].textContent,'Missing Wallet');
-  find(section, 'USD').listeners.click();
+  link('USD').listeners.click();
   assert.equal(ui.el('holdings-body').children[0].children[5].textContent,'10.1%');
-  find(section, 'Unclassified').listeners.click();
+  link('Unclassified').listeners.click();
   assert.equal(ui.el('holdings-body').children.length,2);
   ui.el('clear-holding-scope').listeners.click();
   assert.equal(ui.el('holding-scope').hidden,true);

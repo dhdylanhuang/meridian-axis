@@ -741,7 +741,6 @@
     const allocation = report?.sectors;
     const buckets = (allocation?.buckets ?? []).filter(row => row.value != null && compare(row.value, '0') > 0);
     if (!buckets.length || allocation.observed?.value == null) return;
-    const colours = ['#78cbd0', '#a8a1ec', '#e7bd7a', '#647993', '#9babbc'];
     const classified = buckets.filter(row => row.label != null);
     const visible = classified.length === 4 ? 4 : 3;
     const groups = classified.slice(0, visible).map((row, colour) => ({
@@ -770,7 +769,12 @@
       add(row, 'dd', group.label);
     }
     ring.hidden = false;
-    const canvas = el('overview-allocation');
+    drawExposureRing(el('overview-allocation'), groups, total);
+  }
+
+  const exposureColours = ['#78cbd0', '#a8a1ec', '#e7bd7a', '#647993', '#9babbc', '#7bbc9d', '#d391a6', '#83a4ed'];
+
+  function drawExposureRing(canvas, groups, total) {
     const ctx = canvas.getContext?.('2d');
     if (!ctx) return;
     const centre = canvas.width / 2;
@@ -778,10 +782,11 @@
     ctx.lineWidth = 13;
     let position = -Math.PI / 2;
     for (const group of groups) {
+      if (group.weight <= 0) continue;
       const size = 2 * Math.PI * group.weight / total;
       const gap = groups.length === 1 ? 0 : Math.min(size / 5, .026);
       ctx.beginPath();
-      ctx.strokeStyle = colours[group.colour];
+      ctx.strokeStyle = exposureColours[group.colour];
       ctx.arc(centre, centre, centre - 18, position + gap, position + size - gap);
       ctx.stroke();
       position += size;
@@ -1080,6 +1085,79 @@
     }
   }
 
+  function exposureRing(parent, title, headline, groups, total) {
+    const ring = add(parent, 'div');
+    ring.className = 'allocation-chart';
+    const canvas = add(ring, 'canvas');
+    canvas.width = canvas.height = 196;
+    canvas.setAttribute('aria-hidden', 'true');
+    const centre = add(ring, 'div');
+    add(centre, 'small', title);
+    add(centre, 'strong', headline);
+    drawExposureRing(canvas, groups, total);
+  }
+
+  function exposurePie(section, basis, rows, value, currency, otherLabel = 'Other categories') {
+    const chart = add(section, 'figure');
+    chart.className = 'exposure-pie';
+    add(chart, 'figcaption', basis);
+    const marked = rows.filter(row => Number.isFinite(Number(row.value)) && Number(row.value) > 0);
+    const unclassified = marked.filter(row => row.unclassified);
+    const classified = marked.filter(row => !row.unclassified);
+    const palette = [0, 1, 2, 5, 6, 7];
+    const toSlice = (row, colour) => ({
+      name: row.name, label: decimal(row.value, currency), weight: Number(row.value), colour,
+    });
+    const slices = classified.slice(0, palette.length).map((row, i) => toSlice(row, palette[i]));
+    const other = classified.slice(palette.length);
+    if (other.length === 1) {
+      slices.push(toSlice(other[0], 3));
+    } else if (other.length) {
+      slices.push({name: otherLabel, label: `${other.length} combined`,
+        weight: other.reduce((total, row) => total + Number(row.value), 0), colour: 3});
+    }
+    for (const row of unclassified) slices.push(toSlice(row, 4));
+    // Floating point is used only for the drawing; the legend uses saved decimal values.
+    const total = slices.reduce((sum, row) => sum + row.weight, 0);
+    if (!Number.isFinite(total) || total <= 0) {
+      add(chart, 'p', 'No positive GBP values available for this chart.');
+      return;
+    }
+    const layout = add(chart, 'div');
+    layout.className = 'exposure-pie-content';
+    exposureRing(layout, 'Observed value', decimal(value, currency), slices, total);
+    const legend = add(layout, 'div');
+    legend.className = 'allocation-legend';
+    const list = add(legend, 'dl');
+    for (const slice of slices) {
+      const row = add(list, 'div');
+      const label = add(row, 'dt', slice.name);
+      add(label, 'i').setAttribute('data-colour', String(slice.colour));
+      add(row, 'dd', slice.label);
+    }
+  }
+
+  function exposureSharePies(section, basis, rows) {
+    const chart = add(section, 'figure');
+    chart.className = 'exposure-pie exposure-shares';
+    add(chart, 'figcaption', basis);
+    const rings = add(chart, 'div');
+    rings.className = 'exposure-share-grid';
+    for (const {name, share} of rows) {
+      const weight = share == null ? NaN : Number(share);
+      if (!Number.isFinite(weight) || weight < 0 || weight > 100) {
+        const unavailable = add(rings, 'div');
+        unavailable.className = 'exposure-share-unavailable';
+        add(unavailable, 'small', name);
+        add(unavailable, 'p', 'Unavailable');
+        continue;
+      }
+      const slices = [{weight, colour: 0}, {weight: 100 - weight, colour: 3}]
+        .filter(slice => slice.weight > 0);
+      exposureRing(rings, name, percent(share), slices, 100);
+    }
+  }
+
   function exposureCells(row, exposure, currency) {
     add(row, 'td', decimal(exposure.value, currency));
     add(row, 'td', percent(exposure.portfolio_pct));
@@ -1094,6 +1172,9 @@
       return;
     }
     add(section, 'p', `Classified: ${decimal(allocation.classified.value, data.currency)} of ${decimal(allocation.observed.value, data.currency)} in observed holdings for this view · ${percent(allocation.classified.invested_pct)} of broker investment value.`);
+    exposurePie(section, `${title} · share of observed GBP values`, allocation.buckets.map(bucket => ({
+      name: bucket.label ?? 'Unclassified', value: bucket.value, unclassified: bucket.label == null,
+    })), allocation.observed.value, data.currency);
     const body = exposureTable(section, ['Allocation', ...columns], title);
     for (const bucket of allocation.buckets) {
       const row = add(body, 'tr'), cell = add(row, 'td');
@@ -1126,21 +1207,28 @@
 
     add(section, 'h3', 'Concentration');
     add(section, 'p', 'Largest position and combined weights of the largest five and ten positions, using fewer if the account holds fewer. Cash is excluded from the ranked positions.');
+    const concentrationLabel = top => top === 1 ? 'Largest position' : `Top ${top}`;
+    exposureSharePies(section, 'Concentration · each ring is a share of ISA value', [1, 5, 10].map(top => ({
+      name: concentrationLabel(top), share: report.concentration.find(item => item.top === top)?.portfolio_pct,
+    })));
     const concentration = exposureTable(section, ['Largest positions', ...columns], 'Concentration measures');
     for (const measure of report.concentration) {
       const row = add(concentration, 'tr');
-      const label = measure.top === 1 ? 'Largest position' : `Top ${measure.top}`;
+      const label = concentrationLabel(measure.top);
       add(row, 'td', measure.value == null ? label : `${label} (${measure.position_count} used)`);
       exposureCells(row, measure, currency);
     }
     if (report.missing_values) add(section, 'p', 'Combined concentration weights require a compatible value for every holding.');
 
     add(section, 'h3', 'Top holdings by reported value');
-    const ranked = report.holdings.filter(row => row.value != null).slice(0, 10);
+    const ranked = report.holdings.filter(row => row.value != null);
     if (ranked.length) {
-      const body = exposureTable(section, ['Holding', ...columns], 'Top holdings');
       const figures = new Map(data.positions.map(row => [row.ticker, row]));
-      for (const [index, position] of ranked.entries()) {
+      exposurePie(section, 'Holdings · share of observed GBP position values', ranked.map(row => ({
+        name: figures.get(row.ticker)?.name || row.ticker, value: row.value,
+      })), observed.value, currency, 'Other holdings');
+      const body = exposureTable(section, ['Holding', ...columns], 'Top holdings');
+      for (const [index, position] of ranked.slice(0, 10).entries()) {
         const row = add(body, 'tr'), cell = add(row, 'td');
         const holding = figures.get(position.ticker);
         holdingLink(cell, `${index + 1}. ${holding?.name || position.ticker}`,
@@ -1155,6 +1243,10 @@
     add(section, 'h3', 'Listing and quote currencies');
     add(section, 'p', 'Trading 212 position currency, with current broker instrument metadata as a fallback. Values are grouped by trading currency. Economic currency exposure requires underlying issuer or fund data.');
     if (report.quote_currencies.length) {
+      exposurePie(section, 'Listing currencies · share of observed GBP values', report.quote_currencies.map(bucket => ({
+        name: bucket.quote_currency || 'Unclassified quote currency', value: bucket.value,
+        unclassified: !bucket.quote_currency,
+      })), observed.value, currency);
       const body = exposureTable(section, ['Quote currency', ...columns], 'Quote currency allocation');
       for (const bucket of report.quote_currencies) {
         const row = add(body, 'tr'), cell = add(row, 'td');
@@ -1178,8 +1270,12 @@
       data, columns);
 
     add(section, 'h3', 'Reported cash components');
+    const cashComponents = [['availableToTrade','Available to trade'],['inPies','In pies'],['reservedForOrders','Reserved for orders']];
+    exposureSharePies(section, 'Cash components · each ring is a share of ISA value', cashComponents.map(([key, name]) => ({
+      name, share: report.cash_component_pct[key],
+    })));
     const cash = exposureTable(section, ['Component', 'Value', '% of portfolio'], 'Cash component weights');
-    for (const [key, label] of [['availableToTrade','Available to trade'],['inPies','In pies'],['reservedForOrders','Reserved for orders']]) {
+    for (const [key, label] of cashComponents) {
       const row = add(cash, 'tr');
       add(row, 'td', label);
       add(row, 'td', decimal(data.cash_components[key], currency));
