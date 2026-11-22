@@ -1,3 +1,4 @@
+import './dates.js';
 import './planning.js';
 import './snapshot.js';
 // Setup secret exists only in this closure; never storage, query strings or logs.
@@ -22,7 +23,7 @@ function signedIn(data) {
   window.meridianSnapshot.start();
   clearTimeout(expiryTimer);
   expiryTimer = setTimeout(() => { signedOut(); message("Your session ended. Sign in again."); }, Math.max(0, new Date(data.expires_at).getTime() - Date.now()));
-  elements.expiry.textContent = `Session ends at ${new Date(data.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Sign in again afterwards.`;
+  elements.expiry.textContent = `Session ends at ${window.meridianDates.timestamp(data.expires_at)}. Sign in again afterwards.`;
 }
 function signedOut() {
   document.title = "Meridian · Sign in";

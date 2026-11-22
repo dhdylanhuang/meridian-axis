@@ -1,6 +1,7 @@
 // Assumptions and results live in the signed-in page only.
 (() => {
   const el = id => document.getElementById(id);
+  const { day: formatDay, timestamp: when } = window.meridianDates;
   function add(parent, tag, text) {
     const node = document.createElement(tag);
     if (text !== undefined) node.textContent = text;
@@ -245,7 +246,7 @@
             `${row.kind === 'cash' ? 'Cash' : row.name}${row.kind === 'hypothetical' ? ' (hypothetical)' : ''} · ${money(row.amount)} · ${row.growth_pct}%`).join(' / '),
         ]));
         table(details, ['Deposit date (UTC)', 'Deposit', 'Total deposit'], rows.map(flow => [
-          flow.date, String(flow.deposit + 1), money(instructions[flow.deposit].total),
+          formatDay(flow.date), String(flow.deposit + 1), money(instructions[flow.deposit].total),
         ]));
       }
     }
@@ -277,8 +278,8 @@
       ctx.strokeStyle = '#354253';
       ctx.beginPath(); ctx.moveTo(95, y(value)); ctx.lineTo(873, y(value)); ctx.stroke();
     }
-    ctx.fillText(series[0][0].date, 95, 299);
-    if (last !== first) ctx.fillText(targetDate, 795, 299);
+    ctx.fillText(formatDay(series[0][0].date), 95, 299);
+    if (last !== first) ctx.fillText(formatDay(targetDate), 795, 299);
     ctx.setLineDash([5, 5]);
     ctx.strokeStyle = '#dde7f4';
     ctx.beginPath(); ctx.moveTo(95, y(goal)); ctx.lineTo(873, y(goal)); ctx.stroke();
@@ -422,9 +423,9 @@
     if (!stress) stress = setupStress();
     for (const node of projection.form.querySelectorAll('[data-planning-holding]')) fillHoldings(node);
     for (const node of projection.form.querySelectorAll('[data-planning-date]')) node.min = captureDate();
-    el('projections-capture').textContent = `Approved Trading 212 ISA · ${formatMoney(snapshot.total_value, 'GBP')} · captured ${new Date(stamp(snapshot)).toISOString()}`;
+    el('projections-capture').textContent = `Approved Trading 212 ISA · ${formatMoney(snapshot.total_value, 'GBP')} · captured ${when(stamp(snapshot))}`;
     stress.update();
-    el('stress-capture').textContent = `Approved Trading 212 ISA · Account captured ${new Date(stamp(snapshot)).toISOString()} · Holdings captured ${new Date(holdingsStamp(snapshot)).toISOString()}`;
+    el('stress-capture').textContent = `Approved Trading 212 ISA · Account captured ${when(stamp(snapshot))} · Holdings captured ${when(holdingsStamp(snapshot))}`;
     invalidate(projection, refreshed ? 'The approved snapshot changed. Check your dates and holdings, then recalculate.' : 'Enter assumptions for either plan, then calculate.');
     invalidate(stress, refreshed ? 'The approved snapshot changed. Check your holding selections, then recalculate.' : 'Compare the default shocks or edit either scenario.');
   }

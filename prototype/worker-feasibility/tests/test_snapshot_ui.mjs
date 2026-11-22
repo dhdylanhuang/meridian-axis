@@ -3,6 +3,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 import fs from 'node:fs';
 const source=fs.readFileSync(new URL('../signin/snapshot.js',import.meta.url),'utf8');
+const dates = fs.readFileSync(new URL('../signin/dates.js', import.meta.url), 'utf8');
 const planning = fs.readFileSync(new URL('../signin/planning.js', import.meta.url), 'utf8');
 class Element {
   constructor(tag){this.tag=tag;this.textContent='';this.value='';this.children=[];this.listeners={};this.attributes={};this.dataset={};}
@@ -25,6 +26,7 @@ function setup(fetcher, withPlanning = false){
   const clearTimeout = id => timers.delete(id);
   const document={hidden:false,addEventListener(name,fn){events[name]=fn;},getElementById(id){if(!elements.has(id))elements.set(id,new Element());return elements.get(id);},createElement(tag){return new Element(tag);},createDocumentFragment(){const e=new Element();e.fragment=true;return e;},body:{classList:{add(){},remove(){}}}};
   const context = vm.createContext({document,window,fetch:fetcher,AbortController,Event,BigInt,Date:Clock,setTimeout,clearTimeout});
+  vm.runInContext(dates, context);
   if (withPlanning) vm.runInContext(planning, context);
   vm.runInContext(source, context);
   return {view:window.meridianSnapshot,el:id=>document.getElementById(id),window,timers,document,
@@ -34,6 +36,16 @@ function setup(fetcher, withPlanning = false){
   };
 }
 function snapshot(){return {source:'trading212',basis:'broker_reported',environment:'demo',currency:'GBP',total_value:'9007199254740993.123456789',investments:{currentValue:'99',totalCost:'11',unrealizedProfitLoss:'2'},cash_components:{availableToTrade:'7'},account_retrieval:{retrieval_completed_at:'2026-01-02T12:00:00Z'},positions_retrieval:{retrieval_completed_at:'2026-01-02T12:00:01Z'},positions:[{name:'<img src=x>',ticker:'SYNTH',quantity:'0.00000000000000001',current_value:'10',account_currency:'GBP',instrument_currency:'USD',current_price:'12.34'}]};}
+test('dashboard dates use the requested London-time format and keep UTC date buckets', () => {
+ const window = {};
+ vm.runInNewContext(dates, {window});
+ const {timestamp, day} = window.meridianDates;
+ assert.equal(timestamp('2026-11-22T17:40:27.414000+00:00'), '5:40pm 22 Nov 2026');
+ assert.equal(timestamp('2026-07-22T23:40:27Z'), '12:40am 23 Jul 2026');
+ assert.equal(timestamp('2026-07-22'), '22 Jul 2026');
+ assert.equal(day('2026-07-22', true), '22 Jul');
+ assert.equal(timestamp(null), 'Unavailable');
+});
 test('broker total stays exact; values missing remain unavailable and names are literal text',async()=>{
  const ui=setup(async()=>({ok:true,status:200,json:async()=>snapshot()}));await ui.view.load();
  assert.equal(ui.el('total-value').textContent,'£9,007,199,254,740,993.123456789');
@@ -215,7 +227,7 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
   find(section, 'Industrials').listeners.click();
   const contributing = ui.el('holdings-body').children[0];
   assert.ok(find(contributing, 'Bucket contribution: £10.000000000000000000001 · 50% of position'));
-  assert.equal(find(contributing, 'Source · 2026-01-01').href, 'https://example.test/fact');
+  assert.equal(find(contributing, 'Source · 1 Jan 2026').href, 'https://example.test/fact');
   find(section, 'Unclassified quote currency').listeners.click();
   assert.equal(ui.el('holdings-panel').hidden,false);
   assert.equal(ui.el('holdings-body').children.length,1);
@@ -258,8 +270,9 @@ test('History renders exact daily values, breaks the line across gaps, and clear
  ui.el('overview-90d').listeners.click();
  assert.match(ui.el('overview-history-caption').textContent,/3 of 90 UTC days observed/);
  assert.equal(reads,1);
- assert.match(ui.el('history-point').textContent,/£9,007,199,254,740,993.123456789.*11:22:33 UTC.*11:22:34 UTC/);
+ assert.match(ui.el('history-point').textContent,/£9,007,199,254,740,993.123456789.*12:22pm 31 Mar 2026.*12:22pm 31 Mar 2026/);
  assert.equal(ui.el('history-body').children.length,90);
+ assert.equal(ui.el('history-body').children[0].children[2].title, days[89].captured_at);
  assert.equal(ui.el('history-body').children[1].children[1].textContent,'No saved snapshot');
  ui.el('history-chart').listeners.keydown({key:'ArrowLeft',preventDefault(){}});
  assert.match(ui.el('history-point').textContent,/No saved snapshot/);
@@ -379,7 +392,7 @@ test('Risk applies a dated range and clears private drawdown on sign-out',async(
  ui.el('risk-filter').listeners.submit({preventDefault(){}});
  await new Promise(resolve=>setImmediate(resolve));
  assert.deepEqual(requests,['/api/v1/portfolio/risk','/api/v1/portfolio/risk?start=2026-11-18&end=2026-11-19']);
- assert.match(ui.el('risk-status').textContent,/2026-11-18 to 2026-11-19/);
+ assert.match(ui.el('risk-status').textContent,/18 Nov 2026 to 19 Nov 2026/);
  const text=node=>[node.textContent,...node.children.flatMap(text)];
  const riskText=text(ui.el('risk-results'));
  assert.ok(riskText.includes('12%'));
@@ -392,7 +405,7 @@ test('Risk applies a dated range and clears private drawdown on sign-out',async(
  assert.ok(riskText.includes('−£5.12 · 2 flows'));
  assert.ok(riskText.includes('£0 · 0 flows'));
  assert.ok(riskText.includes('Missing scheduled capture'));
- assert.ok(riskText.includes('2026-11-23 22:00:14 UTC'));
+ assert.ok(riskText.includes('10:00pm 23 Nov 2026'));
  assert.ok(riskText.includes('AAA and BBB'));
  assert.ok(riskText.includes('0.952381%'));
  assert.ok(riskText.includes('£100 · 1 event'));
@@ -434,7 +447,7 @@ test('Portfolio Changes identifies gaps and links exposure rows to dated holding
   missing = false;
   await submit();
   assert.match(content(results), /\+£10.*Quantity changed/s);
-  assert.match(content(results), /15:00:00\.123456 UTC/);
+  assert.match(content(results), /3:00pm 20 Nov 2026/);
   const link = descendants(results).find(node=>node.href==='#change-holding-0');
   link.listeners.click();
   assert.equal(descendants(results).find(node=>node.id==='change-holding-0').open, true);
@@ -481,7 +494,7 @@ test('Projections tab accepts deposits, renders comparisons and shows allocation
   field('Date or first month').value = '2030-04-30';
   await form.onsubmit({preventDefault(){}});
   assert.equal(submitted[0].assumptions.plans[0].deposits[0].allocations[0].kind, 'cash');
-  assert.match(content(ui.el('projections-capture')), /2026-01-02T12:00:00/);
+  assert.match(content(ui.el('projections-capture')), /12:00pm 2 Jan 2026/);
   assert.match(content(ui.el('projections-results')), /Plan A.*£1,100.*cash-flow schedule/s);
   field('Allocation').value = '90';
   form.oninput();

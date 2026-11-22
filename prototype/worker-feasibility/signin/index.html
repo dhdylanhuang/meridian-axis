@@ -109,10 +109,10 @@
     <p id="history-point" aria-live="polite"></p>
     <p id="history-funding-note" class="hint" hidden>Gold marks show UTC days with a funding transaction. Select a marked day to open its evidence.</p>
     <details id="history-details">
-      <summary>Daily observations · exact values and capture times</summary>
+      <summary>Daily observations · values and capture times</summary>
       <div class="table-scroll" tabindex="0" aria-label="Daily observations table, scroll horizontally">
         <table>
-          <thead><tr><th scope="col">UTC day</th><th scope="col">Account value</th><th scope="col">Account captured (UTC)</th><th scope="col">Snapshot observed (UTC)</th></tr></thead>
+          <thead><tr><th scope="col">UTC day</th><th scope="col">Account value</th><th scope="col">Account captured (London)</th><th scope="col">Snapshot observed (London)</th></tr></thead>
           <tbody id="history-body"></tbody>
         </table>
       </div>
@@ -168,7 +168,7 @@
           <section class="panel details provenance">
             <h2>Source and availability</h2>
             <p id="snapshot-time">—</p>
-            <p>Trading 212 captures account and holdings data separately. Broker quote times are unavailable.</p>
+            <p>Trading 212 captures account and holdings data separately. Broker quote times are unavailable. Timestamps are shown in London time.</p>
             <button id="refresh-broker" type="button">Refresh Trading 212</button>
           </section>
         </div>

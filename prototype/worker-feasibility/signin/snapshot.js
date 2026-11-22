@@ -13,7 +13,12 @@
     parent.append(node);
     return node;
   };
-  const when = value => new Date(value).toLocaleString('en-GB',{timeZone:'Europe/London',timeZoneName:'short'});
+  const { day: formatDay, timestamp: when } = window.meridianDates;
+  function timeCell(row, value, fallback = 'Unavailable') {
+    const cell = add(row, 'td', value ? when(value) : fallback);
+    if (value) cell.title = value;
+    return cell;
+  }
   function cancelDetails(){ for (const pending of detailControllers) pending.abort(); detailControllers.clear(); }
   let active = false, loading = false, timer = null, failures = 0, nextRead = 0, nextManual = 0;
   const INTERVAL = 600_000, MAX_BACKOFF = 3_600_000, READ_COOLDOWN = 60_000;
@@ -49,20 +54,20 @@
     for (const [label, key] of [['Cash available to trade now','availableToTrade'],['Cash in pies','inPies'],['Reserved for orders','reservedForOrders']]) {
       add(current, 'dt', label); add(current, 'dd', decimal(data.cash_components?.[key], data.currency));
     }
-    add(container, 'p', `Trading 212 cash as of ${data.account_retrieval.retrieval_completed_at}. Components are shown separately.`);
+    add(container, 'p', `Trading 212 cash as of ${when(data.account_retrieval.retrieval_completed_at)}. Components are shown separately.`);
     const summary = data.cash_reconciliation, activity = summary?.reported_activity;
     if (!activity) {
       add(container, 'p', 'Dividend, interest, deposit and withdrawal amounts are not available in this saved snapshot. Cash above is broker-reported; no activity totals have been assumed.');
       return;
     }
     add(container, 'h3', 'Income and funding · year to date');
-    add(container, 'p', `${activity.since.slice(0,10)} to ${activity.cutoff.slice(0,10)} · Trading 212 activity.`);
+    add(container, 'p', `${formatDay(activity.since.slice(0, 10))} to ${formatDay(activity.cutoff.slice(0, 10))} · Trading 212 activity.`);
     const coverage = summary.history_coverage;
     if (coverage?.scope === 'broker_available_history') {
       for (const family of coverage.families) {
         const name = family.family === 'dividends' ? 'Dividend payouts' : 'Cash movements';
         add(container, 'p', family.state === 'provider_history_traversed'
-          ? `${name}: all available broker pages fetched as of ${family.completed_at}. Earliest captured event: ${family.earliest_observed_at || 'no events returned'}.`
+          ? `${name}: all available broker pages fetched as of ${when(family.completed_at)}. Earliest captured event: ${family.earliest_observed_at ? when(family.earliest_observed_at) : 'no events returned'}.`
           : `${name}: completed broker history traversal has not been established.`);
       }
       add(container, 'p', 'Coverage is the history returned by Trading 212. Complete account-lifetime history is not established; these are not statement-certified totals.');
@@ -110,10 +115,10 @@
         box.replaceChildren(); add(box,'p',`${label} · ${decimal(total.amount,total.currency)} total. Showing ${offset+1}–${offset+data.entries.length} of ${data.total_count} transactions.`);
         const scroll=add(box,'div'); scroll.className='table-scroll';
         const table=add(scroll,'table'), head=add(table,'thead'), header=add(head,'tr');
-        for(const title of ['Date','Payment / movement','Amount','Trading 212 reference','Source evidence']) add(header,'th',title);
+        for(const title of ['Date and time (London)','Payment / movement','Amount','Trading 212 reference','Source evidence']) add(header,'th',title);
         const body=add(table,'tbody');
         for(const entry of data.entries){
-          const row=add(body,'tr'); add(row,'td',entry.occurred_at); add(row,'td',entry.instrument_label || label);
+          const row=add(body,'tr'); timeCell(row, entry.occurred_at); add(row,'td',entry.instrument_label || label);
           add(row,'td',decimal(entry.amount,entry.currency)); add(row,'td',entry.reference);
           const evidence=add(add(row,'td'),'details'); add(evidence,'summary',`Revision ${entry.revision}`);
           add(evidence,'p',`Trading 212 · ${entry.family} · ${entry.provider_type}`);
@@ -160,7 +165,6 @@
     }
   }
   const historyLabel = point => point.status === 'missing' ? 'No saved snapshot' : 'Saved snapshot unavailable';
-  const utcStamp = value => value.replace('T', ' ').replace(/(?:\+00:00|Z)$/, '');
   const historyAmount = point => decimal(point.total_value, 'GBP');
   const fundingDays = new Map();
   const plot = {left: 175, right: 942, top: 24, bottom: 218};
@@ -182,7 +186,7 @@
     ctx.fillStyle = '#a1b0c1';
     const points = history.days;
     for (const index of [0, 22, 44, 67, 89]) {
-      ctx.fillText(points[index].date.slice(5), plotX(index), 252);
+      ctx.fillText(formatDay(points[index].date, true), plotX(index), 252);
     }
     const observed = points.filter(point => point.status === 'observed');
     if (observed.length) {
@@ -231,9 +235,9 @@
   function inspectDay(index) {
     historyIndex = Math.max(0, Math.min(history.days.length - 1, index));
     const point = history.days[historyIndex];
-    const day = point.date === history.end_date ? point.date + ' (today so far)' : point.date;
+    const day = formatDay(point.date) + (point.date === history.end_date ? ' (today so far)' : '');
     el('history-point').textContent = point.status === 'observed'
-      ? `${day} UTC · ${historyAmount(point)} · Account captured ${utcStamp(point.captured_at)} UTC · Snapshot observed ${utcStamp(point.observed_at)} UTC`
+      ? `${day} UTC · ${historyAmount(point)} · Account captured ${when(point.captured_at)} · Snapshot observed ${when(point.observed_at)}`
       : `${day} UTC · ${historyLabel(point)}`;
     const count = fundingDays.get(point.date);
     if (count) {
@@ -255,7 +259,7 @@
     nonpositive_growth:'The interval cannot be linked to a return series',
     period_boundary_unavailable:'A required period boundary is missing',
   };
-  const periodRange = row => `${row.start_date} to ${row.end_date}`;
+  const periodRange = row => `${formatDay(row.start_date)} to ${formatDay(row.end_date)}`;
   const adjustedReturn = row => row?.return_pct != null
     ? percent(row.return_pct)
     : performanceReasons[row?.reason] || 'No eligible interval in this window';
@@ -276,9 +280,9 @@
     add(section, 'p', `Provisional comparison · ${compare.matched_intervals} of ${compare.eligible_intervals} eligible portfolio intervals matched.`);
     add(section, 'p', observed
       ? 'VUAG GBP per-share prices come from saved Trading 212 holdings. Times show when holdings were captured. Quote age and split adjustments are unverified.'
-      : `GBP London closing prices · ${compare.source} · reviewed ${utcStamp(compare.reviewed_at)} UTC. Account capture and closing times can differ.`);
+      : `GBP London closing prices · ${compare.source} · reviewed ${when(compare.reviewed_at)}. Account capture and closing times can differ.`);
     if (!compare.intervals.length) return;
-    const body = exposureTable(section, ['UTC dates', 'Portfolio', 'VUAG', 'Difference', 'Account captures (UTC)', observed ? 'VUAG captures (UTC)' : 'VUAG closes (UTC)'], 'Portfolio and VUAG matched returns');
+    const body = exposureTable(section, ['UTC dates', 'Portfolio', 'VUAG', 'Difference', 'Account captures (London)', observed ? 'VUAG captures (London)' : 'VUAG closes (London)'], 'Portfolio and VUAG matched returns');
     for (const item of [...compare.intervals].reverse()) {
       const row = add(body, 'tr');
       add(row, 'td', periodRange(item));
@@ -287,9 +291,9 @@
       add(row, 'td', item.difference_pp == null
         ? (item.reason === 'portfolio_capture_date_mismatch' ? 'Account capture crossed UTC date' : observed ? 'VUAG capture missing' : 'Benchmark endpoint missing')
         : `${decimal(item.difference_pp)} pp`);
-      add(row, 'td', [item.portfolio_start_at, item.portfolio_end_at].map(utcStamp).join(' to '));
+      add(row, 'td', [item.portfolio_start_at, item.portfolio_end_at].map(when).join(' to '));
       add(row, 'td', [item.start_mark, item.end_mark].map(mark => mark
-        ? `${decimal(mark.price_gbp, 'GBP')} · ${utcStamp(mark.at)}` : 'Missing').join(' to '));
+        ? `${decimal(mark.price_gbp, 'GBP')} · ${when(mark.at)}` : 'Missing').join(' to '));
     }
   }
   function renderDrawdown(section, drawdown) {
@@ -298,15 +302,14 @@
       add(section, 'p', 'No eligible cash-flow-adjusted interval in the selected dates.');
       return;
     }
-    const utc = value => utcStamp(value) + ' UTC';
     const list = add(section, 'dl');
     add(list, 'dt', 'Drawdown at latest eligible capture');
     add(list, 'dd', percent(drawdown.current_pct));
     add(list, 'dt', 'Worst drawdown in this stretch');
     add(list, 'dd', percent(drawdown.worst_pct));
-    add(section, 'p', `Flow-adjusted stretch · ${utc(drawdown.start_at)} to ${utc(drawdown.as_of)} · ${drawdown.intervals} eligible intervals. Latest running peak captured ${utc(drawdown.current_peak_at)}.`);
+    add(section, 'p', `Flow-adjusted stretch · ${when(drawdown.start_at)} to ${when(drawdown.as_of)} · ${drawdown.intervals} eligible intervals. Latest running peak captured ${when(drawdown.current_peak_at)}.`);
     if (drawdown.worst_peak_at && drawdown.worst_trough_at) {
-      add(section, 'p', `Worst decline · peak ${utc(drawdown.worst_peak_at)} · trough ${utc(drawdown.worst_trough_at)}.`);
+      add(section, 'p', `Worst decline · peak ${when(drawdown.worst_peak_at)} · trough ${when(drawdown.worst_trough_at)}.`);
     }
     if (drawdown.later_unavailable_intervals > 0) {
       add(section, 'p', 'The selected range extends beyond the last eligible capture.');
@@ -348,7 +351,7 @@
     if (!performance.rows.length) return;
     const details = add(section, 'details');
     add(details, 'summary', `Session evidence · ${performance.rows.length} intervals`);
-    const rows = exposureTable(details, ['Reviewed cutoffs (UTC)', 'External GBP funding', 'ISA', 'VUAG', 'VUAG closes (UTC)'], 'Reviewed session evidence');
+    const rows = exposureTable(details, ['Reviewed cutoffs (London)', 'External GBP funding', 'ISA', 'VUAG', 'VUAG closes (London)'], 'Reviewed session evidence');
     const reasons = {
       missing_session_valuation:'Missing approved valuation',
       funding_coverage_unverified:'Funding history coverage unverified',
@@ -357,13 +360,13 @@
     };
     for (const item of performance.rows) {
       const row = add(rows, 'tr');
-      add(row, 'td', `${utcStamp(item.start_at)} → ${utcStamp(item.end_at)}`);
+      add(row, 'td', `${when(item.start_at)} → ${when(item.end_at)}`);
       add(row, 'td', item.net_external_flow_gbp == null ? 'Unavailable'
         : `${decimal(item.net_external_flow_gbp, 'GBP')} · ${item.external_flow_count} ${item.external_flow_count === 1 ? 'event' : 'events'}`);
       add(row, 'td', item.reason ? reasons[item.reason] ?? 'Return unavailable' : percent(item.portfolio_pct));
       add(row, 'td', percent(item.vuag_pct));
       add(row, 'td', item.vuag_start_at && item.vuag_end_at
-        ? `${utcStamp(item.vuag_start_at)} → ${utcStamp(item.vuag_end_at)}` : 'Unavailable');
+        ? `${when(item.vuag_start_at)} → ${when(item.vuag_end_at)}` : 'Unavailable');
     }
   }
 
@@ -373,8 +376,8 @@
       add(section, 'p', 'Needs approved GBP total-return marks for the held listings.');
       return;
     }
-    add(section, 'p', `Holdings as of ${utcStamp(report.holdings_as_of)} UTC · ${report.included_holdings} of ${report.universe_holdings} holdings · ${percent(report.included_weight_pct)} of ISA value included out of ${percent(report.universe_weight_pct)} submitted, excluding cash.`);
-    add(section, 'p', `${report.n} common return intervals${report.start_date ? ` · ${report.start_date} to ${report.end_date} UTC` : ''} · minimum ${report.minimum_daily}. Pearson correlation uses the same GBP log-return dates for every pair.`);
+    add(section, 'p', `Holdings as of ${when(report.holdings_as_of)} · ${report.included_holdings} of ${report.universe_holdings} holdings · ${percent(report.included_weight_pct)} of ISA value included out of ${percent(report.universe_weight_pct)} submitted, excluding cash.`);
+    add(section, 'p', `${report.n} common return intervals${report.start_date ? ` · ${periodRange(report)} UTC` : ''} · minimum ${report.minimum_daily}. Pearson correlation uses the same GBP log-return dates for every pair.`);
     if (report.state === 'available') {
       const rows = exposureTable(section, ['Holding pair', 'Correlation'], 'Highest holding correlations');
       for (const pair of report.pairs) {
@@ -419,14 +422,14 @@
     const latest = returns?.latest;
     if (latest) add(section, 'p', `Latest uninterrupted stretch · ${periodRange(latest)} UTC · ${percent(latest.portfolio_pct)} · ${latest.sessions} returns.`);
     if (report.calendar_reviewed_through) {
-      add(section, 'p', `London session calendar reviewed through ${report.calendar_reviewed_through}.`);
+      add(section, 'p', `London session calendar reviewed through ${formatDay(report.calendar_reviewed_through)}.`);
     }
     if (!report.observations.length) {
       add(section, 'p', 'No scheduled broker captures in the selected dates.');
       return;
     }
     if (report.older_dates) add(section, 'p', `Showing the latest ${report.observations.length} scheduled dates. Narrow the dates to inspect older captures.`);
-    const rows = exposureTable(section, ['Target (UTC)', 'Actual capture (UTC)', 'Reported ISA value', 'Status', 'Funding coverage', 'Net external funding', 'ISA return'], 'Fixed-cutoff broker observations');
+    const rows = exposureTable(section, ['Target (London)', 'Actual capture (London)', 'Reported ISA value', 'Status', 'Funding coverage', 'Net external funding', 'ISA return'], 'Fixed-cutoff broker observations');
     const intervals = new Map((returns?.intervals ?? []).map(interval => [interval.end_date, interval]));
     const reasons = {
       missing_cutoff_observation: 'Missing scheduled capture',
@@ -439,8 +442,8 @@
     const funding = {covered:'Completed history covers interval', unverified:'Unverified', no_previous_observation:'No preceding capture'};
     for (const item of report.observations) {
       const row = add(rows, 'tr');
-      add(row, 'td', dateCapture(item.target_at));
-      add(row, 'td', item.captured_at ? dateCapture(item.captured_at) : '—');
+      timeCell(row, item.target_at);
+      timeCell(row, item.captured_at, '—');
       add(row, 'td', decimal(item.total_value_gbp, 'GBP'));
       add(row, 'td', states[item.status]);
       add(row, 'td', funding[item.funding_coverage] || '—');
@@ -473,7 +476,7 @@
     add(list, 'dt', 'Worst observed interval return');
     add(list, 'dd', observed.worst ? percent(observed.worst.return_pct) : observed.eligible ? 'No loss' : 'Unavailable');
     if (observed.worst) {
-      add(section, 'p', `Worst interval · ${utcStamp(observed.worst.start_at)} to ${utcStamp(observed.worst.end_at)} UTC.`);
+      add(section, 'p', `Worst interval · ${when(observed.worst.start_at)} to ${when(observed.worst.end_at)}.`);
     }
 
     renderSessionPerformance(section, metrics.session_performance);
@@ -493,7 +496,7 @@
     if (coverage) add(section, 'p', `Selected dates · ${observed.valuation_dates} saved valuation dates · ${coverage.portfolio} approved portfolio sessions · ${coverage.vuag} matched VUAG · ${coverage.with_rate} with a risk-free rate. ${coverage.shortfall} more approved portfolio sessions needed for the minimum.`);
     const bank = metrics.bank_rate;
     if (bank) {
-      const note = add(section, 'p', `Bank Rate history verified for period openings from ${bank.start_date} through ${bank.verified_through}. `);
+      const note = add(section, 'p', `Bank Rate history verified for period openings from ${formatDay(bank.start_date)} through ${formatDay(bank.verified_through)}. `);
       const link = add(note, 'a', bank.source);
       link.href = bank.url;
     }
@@ -576,7 +579,7 @@
         input.max = data.latest_date;
         input.value = data.range[key];
       }
-      status.textContent = `Selected dates · ${data.range.start} to ${data.range.end} UTC.`;
+      status.textContent = `Selected dates · ${formatDay(data.range.start)} to ${formatDay(data.range.end)} UTC.`;
       const results = el('risk-results');
       results.replaceChildren();
       renderDrawdown(results, data.drawdown);
@@ -609,7 +612,7 @@
       : 'No uninterrupted valuation stretch is available.');
     const coverage = report.funding_coverage;
     add(section, 'p', coverage
-      ? `Trading 212 funding evidence · ${utcStamp(coverage.start_at)} to ${utcStamp(coverage.end_at)} UTC. History traversal finished ${utcStamp(coverage.completed_at)} UTC.`
+      ? `Trading 212 funding evidence · ${when(coverage.start_at)} to ${when(coverage.end_at)}. History traversal finished ${when(coverage.completed_at)}.`
       : 'A completed funding history with a usable coverage window is unavailable.');
     const results = exposureTable(section, ['Period', 'UTC dates', 'Eligible intervals', 'Adjusted return or reason'], 'Adjusted performance');
     for (const [label, item] of [
@@ -628,7 +631,7 @@
     add(funding, 'summary', `Funding transactions · ${report.funding.length} in this window`);
     if (!report.funding.length) add(funding, 'p', 'The available history showed no funding movements in this window.');
     if (report.funding.length) {
-      const events = exposureTable(funding, ['Transaction', 'Reported amount', 'Event time (UTC)', 'Funding treatment'], 'Funding evidence');
+      const events = exposureTable(funding, ['Transaction', 'Reported amount', 'Event time (London)', 'Funding treatment'], 'Funding evidence');
       const dateRows = new Set();
       for (const event of report.funding) {
         const row = add(events, 'tr');
@@ -640,18 +643,18 @@
         add(transaction, 'small', 'Trading 212 reference ' + event.reference);
         add(transaction, 'small', 'Provider type ' + event.kind);
         add(row, 'td', decimal(event.amount, event.currency));
-        add(row, 'td', utcStamp(event.at));
+        timeCell(row, event.at);
         add(row, 'td', event.signed_gbp ? 'External funding' : 'Review required');
       }
     }
     const intervals = add(section, 'details');
     const eligible = report.intervals.filter(item => item.return_pct != null).length;
     add(intervals, 'summary', `Daily return intervals · ${eligible} of ${report.intervals.length} eligible`);
-    const checks = exposureTable(intervals, ['UTC dates', 'Account captures (UTC)', 'External flows', 'Net funding', 'Adjusted return or reason'], 'Daily return eligibility');
+    const checks = exposureTable(intervals, ['UTC dates', 'Account captures (London)', 'External flows', 'Net funding', 'Adjusted return or reason'], 'Daily return eligibility');
     for (const item of [...report.intervals].reverse()) {
       const row = add(checks, 'tr');
       add(row, 'td', periodRange(item));
-      add(row, 'td', [item.start_at, item.end_at].map(time => time ? utcStamp(time) : '—').join(' to '));
+      add(row, 'td', [item.start_at, item.end_at].map(time => time ? when(time) : '—').join(' to '));
       add(row, 'td', item.external_flow_count == null ? '—' : String(item.external_flow_count));
       add(row, 'td', item.net_external_flow == null ? '—' : decimal(item.net_external_flow, 'GBP'));
       add(row, 'td', adjustedReturn(item));
@@ -691,7 +694,7 @@
     ctx.setLineDash([]);
     ctx.textAlign = 'center';
     for (const index of [0, Math.floor((points.length - 1) / 2), points.length - 1]) {
-      ctx.fillText(points[index].date.slice(5), x(index), bottom + 21);
+      ctx.fillText(formatDay(points[index].date, true), x(index), bottom + 21);
     }
     let valueIndex = 0;
     const stretches = [];
@@ -807,7 +810,7 @@
     const drawdown = report?.drawdown;
     el('overview-drawdown').textContent = overviewPct(drawdown?.current_pct);
     el('overview-risk-period').textContent = drawdown
-      ? `Worst ${overviewPct(drawdown.worst_pct)} · eligible through ${utcStamp(drawdown.as_of)} UTC${drawdown.later_unavailable_intervals ? ` · ${drawdown.later_unavailable_intervals} newer intervals unavailable` : ''}`
+      ? `Worst ${overviewPct(drawdown.worst_pct)} · eligible through ${when(drawdown.as_of)}${drawdown.later_unavailable_intervals ? ` · ${drawdown.later_unavailable_intervals} newer intervals unavailable` : ''}`
       : 'Needs an eligible cash-flow-adjusted interval.';
   }
   function renderOverviewSnapshot(data) {
@@ -817,12 +820,12 @@
     const pnl = data.investments.unrealizedProfitLoss;
     const direction = pnl == null ? 0 : compare(pnl, '0');
     el('unrealised-pnl').setAttribute('data-tone', direction < 0 ? 'loss' : direction > 0 ? 'gain' : '');
-    el('overview-account-time').textContent = `Captured ${utcStamp(data.account_retrieval.retrieval_completed_at)} UTC`;
+    el('overview-account-time').textContent = `Captured ${when(data.account_retrieval.retrieval_completed_at)}`;
     const exposure = data.exposures;
     const top = exposure?.concentration?.find(row => row.top === 5);
     el('overview-concentration').textContent = overviewPct(top?.portfolio_pct);
     el('overview-exposure-time').textContent = top?.portfolio_pct != null && exposure?.positions_as_of
-      ? `% of ISA value · holdings captured ${utcStamp(exposure.positions_as_of)} UTC`
+      ? `% of ISA value · holdings captured ${when(exposure.positions_as_of)}`
       : 'Needs a complete approved holdings snapshot.';
   }
   function renderHistory(data) {
@@ -840,12 +843,12 @@
     let observed = 0, missing = 0, unavailable = 0;
     for (const point of [...data.days].reverse()) {
       const row = add(body, 'tr');
-      add(row, 'th', point.date + (point.date === data.end_date ? ' (today so far)' : '')).setAttribute('scope', 'row');
+      add(row, 'th', formatDay(point.date) + (point.date === data.end_date ? ' (today so far)' : '')).setAttribute('scope', 'row');
       if (point.status === 'observed') {
         observed++;
         add(row, 'td', historyAmount(point));
-        add(row, 'td', utcStamp(point.captured_at));
-        add(row, 'td', utcStamp(point.observed_at));
+        timeCell(row, point.captured_at);
+        timeCell(row, point.observed_at);
       } else {
         if (point.status === 'missing') missing++; else unavailable++;
         add(row, 'td', historyLabel(point)).setAttribute('colspan', '3');
@@ -853,7 +856,7 @@
     }
     el('history-body').replaceChildren(body);
     el('history-results').hidden = false;
-    el('history-status').textContent = `${data.start_date} to ${data.end_date} UTC · ${observed} of ${data.days.length} days observed · ${missing} missing${unavailable ? ' · ' + unavailable + ' unavailable' : ''}. Read at ${utcStamp(data.as_of)} UTC.`;
+    el('history-status').textContent = `${periodRange(data)} UTC · ${observed} of ${data.days.length} days observed · ${missing} missing${unavailable ? ' · ' + unavailable + ' unavailable' : ''}. Read at ${when(data.as_of)}.`;
     const latest = data.days.findLastIndex(point => point.status === 'observed');
     inspectDay(latest === -1 ? data.days.length - 1 : latest);
   }
@@ -929,19 +932,18 @@
   }
   const signed = (value, currency) => value != null && compare(value, '0') > 0
     ? '+' + decimal(value, currency) : decimal(value, currency);
-  const dateCapture = value => value ? utcStamp(value) + ' UTC' : 'Unavailable';
 
   function renderChanges(data) {
     const section = el('changes-results');
     section.replaceChildren();
     for (const [label, endpoint] of [['Start', data.start], ['End', data.end]]) {
-      add(section, 'h3', `${label} · ${endpoint.date} UTC`);
+      add(section, 'h3', `${label} · ${formatDay(endpoint.date)} UTC`);
       if (endpoint.status === 'missing') {
         add(section, 'p', 'No approved Trading 212 snapshot was saved for this date.');
       } else if (endpoint.status === 'unavailable') {
-        add(section, 'p', `A snapshot was saved at ${dateCapture(endpoint.observed_at)}. Its GBP holdings or capture evidence could not be verified.`);
+        add(section, 'p', `A snapshot was saved at ${when(endpoint.observed_at)}. Its GBP holdings or capture evidence could not be verified.`);
       } else {
-        add(section, 'p', `Holdings captured ${dateCapture(endpoint.positions_captured_at)} · Account captured ${dateCapture(endpoint.account_captured_at)} · Saved observation ${dateCapture(endpoint.observed_at)}`);
+        add(section, 'p', `Holdings captured ${when(endpoint.positions_captured_at)} · Account captured ${when(endpoint.account_captured_at)} · Saved observation ${when(endpoint.observed_at)}`);
         add(section, 'p', `Weight denominator (reported ISA value) · ${decimal(endpoint.portfolio_denominator, 'GBP')}`);
       }
     }
@@ -963,7 +965,7 @@
       links.set(holding.ticker, {evidence, summary});
       add(evidence, 'small', holding.ticker);
       for (const [key, side, label] of [['start', holding.start, 'Start'], ['end', holding.end, 'End']]) {
-        const captured = dateCapture(data[key].positions_captured_at);
+        const captured = when(data[key].positions_captured_at);
         add(evidence, 'small', side.present
           ? `${label} · ${side.isin || holding.ticker} · ${captured}`
           : `${label} · No open position at ${captured}`);
@@ -1261,7 +1263,7 @@
         add(name, 'small', `Bucket contribution: ${decimal(contribution.value, snapshot.currency)} · ${percent(contribution.holding_pct)} of position`);
         const source = classification.sources[row.ticker];
         if (source) {
-          const link = add(add(name, 'small'), 'a', `Source · ${source.as_of}`);
+          const link = add(add(name, 'small'), 'a', `Source · ${formatDay(source.as_of)}`);
           link.href = source.url;
           link.target = '_blank';
           link.rel = 'noopener noreferrer';
