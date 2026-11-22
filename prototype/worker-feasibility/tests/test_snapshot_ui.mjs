@@ -323,11 +323,17 @@ test('Risk applies a dated range and clears private drawdown on sign-out',async(
        cutoff_pilot:{observations:[
          {date:'2026-11-23',target_at:'2026-11-23T22:00:00Z',captured_at:'2026-11-23T22:00:14Z',
           total_value_gbp:'123.456789',status:'observed',funding_coverage:'covered'},
-         {date:'2026-11-24',target_at:'2026-11-24T22:00:00Z',status:'missing'},
+         {date:'2026-11-24',target_at:'2026-11-24T22:00:00Z',captured_at:'2026-11-24T22:00:20Z',
+          total_value_gbp:'118.321',status:'observed',funding_coverage:'covered'},
+         {date:'2026-11-25',target_at:'2026-11-25T22:00:00Z',captured_at:'2026-11-25T22:00:15Z',
+          total_value_gbp:'118.321',status:'observed',funding_coverage:'covered'},
+         {date:'2026-11-26',target_at:'2026-11-26T22:00:00Z',status:'missing'},
        ]},
        cutoff_returns:{approval_state:'awaiting_review',intervals:[
-         {end_date:'2026-11-23',return_pct:'1.25',approved:false},
-         {end_date:'2026-11-24',reason:'missing_cutoff_observation'},
+         {end_date:'2026-11-23',return_pct:'1.25',approved:false,net_external_flow_gbp:'20.123456',external_flow_count:1},
+         {end_date:'2026-11-24',return_pct:'0.25',approved:false,net_external_flow_gbp:'-5.12',external_flow_count:2},
+         {end_date:'2026-11-25',return_pct:'0',approved:false,net_external_flow_gbp:'0',external_flow_count:0},
+         {end_date:'2026-11-26',reason:'missing_cutoff_observation'},
        ]},
        session_performance: custom ? {
          latest_portfolio:{start_date:start,end_date:end,sessions:1,portfolio_pct:'0.952381'},
@@ -363,6 +369,9 @@ test('Risk applies a dated range and clears private drawdown on sign-out',async(
  assert.ok(riskText.includes('£123.456789'));
  assert.ok(riskText.includes('Missed window'));
  assert.ok(riskText.includes('1.25% · Provisional'));
+ assert.ok(riskText.includes('+£20.123456 · 1 flow'));
+ assert.ok(riskText.includes('−£5.12 · 2 flows'));
+ assert.ok(riskText.includes('£0 · 0 flows'));
  assert.ok(riskText.includes('Missing scheduled capture'));
  assert.ok(riskText.includes('2026-11-23 22:00:14 UTC'));
  assert.ok(riskText.includes('AAA and BBB'));

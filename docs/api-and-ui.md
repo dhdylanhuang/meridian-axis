@@ -270,7 +270,8 @@ The grid follows the [LSE business-day calendar](https://www.londonstockexchange
 through 2028. Weekday evidence can still be collected after the reviewed
 calendar expires, with return eligibility paused until the calendar is
 reviewed for those dates. Statuses distinguish scheduled, captured, missed
-and unavailable. The date filter bounds the series. For longer ranges the
+and unavailable. Each computed return shows the net external GBP funding
+amount and event count used in the calculation. The date filter bounds the series. For longer ranges the
 table shows up to 75 recent dates. The widest risk range uses at most 252
 session intervals.
 

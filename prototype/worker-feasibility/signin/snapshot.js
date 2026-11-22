@@ -391,7 +391,7 @@
       add(section, 'p', 'Broker observations could not be loaded.');
       return;
     }
-    add(section, 'p', 'Trading 212 reported ISA values captured from 22:00 UTC. Returns use adjacent scheduled captures and completed funding history. Quote timing remains unknown.');
+    add(section, 'p', 'Trading 212 reported ISA values captured from 22:00 UTC. Returns use adjacent captures and completed funding history. Net funding shows deposits minus withdrawals. Interest stays in the return. Quote timing remains unknown.');
     if (returns?.approval_state === 'awaiting_review') {
       add(section, 'p', 'Automatic returns remain provisional pending valuation-basis review.');
     } else if (returns?.approval_state === 'invalid_policy') {
@@ -409,7 +409,7 @@
       return;
     }
     if (report.older_dates) add(section, 'p', `Showing the latest ${report.observations.length} scheduled dates. Narrow the dates to inspect older captures.`);
-    const rows = exposureTable(section, ['Target (UTC)', 'Actual capture (UTC)', 'Reported ISA value', 'Status', 'Funding coverage', 'ISA return'], 'Fixed-cutoff broker observations');
+    const rows = exposureTable(section, ['Target (UTC)', 'Actual capture (UTC)', 'Reported ISA value', 'Status', 'Funding coverage', 'Net external funding', 'ISA return'], 'Fixed-cutoff broker observations');
     const intervals = new Map((returns?.intervals ?? []).map(interval => [interval.end_date, interval]));
     const reasons = {
       missing_cutoff_observation: 'Missing scheduled capture',
@@ -428,6 +428,10 @@
       add(row, 'td', states[item.status]);
       add(row, 'td', funding[item.funding_coverage] || '—');
       const interval = intervals.get(item.date);
+      const net = interval?.net_external_flow_gbp;
+      const count = interval?.external_flow_count;
+      add(row, 'td', net == null ? '—'
+        : `${signed(net, 'GBP')} · ${count} ${count === 1 ? 'flow' : 'flows'}`);
       add(row, 'td', interval?.return_pct != null
         ? `${percent(interval.return_pct)} · ${interval.approved ? 'Approved' : 'Provisional'}`
         : (interval ? reasons[interval.reason] ?? 'Unavailable' : '—'));
