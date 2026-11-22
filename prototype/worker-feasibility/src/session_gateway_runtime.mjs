@@ -1,5 +1,5 @@
 import gateway from './session_gateway.mjs';
-import { portfolioChangesJSON, portfolioProjectionJSON, portfolioStressJSON, reconcileCashJSON } from './cash_reconciliation.mjs';
+import { portfolioChangesJSON, portfolioProjectionJSON, portfolioSectorRollupJSON, portfolioStressJSON, reconcileCashJSON } from './cash_reconciliation.mjs';
 export { CashReconciliation } from './cash_reconciliation_rpc.mjs';
 
 export default {
@@ -7,6 +7,7 @@ export default {
   async fetch(request, env) {
     const response = await gateway.fetch(request, env, portfolioChangesJSON, {
       projections: portfolioProjectionJSON,
+      sectorRollup: portfolioSectorRollupJSON,
       "stress-tests": portfolioStressJSON,
     });
     if (new URL(request.url).pathname !== '/health' || !response.ok) return response;

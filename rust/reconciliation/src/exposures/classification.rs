@@ -40,7 +40,7 @@ struct Evidence {
     regulatory_report: Option<bool>,
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 pub(super) struct Allocation {
     classified: Exposure,
     observed: Exposure,
@@ -48,7 +48,7 @@ pub(super) struct Allocation {
     sources: BTreeMap<String, Evidence>,
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 struct Bucket {
     label: Option<String>,
     #[serde(flatten)]
@@ -56,10 +56,12 @@ struct Bucket {
     members: BTreeMap<String, Contribution>,
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 struct Contribution {
     value: Option<String>,
     holding_pct: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    source_labels: Vec<String>,
 }
 
 #[derive(Default)]
@@ -132,6 +134,7 @@ impl AllocationBuilder {
             Contribution {
                 value: amount.map(text),
                 holding_pct: text(&(weight * 100_i32)),
+                source_labels: Vec::new(),
             },
         );
         if let Some(amount) = amount {
@@ -227,3 +230,8 @@ impl AllocationBuilder {
         }
     }
 }
+
+#[cfg(any(test, target_arch = "wasm32"))]
+mod sector_rollup;
+#[cfg(target_arch = "wasm32")]
+pub(crate) use sector_rollup::sector_rollup_json;

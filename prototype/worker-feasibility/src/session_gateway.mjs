@@ -122,6 +122,29 @@ async function calculatePlan(app, origin, headers, body, calculate) {
   }
 }
 
+// Roll up the already-authorised snapshot without modifying saved evidence.
+async function rollupSnapshot(response, calculate) {
+  const original = await response.text();
+  const headers = privateHeaders(response.headers);
+  try {
+    const snapshot = JSON.parse(original);
+    const report = snapshot.exposures;
+    if (report?.method === "broker_exposures_v1" && report.sectors) {
+      const { sectors, portfolio_denominator, invested_denominator } = report;
+      report.sectors = JSON.parse(calculate(JSON.stringify({
+        sectors, portfolio_denominator, invested_denominator,
+      })));
+      report.sector_rollup_method = "broad_sectors_v1";
+      headers.delete("Content-Length");
+      headers.delete("Content-Encoding");
+      return new Response(JSON.stringify(snapshot), { status: response.status, headers });
+    }
+  } catch {
+    // Other snapshot data remains usable if the optional display rollup fails.
+  }
+  return new Response(original, { status: response.status, headers });
+}
+
 export default {
   async scheduled(controller, env, ctx) {
     const id = env.SYNC.idFromName("shared-isa");
@@ -198,6 +221,9 @@ export default {
         return await calculatePlan(app, origin, headers, body, planning[calculator]);
       }
       const response = await app.fetch(upstream);
+      if (url.pathname === "/api/v1/portfolio/snapshot" && response.ok && planning.sectorRollup) {
+        return await rollupSnapshot(response, planning.sectorRollup);
+      }
       if (changes && response.ok) {
         try {
           if (!calculateChanges) throw new Error("changes_unavailable");

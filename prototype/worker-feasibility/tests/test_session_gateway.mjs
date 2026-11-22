@@ -308,3 +308,37 @@ test("projections use the authenticated saved snapshot and reject a changed capt
   calculators.projections = () => { throw "allocation_total_invalid"; };
   assert.equal((await forward(send("2029-04-30T10:00:00Z"))).status, 422);
 });
+
+test("snapshot sector rollup uses only saved exposures on the authenticated path", async () => {
+  const state = setup();
+  const original = { total_value: "100.000000000000001", exposures: {
+    method: "broker_exposures_v1", portfolio_denominator: "100", invested_denominator: "90",
+    sectors: { buckets: [{label:"ICB · Technology", value:"10"}] },
+  } };
+  let allowed = true;
+  state.env.APP.get = () => ({async fetch() {
+    return allowed ? Response.json(original) : Response.json({error:"request_denied"},{status:401});
+  }});
+  const current = request("/api/v1/portfolio/snapshot", {method:"GET"});
+  const aggregate = {buckets: [{label:"Information Technology",value:"10"}]};
+  let calls = 0;
+  const rollup = {sectorRollup(input) {
+    calls++;
+    assert.deepEqual(JSON.parse(input), {
+      sectors:original.exposures.sectors,portfolio_denominator:"100",invested_denominator:"90",
+    });
+    return JSON.stringify(aggregate);
+  }};
+  const response = await gateway.fetch(current, state.env, undefined, rollup);
+  privateResponse(response);
+  const result = await response.json();
+  assert.equal(result.total_value, original.total_value);
+  assert.deepEqual(result.exposures.sectors, aggregate);
+  assert.equal(result.exposures.sector_rollup_method, "broad_sectors_v1");
+  allowed = false;
+  assert.equal((await gateway.fetch(current, state.env, undefined, rollup)).status, 401);
+  assert.equal(calls, 1);
+  allowed = true;
+  rollup.sectorRollup = () => { throw Error("sector_rollup_invalid"); };
+  assert.deepEqual(await (await gateway.fetch(current, state.env, undefined, rollup)).json(), original);
+});

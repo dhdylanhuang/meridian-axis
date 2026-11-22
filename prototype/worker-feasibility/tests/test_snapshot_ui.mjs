@@ -205,7 +205,7 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
     concentration:[{top:1,position_count:1,...missing}],
     sectors:{classified:sector,observed,sources:{SYNTH:{as_of:'2026-01-01',url:'https://example.test/fact'}},
       buckets:[
-        {label:'Industrials',...sector,members:{SYNTH:{value:sector.value,holding_pct:'50'}}},
+        {label:'Industrials',...sector,members:{SYNTH:{value:sector.value,holding_pct:'50',source_labels:['ICB · Industrials']}}},
         {label:null,...sector,value:'5',members:{SYNTH:{value:'5',holding_pct:'50'},MISSING:{value:null,holding_pct:'100'}}},
       ]},
     issuer_domiciles:{classified:missing,observed,sources:{},
@@ -237,6 +237,7 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
   find(section, 'Industrials').listeners.click();
   const contributing = ui.el('holdings-body').children[0];
   assert.ok(find(contributing, 'Bucket contribution: £5.000000000000000000001 · 50% of position'));
+  assert.ok(find(contributing, 'Source categories · ICB · Industrials'));
   assert.equal(find(contributing, 'Source · 1 Jan 2026').href, 'https://example.test/fact');
   find(section, 'Unclassified quote currency').listeners.click();
   assert.equal(ui.el('holdings-panel').hidden,false);

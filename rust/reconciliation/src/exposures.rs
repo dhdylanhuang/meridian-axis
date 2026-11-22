@@ -7,6 +7,9 @@ use classification::{Allocation, AllocationBuilder, Classification};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
+#[cfg(target_arch = "wasm32")]
+pub(crate) use classification::sector_rollup_json;
+
 pub const METHOD: &str = "broker_exposures_v1";
 
 #[derive(Deserialize)]
@@ -33,13 +36,13 @@ struct Position {
     instrument_type: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 struct Weights {
     portfolio_pct: Option<String>,
     invested_pct: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 struct Exposure {
     value: Option<String>,
     #[serde(flatten)]

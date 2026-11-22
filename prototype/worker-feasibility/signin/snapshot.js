@@ -1166,7 +1166,9 @@
     } else add(section, 'p', 'No holdings to group.');
 
     renderClassification(section, 'sectors', 'Equity sectors',
-      'Direct shares use reviewed principal-business sectors. Funds use dated manager weights. ICB and other manager-specific categories are labelled separately because their definitions differ. Unclassified includes fund portions without eligible sector data.',
+      report.sector_rollup_method === 'broad_sectors_v1'
+        ? 'Direct shares and fund weights are grouped into broad reporting sectors. Mapped fund categories are shown in the holding drill-down. Unclassified includes fund portions without eligible sector data.'
+        : 'Direct shares use reviewed principal-business sectors. Funds use dated manager weights and source categories. Unclassified includes fund portions without eligible sector data.',
       data, columns);
     renderClassification(section, 'issuer_domiciles', 'Direct shares · issuer domicile',
       'Country of incorporation from issuer filings. Coverage shows the direct-share amounts in this view.',
@@ -1271,6 +1273,9 @@
       if (contributions) {
         const contribution = contributions[row.ticker];
         add(name, 'small', `Bucket contribution: ${decimal(contribution.value, snapshot.currency)} · ${percent(contribution.holding_pct)} of position`);
+        if (contribution.source_labels?.length) {
+          add(name, 'small', `Source categories · ${contribution.source_labels.join(', ')}`);
+        }
         const source = classification.sources[row.ticker];
         if (source) {
           const link = add(add(name, 'small'), 'a', `Source · ${formatDay(source.as_of)}`);

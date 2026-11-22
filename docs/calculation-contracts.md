@@ -204,8 +204,14 @@ allocations: broad equity sectors, direct-share issuer domicile (country of
 incorporation), and underlying equity markets reported by fund managers.
 Direct shares use a reviewed principal-business sector in the broad 11-sector
 GICS naming scheme. Fund sector data is included where the manager categories
-can be used on the same broad basis. ICB and manager-specific sector categories
-use labelled rows because they differ from GICS-style sectors. Reported regional
+can be used on the same broad basis. The saved allocations retain ICB and
+manager categories. The current signed-in snapshot applies a versioned
+reporting crosswalk for reviewed ICB, J.P. Morgan and Baillie Gifford categories.
+The crosswalk combines exact GBP contributions and holding shares within each
+broad sector, recalculates the denominated weights, and preserves contributing
+source labels and evidence links in the holding drill-down. This is an
+approximate broad-sector comparison. Unmapped labels and non-equity buckets
+retain their separate identity. Reported regional
 weights keep their regional labels where country-level weights are unavailable.
 Domicile and fund markets are independent
 views because those country definitions differ. Fund market and sector estimates
