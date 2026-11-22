@@ -18,18 +18,24 @@ export class CashReconciliation extends WorkerEntrypoint {
   }
   async observedPerformance(input) {
     if (this.env.RECONCILIATION_ENVIRONMENT !== 'live') throw new Error('performance_unavailable');
-    if (this.env.VUAG_GBP_BENCHMARK || this.env.RISK_DAILY_GBP) {
+    if (this.env.VUAG_GBP_BENCHMARK || this.env.RISK_DAILY_GBP || this.env.RISK_CUTOFF_APPROVAL) {
       try {
         const request = JSON.parse(input);
         const risk = Boolean(request.risk_range);
-        if (risk && this.env.RISK_DAILY_GBP) {
-          request.risk_daily = (await decodeDailyRisk(this.env).catch(() => null)) ?? {};
-          request.risk_as_of = new Date().toISOString();
+        if (risk && (this.env.RISK_DAILY_GBP || this.env.RISK_CUTOFF_APPROVAL)) {
+          if (this.env.RISK_DAILY_GBP) {
+            request.risk_daily = (await decodeDailyRisk(this.env).catch(() => null)) ?? {};
+            request.risk_as_of = new Date().toISOString();
+          }
+          if (this.env.RISK_CUTOFF_APPROVAL) {
+            request.cutoff_approval = (await decodeReviewedBinding(this.env.RISK_CUTOFF_APPROVAL).catch(() => null)) ?? {};
+          }
           const enriched = JSON.stringify(request);
           if (new TextEncoder().encode(enriched).byteLength <= 640 * 1024) {
             return observedPerformanceJSON(enriched);
           }
           request.risk_daily = {};
+          delete request.cutoff_approval;
           return observedPerformanceJSON(JSON.stringify(request));
         }
         if (!risk && this.env.VUAG_GBP_BENCHMARK) {

@@ -16,7 +16,7 @@ fn mark(row: &Session) -> Option<Mark> {
     })
 }
 
-struct Stretch {
+pub(super) struct Stretch {
     start: NaiveDate,
     end: NaiveDate,
     count: usize,
@@ -25,7 +25,7 @@ struct Stretch {
 }
 
 impl Stretch {
-    fn report(self) -> Value {
+    pub(super) fn report(self) -> Value {
         json!({
             "start_date":self.start, "end_date":self.end, "sessions":self.count,
             "portfolio_pct":pct(&self.factor),
@@ -35,7 +35,7 @@ impl Stretch {
     }
 }
 
-fn extend(
+pub(super) fn extend(
     track: &mut Option<Stretch>,
     last: &mut Option<Stretch>,
     start: NaiveDate,

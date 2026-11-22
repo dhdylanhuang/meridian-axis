@@ -262,6 +262,35 @@ correlation with its common-sample coverage. For reviewed NAVs, the gateway
 combines the marks with the existing completed funding traversal in Rust.
 Observed broker drawdown and History remain available independently.
 
+The Risk response also carries the ongoing automatic series under
+`metrics.cutoff_pilot` (the original response key for broker observations)
+and `metrics.cutoff_returns`. The existing sync records the first valid GBP
+account summary within two minutes of 22:00 UTC on each scheduled date.
+The grid follows the [LSE business-day calendar](https://www.londonstockexchange.com/en/resources/markets-products/business-days)
+through 2028. Weekday evidence can still be collected after the reviewed
+calendar expires, with return eligibility paused until the calendar is
+reviewed for those dates. Statuses distinguish scheduled, captured, missed
+and unavailable. The date filter bounds the series. For longer ranges the
+table shows up to 75 recent dates. The widest risk range uses at most 252
+session intervals.
+
+Rust computes Modified Dietz at the actual capture times for adjacent
+scheduled dates with complete funding coverage. Missed captures, unsupported
+funding, boundary events with ambiguous ordering, and unreviewed calendar
+dates block their intervals. The automatic result is provisional by default.
+A completed funding window alone cannot approve the valuation basis.
+
+The optional private gateway binding `RISK_CUTOFF_APPROVAL` accepts a reviewed
+policy with `basis: trading212_fixed_cutoff_gbp_v1`, UTC ISO `reviewed_at`,
+inclusive `effective_from` and `effective_through` dates, and a private
+`evidence` reference. The review must establish the comparability of the
+broker account-value convention at the fixed cutoff. When authorised and
+installed, the policy admits newly computed intervals inside its effective
+dates without manual row publication. Only those intervals enter the separate
+automatic ISA risk table, with the same 60-return minimum. The statement
+returns and their benchmark sample retain their own basis. The policy and
+financial rows are private.
+
 AXIS reads History once on the first signed-in snapshot and shares that
 response with the History tab. It presents the most recent contiguous set of
 matched ISA and VUAG returns, the eligible drawdown and its cutoff, and the

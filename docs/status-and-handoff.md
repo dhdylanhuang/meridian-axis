@@ -1,13 +1,13 @@
 # Current status and handoff
 
-Reviewed **21 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
+Reviewed **22 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
 ## Start here
 
 The owner deferred new monitoring and alerts to project closeout (DC28).
-The [delivery brief](next-milestone.md) records the Portfolio Changes sprint
-and the daily risk data gate. This handoff records the completed work
-and the current evidence for the next contributor.
+The [delivery brief](next-milestone.md) records the fixed-cutoff pilot's
+acceptance checks and the phases that follow. This handoff records the
+deployed work and the evidence available to the next contributor.
 
 | Surface | Deployed capability |
 | --- | --- |
@@ -143,13 +143,35 @@ two Risk timeouts. The Risk baseline passed after rollback. The revised
 gateway and sync release `de470af` verified the protected bindings, refresh
 schedule, served assets and anonymous denial. One authenticated Risk read
 showed all ten slots as pending and preserved both approved statement returns.
-The verification session was revoked. First scheduled capture is pending.
+The verification session was revoked. First scheduled capture is pending
+as of 22 November. Check the first outcome after **22:02 UTC on 23 November**
+and review all ten dates after **22:02 UTC on 4 December**. Check capture-time
+consistency, missed windows and funding coverage before accepting any
+interval. Keep the statement series separate until comparability is
+established. See the [next phases](next-milestone.md).
 
 Focused checks passed for capture reuse, capture when positions fail, missed
 windows, duplicate writes, exact decimals, separate Risk transport and signed-out
 clearing. Earlier focused runs passed ten SQLite/bundle cases, one disposable
 PostgreSQL case with the actual restricted sync role, and two Node browser cases.
 Four targeted Python regressions passed again after simplifying the Risk read.
+
+## Ongoing fixed-cutoff ISA returns
+
+The implementation extends the scheduled 22:00 UTC observation beyond the
+first ten dates. Reviewed London closures are encoded through 2028. Evidence
+retains first-write-per-date semantics and the existing broker sync supplies
+the response. The Risk tab computes provisional Modified Dietz returns in
+Rust from adjacent scheduled GBP observations with completed funding
+coverage. Actual capture times supply the interval. Missed dates break the
+series. The approved statement series remains separate.
+
+The private effective-dated approval policy is implemented, with no policy
+installed for this release. It supports publishing newly eligible approved
+intervals automatically after valuation-basis review, and can feed a
+separate ISA risk table on reaching 60 eligible approved returns. The first
+active capture and release verification are pending. See the
+[daily return contract](api-and-ui.md#risk-tab).
 
 ## Reviewed session performance and holding correlation
 

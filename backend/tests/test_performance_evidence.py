@@ -214,16 +214,17 @@ def test_session_funding_export_retains_boundary_and_never_overwrites(engine, tm
     assert json.loads(output.read_bytes()) == result
 
 
-def test_pilot_is_attached_to_risk_response_outside_rust_input(engine):
+def test_cutoff_report_keeps_pending_dates_out_of_rust_input(engine):
     from meridian.application.performance_evidence import performance_report
 
     now = NOW.replace(month=11, day=22)
     with Session(engine) as db:
         history = read_history(db, "shared-isa", now)
-    history["risk_range"] = {"start": "2026-11-18", "end": "2026-11-20"}
+    history["risk_range"] = {"start": "2026-11-18", "end": "2026-11-22"}
 
     async def calculate(encoded):
-        assert "cutoff_pilot" not in json.loads(encoded)
+        request = json.loads(encoded)
+        assert "cutoff_pilot" not in request and request["cutoff_marks"] == []
         return (
             '{"method":"modified_dietz_observed_v1","metrics":{"daily_coverage":{"portfolio":2}}}'
         )

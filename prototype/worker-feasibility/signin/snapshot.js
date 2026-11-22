@@ -384,15 +384,40 @@
     }
   }
 
-  function renderCutoffPilot(section, report) {
+  function renderCutoffCollection(section, report, returns) {
     if (!report) return;
-    add(section, 'h3', 'Fixed-cutoff broker capture pilot');
+    add(section, 'h3', 'Fixed-cutoff broker collection');
     if (report.state === 'unavailable') {
-      add(section, 'p', 'Pilot observations could not be loaded.');
+      add(section, 'p', 'Broker observations could not be loaded.');
       return;
     }
-    add(section, 'p', 'Trading 212 reported ISA values captured after 22:00 UTC. These provisional observations have unknown quote timing and are excluded from statistical risk.');
-    const rows = exposureTable(section, ['Target (UTC)', 'Actual capture (UTC)', 'Reported ISA value', 'Status', 'Funding coverage'], 'Broker capture pilot');
+    add(section, 'p', 'Trading 212 reported ISA values captured from 22:00 UTC. Returns use adjacent scheduled captures and completed funding history. Quote timing remains unknown.');
+    if (returns?.approval_state === 'awaiting_review') {
+      add(section, 'p', 'Automatic returns remain provisional pending valuation-basis review.');
+    } else if (returns?.approval_state === 'invalid_policy') {
+      add(section, 'p', 'The supplied approval policy could not be verified.');
+    } else if (returns?.state === 'unavailable') {
+      add(section, 'p', 'Automatic returns could not be calculated.');
+    }
+    const latest = returns?.latest;
+    if (latest) add(section, 'p', `Latest uninterrupted stretch · ${periodRange(latest)} UTC · ${percent(latest.portfolio_pct)} · ${latest.sessions} returns.`);
+    if (report.calendar_reviewed_through) {
+      add(section, 'p', `London session calendar reviewed through ${report.calendar_reviewed_through}.`);
+    }
+    if (!report.observations.length) {
+      add(section, 'p', 'No scheduled broker captures in the selected dates.');
+      return;
+    }
+    if (report.older_dates) add(section, 'p', `Showing the latest ${report.observations.length} scheduled dates. Narrow the dates to inspect older captures.`);
+    const rows = exposureTable(section, ['Target (UTC)', 'Actual capture (UTC)', 'Reported ISA value', 'Status', 'Funding coverage', 'ISA return'], 'Fixed-cutoff broker observations');
+    const intervals = new Map((returns?.intervals ?? []).map(interval => [interval.end_date, interval]));
+    const reasons = {
+      missing_cutoff_observation: 'Missing scheduled capture',
+      funding_coverage_unverified: 'Funding unverified',
+      funding_valuation_order_unknown: 'Ambiguous funding at capture',
+      unclassified_or_unsupported_funding: 'Unsupported funding event',
+      calendar_unreviewed: 'Calendar unreviewed',
+    };
     const states = {observed:'Provisional observation', pending:'Scheduled', missing:'Missed window', unavailable:'Evidence unavailable'};
     const funding = {covered:'Completed history covers interval', unverified:'Unverified', no_previous_observation:'No preceding capture'};
     for (const item of report.observations) {
@@ -402,6 +427,16 @@
       add(row, 'td', decimal(item.total_value_gbp, 'GBP'));
       add(row, 'td', states[item.status]);
       add(row, 'td', funding[item.funding_coverage] || '—');
+      const interval = intervals.get(item.date);
+      add(row, 'td', interval?.return_pct != null
+        ? `${percent(interval.return_pct)} · ${interval.approved ? 'Approved' : 'Provisional'}`
+        : (interval ? reasons[interval.reason] ?? 'Unavailable' : '—'));
+    }
+    if (returns?.approved_risk) {
+      const risk = returns.approved_risk;
+      add(section, 'h4', 'Risk from approved fixed-cutoff returns');
+      add(section, 'p', `${risk.daily_coverage.portfolio} eligible returns · ${risk.daily_coverage.shortfall} more needed for the minimum.`);
+      renderRiskMeasures(section, risk.measures, 'Fixed-cutoff risk metrics', false);
     }
   }
 
@@ -421,7 +456,7 @@
     }
 
     renderSessionPerformance(section, metrics.session_performance);
-    renderCutoffPilot(section, metrics.cutoff_pilot);
+    renderCutoffCollection(section, metrics.cutoff_pilot, metrics.cutoff_returns);
 
     add(section, 'h3', 'Volatility, loss estimates and benchmark risk');
     if (metrics.daily_state === 'approved_series') {
@@ -442,9 +477,15 @@
       link.href = bank.url;
     }
     add(section, 'p', `Minimum: ${metrics.minimum_daily} eligible sessions per estimate. VaR is a one-session loss cutoff. Expected shortfall averages losses at or beyond it. Fewer than five tail observations indicates thin coverage.`);
-    const rows = exposureTable(section, ['Measure','Estimate','Sessions','Coverage'], 'Daily risk metrics');
-    const measures = new Map(metrics.measures.map(metric => [metric.key, metric]));
+    renderRiskMeasures(section, metrics.measures, 'Daily risk metrics', true);
+    renderHoldingCorrelation(section, metrics.holding_correlation);
+  }
+  const benchmarkRiskKeys = new Set(['beta','jensen_alpha','r_squared','correlation','tracking_error']);
+  function renderRiskMeasures(section, values, label, benchmark) {
+    const rows = exposureTable(section, ['Measure','Estimate','Sessions','Coverage'], label);
+    const measures = new Map(values.map(metric => [metric.key, metric]));
     for (const [key, label, unit] of riskMeasures) {
+      if (!benchmark && benchmarkRiskKeys.has(key)) continue;
       const metric = measures.get(key);
       if (!metric) continue;
       const row = add(rows,'tr');
@@ -455,7 +496,6 @@
       const tail = metric.tail_n == null ? '' : `${metric.tail_n} tail observations${metric.tail_n < 5 ? ' · thin coverage' : ''}`;
       add(row,'td',[riskReasons[metric.reason],tail].filter(Boolean).join(' · ') || '—');
     }
-    renderHoldingCorrelation(section, metrics.holding_correlation);
   }
   function renderRiskExposure(data) {
     const section = el('risk-exposures');

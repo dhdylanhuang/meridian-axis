@@ -12,7 +12,33 @@ from meridian.persistence.models import ImportRun, SourceRecord
 from meridian.persistence.types import decimal_text
 
 FIRST = date(2026, 11, 23)
-LAST = date(2026, 12, 4)
+CALENDAR_REVIEWED_THROUGH = date(2028, 12, 31)
+# London Stock Exchange business-day calendar. Half-days remain trading dates.
+CLOSED_DATES = frozenset(
+    map(
+        date.fromisoformat,
+        (
+            "2026-12-25",
+            "2026-12-28",
+            "2027-01-01",
+            "2027-03-26",
+            "2027-03-29",
+            "2027-05-03",
+            "2027-05-31",
+            "2027-08-30",
+            "2027-12-27",
+            "2027-12-28",
+            "2028-01-03",
+            "2028-04-14",
+            "2028-04-17",
+            "2028-05-01",
+            "2028-05-29",
+            "2028-08-28",
+            "2028-12-25",
+            "2028-12-26",
+        ),
+    )
+)
 TARGET = time(22, tzinfo=UTC)
 WINDOW = timedelta(minutes=2)
 SCHEMA = "trading212_account_cutoff_pilot_v1"
@@ -20,17 +46,22 @@ KIND = "trading212_refresh"
 ACCOUNT = "shared-isa"
 
 
-def targets():
-    for index in range((LAST - FIRST).days + 1):
-        day = FIRST + timedelta(days=index)
-        if day.weekday() < 5:
+def _scheduled(day):
+    return day >= FIRST and day.weekday() < 5 and day not in CLOSED_DATES
+
+
+def targets(start, end):
+    start = max(start, FIRST)
+    for index in range((end - start).days + 1):
+        day = start + timedelta(days=index)
+        if _scheduled(day):
             yield datetime.combine(day, TARGET)
 
 
 def target_at(now):
     now = now.astimezone(UTC)
     target = datetime.combine(now.date(), TARGET)
-    if FIRST <= now.date() <= LAST and now.weekday() < 5 and target <= now < target + WINDOW:
+    if _scheduled(now.date()) and target <= now < target + WINDOW:
         return target
     return None
 
@@ -111,9 +142,15 @@ def _checked_row(saved, target):
     return None
 
 
-def read_pilot(db, as_of, coverage):
+def read_pilot(db, as_of, coverage, selection=None):
     now = instant(as_of)
-    expected = list(targets())
+    today = now.date()
+    start = date.fromisoformat(selection["start"]) if selection else today - timedelta(days=89)
+    end = date.fromisoformat(selection["end"]) if selection else today
+    if not start < end <= today or (today - start).days > 366:
+        raise ValueError("cutoff_report_range_invalid")
+    preview_end = today + timedelta(days=14) if end == today else end
+    expected = list(targets(start, preview_end))
     ids = [_run_id(target) for target in expected if target <= now]
     saved = {}
     if ids:
@@ -144,7 +181,12 @@ def read_pilot(db, as_of, coverage):
             state = "pending"
         else:
             state = "unavailable" if stored else "missing"
-        point = dict(date=target.date().isoformat(), target_at=target.isoformat(), status=state)
+        point = dict(
+            date=target.date().isoformat(),
+            target_at=target.isoformat(),
+            status=state,
+            calendar_reviewed=target.date() <= CALENDAR_REVIEWED_THROUGH,
+        )
         if mark:
             captured, amount = mark
             point.update(
@@ -160,4 +202,9 @@ def read_pilot(db, as_of, coverage):
             )
         points.append(point)
         previous = mark[0] if mark else None
-    return dict(source="trading212", basis="provisional_broker_capture", observations=points)
+    return dict(
+        source="trading212",
+        basis="provisional_broker_capture",
+        calendar_reviewed_through=CALENDAR_REVIEWED_THROUGH.isoformat(),
+        observations=points,
+    )

@@ -1,6 +1,6 @@
 # Next delivery and closeout
 
-Reviewed **21 November 2026**. Read the [handoff](status-and-handoff.md) first for
+Reviewed **22 November 2026**. Read the [handoff](status-and-handoff.md) first for
 the deployed revisions, checks already run and open evidence gates.
 
 ## Delivered · Portfolio Changes
@@ -11,41 +11,57 @@ times, and dated holding drill-down for comparable allocations and top-five
 concentration. See the [handoff](status-and-handoff.md#portfolio-changes-sprint)
 for the deployed sources, focused checks and live evidence.
 
-## Risk evidence gate
+## Phase 1 · Verify automatic capture
 
-The reviewed-session software path accepts dated GBP NAV and benchmark marks,
-calculates external-flow-adjusted ISA session returns, and reports statistical
-risk and ranked holding pairs when their respective samples qualify. To activate
-this path with real data, complete the source review and supply the private
-manifest in the [daily risk input contract](api-and-ui.md#risk-tab).
+The signed-in Risk tab shows two verified ISA statement-cutoff returns and
+the automatic broker capture schedule. It runs at **22:00 UTC** on London
+trading days using the existing Trading 212 sync. The first ten dates,
+**23 November to 4 December 2026**, remain the initial review window. The owner reported that the broker cannot supply
+a bulk daily valuation export.
 
-Qualify a portfolio GBP total-return series with comparable session valuations,
-timed external funding evidence and UTC endpoints. For benchmark-relative
-statistics, line it up with a permitted GBP VUAG total-return series on the
-same reviewed session calendar. Check split and dividend treatment and use
-dated Bank Rate for rate-dependent measures. Load only approved source rows
-in the [daily risk input contract](api-and-ui.md#risk-tab).
+- **After 22:02 UTC on 23 November**, check one signed-in Risk read for the
+  first outcome. Confirm either the broker-reported GBP value and actual UTC
+  capture time, or the explicit missed-window state.
+- **After the 4 December window closes at 22:02 UTC**, review the ten slots,
+  capture times, missed windows and completed funding coverage. Check that
+  captured values have a consistent reporting basis and that no return spans
+  a missed slot or an interval with incomplete funding evidence.
+- Collection continues beyond the first ten days. Fix demonstrated gaps or
+  timing problems and review the valuation basis independently of capture
+  success. Ten eligible valuations could support up to nine adjacent returns.
+  Keep the statement series on its separate basis.
 
-The signed-in Risk tab shows two verified ISA statement-cutoff returns.
-The owner reported that Trading 212 support cannot supply a bulk daily
-account-value series. A bounded recent timing audit found one of ten
-weekdays within ten minutes of the 21:59 UTC statement cutoff and zero
-captures during the cutoff minute. Existing polling is unsuitable for
-reliable fixed-cutoff capture. The pilot targets one provisional
-account observation at 22:00 UTC on each of ten reviewed weekdays, 23
-November through 4 December 2026. The existing sync tick supplies the capture.
-The Risk tab reports actual capture times, missed windows, and funding coverage.
-The hosted Risk tab showed all ten slots scheduled. Check the first
-completed capture and review the series before using it for statistical risk.
+The launch verified the scheduled slots and the approved statement returns.
+The first automatic capture is pending. [Pilot handoff](status-and-handoff.md#fixed-cutoff-broker-capture-pilot)
 
-The ISA sample needs 58 more eligible returns for statistical risk. VUAG
-and holding correlation require separately qualified total-return data.
-The existing broker observations continue to support the observed comparison
-and drawdown within their coverage. See the
+## Phase 2 · Extend ISA performance and qualify market data
+
+The ongoing series automatically displays provisional cash-flow-adjusted
+returns once adjacent captures and funding qualify. When the valuation basis
+is reviewed and authorised, install the effective-dated approval policy
+for automatic publication as approved ISA returns.
+Statistical risk needs at least **60 comparable eligible returns per
+estimate**. A fully contiguous series needs 61 valuations. Preserve coverage
+and return gaps. Continue the existing observed comparison and drawdown
+within their available coverage. Use the
+[reviewed input contract](api-and-ui.md#risk-tab) and
 [calculation rules](calculation-contracts.md#risk-tab-coverage).
 
-Maintain sourced classifications for new holdings. Prioritise fund coverage
-gaps by invested value and preserve source date, basis and unallocated weight.
+VUAG comparison and holding correlation have separate source requirements.
+Qualify permitted GBP total-return levels, listing identity, FX convention,
+split and dividend treatment, and timing on the reviewed calendar. Verify
+each statistical measure on its own sample, using dated Bank Rate for
+rate-dependent measures. The full correlation matrix and rolling views
+remain in the [correlation roadmap](correlation.md#views).
+
+## Phase 3 · Finish dashboard and operational acceptance
+
+The remaining roadmap includes portfolio projections, stress scenarios and
+remaining views. Verify a live sector and country comparison once two dates
+have compatible saved classifications. Maintain dated classification sources
+for new holdings and focus first on the largest uncovered fund exposures.
+Complete the outstanding backup and restore checks. See the
+[development stages](development-stages.md).
 
 ## Project closeout · Monitoring and alerts
 

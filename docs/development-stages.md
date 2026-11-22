@@ -28,6 +28,23 @@ stage definitions below retain calculation/operational contracts; reconciliation
 first exit requirements do not override this active scope. Current status owns
 actual verification; next-milestone defines the next bounded delivery.
 
+## Forward sequence after the pilot launch
+
+The signed-in dashboard now has Portfolio Changes, observed performance and
+drawdown, two verified ISA statement returns, and a provisional automatic
+capture schedule. Use the [current delivery brief](next-milestone.md) for the
+dated acceptance checks and the [handoff](status-and-handoff.md) for release
+evidence.
+
+1. Verify the first automatic capture and review the initial ten-date
+   window for timing, gaps, valuation basis and funding coverage. Collection
+   and provisional return calculation continue beyond this review window.
+2. Extend eligible ISA performance. Qualify benchmark and holdings data and
+   verify statistical risk and correlation at the required sample coverage.
+3. Complete the remaining dashboard capabilities and operational acceptance,
+   including projections, scenarios and recovery checks.
+4. Add monitoring and alerts at project closeout under DC28.
+
 ## Delivery discipline
 
 Deliver one reviewable vertical capability at a time. Complete offline tests, reconciliation, operational instructions and affected documentation before declaring a stage verified. Do not build nine placeholder tabs as evidence that nine financial capabilities are done.

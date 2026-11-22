@@ -692,7 +692,7 @@ def test_cutoff_pilot_reuses_scheduled_account_request_and_keeps_gaps(setup, mon
     with Session(engine) as db:
         report = read_pilot(db, "2026-11-25T22:03:00Z", coverage)
         rows = report["observations"]
-        assert len(rows) == 10 and [row["status"] for row in rows[:4]] == [
+        assert rows[-1]["date"] == "2026-12-09" and [row["status"] for row in rows[:4]] == [
             "observed",
             "missing",
             "observed",
@@ -748,3 +748,13 @@ def test_cutoff_pilot_can_save_and_read_with_native_sync_role(native_engine):
             assert (row["status"], row["total_value_gbp"]) == ("observed", "123.456789")
     finally:
         event.remove(native_engine, "begin", restrict)
+
+
+def test_cutoff_calendar_continues_after_pilot_and_skips_exchange_closures():
+    from datetime import UTC, date, datetime
+
+    from meridian.application.cutoff_pilot import target_at, targets
+
+    assert target_at(datetime(2026, 12, 7, 22, 0, tzinfo=UTC))
+    assert not target_at(datetime(2026, 12, 25, 22, 0, tzinfo=UTC))
+    assert [point.day for point in targets(date(2026, 12, 24), date(2026, 12, 29))] == [24, 29]

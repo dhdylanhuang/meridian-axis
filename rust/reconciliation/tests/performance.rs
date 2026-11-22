@@ -471,3 +471,69 @@ fn qualification_reports_real_sample_gates_without_exposing_source_rows() {
     )
     .is_err());
 }
+
+fn cutoff_mark(date: &str, amount: Option<&str>) -> Value {
+    json!({"date":date,"target_at":format!("{date}T22:00:00Z"),"calendar_reviewed":true,
+        "captured_at":amount.map(|_| format!("{date}T22:00:10Z")),"total_value_gbp":amount})
+}
+
+#[test]
+fn automatic_cutoff_returns_use_funding_and_keep_approval_separate() {
+    let mut req = approved_request();
+    req["cutoff_as_of"] = req["risk_as_of"].clone();
+    req["cutoff_marks"] = json!([
+        cutoff_mark("2025-12-01", Some("100")),
+        cutoff_mark("2025-12-02", Some("121")),
+        cutoff_mark("2025-12-03", None),
+        cutoff_mark("2025-12-04", Some("130")),
+        cutoff_mark("2025-12-05", Some("133")),
+    ]);
+    req["events"] = json!([event(
+        "DEPOSIT",
+        "20",
+        "2025-12-02T10:00:10Z",
+        "cutoff-funding"
+    )]);
+    let preapproval = calculate(&req);
+    let report = &preapproval["metrics"]["cutoff_returns"];
+    assert_eq!(report["intervals"][0]["return_pct"], "0.909091");
+    assert_eq!(report["intervals"][0]["external_flow_count"], 1);
+    assert_eq!(
+        report["intervals"][1]["reason"],
+        "missing_cutoff_observation"
+    );
+    assert_eq!(
+        report["intervals"][2]["reason"],
+        "missing_cutoff_observation"
+    );
+    assert_eq!(report["latest"]["sessions"], 1);
+    assert!(report["approved_risk"].is_null());
+
+    req["cutoff_approval"] = json!({"basis":"trading212_fixed_cutoff_gbp_v1",
+        "effective_from":"2025-12-04","effective_through":"2026-12-31",
+        "reviewed_at":"2026-02-28T20:00:00Z","evidence":"synthetic-reviewed-policy"});
+    let metrics = &calculate(&req)["metrics"];
+    assert_eq!(
+        metrics["daily_coverage"],
+        preapproval["metrics"]["daily_coverage"]
+    );
+    let report = &metrics["cutoff_returns"];
+    assert_eq!(report["intervals"][0]["approved"], false);
+    assert_eq!(report["intervals"][3]["approved"], true);
+    assert_eq!(report["approved_risk"]["daily_coverage"]["portfolio"], 1);
+    assert_eq!(report["approved_risk"]["daily_coverage"]["shortfall"], 59);
+    assert!(report["approved_risk"]["measures"][0]["value"].is_null());
+
+    req["coverage"] = Value::Null;
+    let report = &calculate(&req)["metrics"]["cutoff_returns"];
+    assert_eq!(
+        report["intervals"][0]["reason"],
+        "funding_coverage_unverified"
+    );
+    assert!(report["intervals"][0]["return_pct"].is_null());
+
+    req["cutoff_approval"]["reviewed_at"] = json!("2026-03-01T00:00:00Z");
+    let report = &calculate(&req)["metrics"]["cutoff_returns"];
+    assert_eq!(report["approval_state"], "invalid_policy");
+    assert!(report["approved_risk"].is_null());
+}

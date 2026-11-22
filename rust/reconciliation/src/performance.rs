@@ -24,6 +24,9 @@ pub struct Request {
     risk_range: Option<RiskRange>,
     risk_daily: Option<serde_json::Value>,
     risk_as_of: Option<String>,
+    cutoff_marks: Option<Vec<risk::cutoff::Capture>>,
+    cutoff_as_of: Option<String>,
+    cutoff_approval: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize)]
@@ -423,14 +426,32 @@ pub fn calculate_json(input: &str) -> Result<String> {
             return Err(Error("risk_range_invalid"));
         }
         let selected = &intervals[first..=last];
+        let mut metrics = risk::calculate(
+            selected,
+            &request.days[first..=last + 1],
+            &range,
+            risk::Evidence {
+                input: request.risk_daily.as_ref(),
+                as_of: request.risk_as_of.as_deref(),
+                covered,
+                events: &events,
+            },
+        );
+        if let Some(marks) = &request.cutoff_marks {
+            metrics["cutoff_returns"] = risk::cutoff::calculate(
+                marks,
+                &range,
+                request.cutoff_as_of.as_deref(),
+                request.cutoff_approval.as_ref(),
+                covered,
+                &events,
+            )
+            .unwrap_or_else(|| serde_json::json!({"state":"unavailable"}));
+        }
         return serde_json::to_string(&serde_json::json!({
             "method": "modified_dietz_observed_v1",
             "drawdown": drawdown::calculate(selected),
-            "metrics": risk::calculate(
-                selected, &request.days[first..=last+1], &range,
-                risk::Evidence { input: request.risk_daily.as_ref(), as_of: request.risk_as_of.as_deref(),
-                                covered, events: &events },
-            ),
+            "metrics": metrics,
         }))
         .map_err(|_| Error("performance_output_invalid"));
     }

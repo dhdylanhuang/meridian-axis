@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 mod approved;
 #[path = "official_bank_rate.rs"]
 mod bank_rate;
+#[path = "cutoff_returns.rs"]
+pub(super) mod cutoff;
 #[path = "holding_correlation.rs"]
 mod holdings;
 
@@ -285,6 +287,24 @@ pub(super) fn calculate(
         || serde_json::json!({"state":"awaiting_approved_holding_series"}),
         |data| holdings::calculate(data, range.start, range.end),
     );
+    let statistics = statistics(samples);
+    let state = match (source, evidence.input) {
+        (Some(_), _) => "approved_series",
+        (None, Some(_)) => "invalid_series",
+        _ => "awaiting_approved_series",
+    };
+    serde_json::json!({
+        "observed": observed, "daily_state": state,
+        "source": source, "minimum_daily":MIN_DAILY,
+        "session_performance":session_performance, "holding_correlation":holding_correlation,
+        "daily_start":statistics["daily_start"],"daily_end":statistics["daily_end"],
+        "measures":statistics["measures"],"daily_coverage":statistics["daily_coverage"],
+        "bank_rate":{"source":bank_rate::SOURCE,"url":bank_rate::URL,
+            "start_date":bank_rate::first_covered(),"verified_through":bank_rate::VERIFIED_THROUGH},
+    })
+}
+
+fn statistics(samples: Vec<Sample>) -> serde_json::Value {
     let mut portfolio = Vec::new();
     let mut excess = Vec::new();
     let mut matched_portfolio = Vec::new();
@@ -371,19 +391,9 @@ pub(super) fn calculate(
     losses.sort_by(f64::total_cmp);
     measures.extend(tail(&losses, 0.95, "var95", "es95", nav));
     measures.extend(tail(&losses, 0.99, "var99", "es99", nav));
-    let state = match (source, evidence.input) {
-        (Some(_), _) => "approved_series",
-        (None, Some(_)) => "invalid_series",
-        _ => "awaiting_approved_series",
-    };
     serde_json::json!({
-        "observed": observed, "daily_state": state,
-        "source": source, "minimum_daily":MIN_DAILY,
-        "session_performance":session_performance, "holding_correlation":holding_correlation,
         "daily_start":first_date,"daily_end":last_date, "measures":measures,
         "daily_coverage":{"portfolio":n,"vuag":m,"with_rate":excess.len(),
             "shortfall":MIN_DAILY.saturating_sub(n)},
-        "bank_rate":{"source":bank_rate::SOURCE,"url":bank_rate::URL,
-            "start_date":bank_rate::first_covered(),"verified_through":bank_rate::VERIFIED_THROUGH},
     })
 }

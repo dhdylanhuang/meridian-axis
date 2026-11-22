@@ -321,9 +321,13 @@ test('Risk applies a dated range and clears private drawdown on sign-out',async(
      metrics:{observed:{eligible:1,requested:1,loss_intervals:1,worst:{return_pct:'-12',start_at:start+'T18:00:00+00:00',end_at:end+'T18:00:00+00:00'}},
        daily_state:'awaiting_approved_series',minimum_daily:60,
        cutoff_pilot:{observations:[
-         {target_at:'2026-11-23T22:00:00Z',captured_at:'2026-11-23T22:00:14Z',
+         {date:'2026-11-23',target_at:'2026-11-23T22:00:00Z',captured_at:'2026-11-23T22:00:14Z',
           total_value_gbp:'123.456789',status:'observed',funding_coverage:'covered'},
-         {target_at:'2026-11-24T22:00:00Z',status:'missing'},
+         {date:'2026-11-24',target_at:'2026-11-24T22:00:00Z',status:'missing'},
+       ]},
+       cutoff_returns:{approval_state:'awaiting_review',intervals:[
+         {end_date:'2026-11-23',return_pct:'1.25',approved:false},
+         {end_date:'2026-11-24',reason:'missing_cutoff_observation'},
        ]},
        session_performance: custom ? {
          latest_portfolio:{start_date:start,end_date:end,sessions:1,portfolio_pct:'0.952381'},
@@ -358,6 +362,8 @@ test('Risk applies a dated range and clears private drawdown on sign-out',async(
  assert.ok(riskText.includes('Annualised volatility'));
  assert.ok(riskText.includes('£123.456789'));
  assert.ok(riskText.includes('Missed window'));
+ assert.ok(riskText.includes('1.25% · Provisional'));
+ assert.ok(riskText.includes('Missing scheduled capture'));
  assert.ok(riskText.includes('2026-11-23 22:00:14 UTC'));
  assert.ok(riskText.includes('AAA and BBB'));
  assert.ok(riskText.includes('0.952381%'));

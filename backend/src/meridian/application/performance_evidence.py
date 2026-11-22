@@ -14,6 +14,7 @@ from meridian.persistence.types import decimal_text
 MAX_PAGES = 100
 MAX_PAGE_BYTES = 128 * 1024
 MAX_REQUEST_BYTES = 128 * 1024
+MAX_COMPUTE_BYTES = 256 * 1024
 
 
 class PerformanceUnavailable(RuntimeError):
@@ -150,7 +151,9 @@ async def performance_report(engine, history, calculate):
 
                         # No further queries use this transaction. A pilot read
                         # failure is contained by the explicit rollback below.
-                        pilot = read_pilot(db, history["as_of"], value["coverage"])
+                        pilot = read_pilot(
+                            db, history["as_of"], value["coverage"], history["risk_range"]
+                        )
                     except Exception:
                         pilot = {"state": "unavailable"}
             connection.rollback()
@@ -159,6 +162,29 @@ async def performance_report(engine, history, calculate):
             raise ValueError("performance_input_limit")
     except Exception:
         raise PerformanceUnavailable("funding_evidence_unavailable") from None
+    if pilot and "observations" in pilot:
+        # Forward completed windows only, including explicit missing markers.
+        cutoff = [
+            {
+                key: row.get(key)
+                for key in (
+                    "date",
+                    "target_at",
+                    "captured_at",
+                    "total_value_gbp",
+                    "calendar_reviewed",
+                )
+            }
+            for row in pilot["observations"]
+            if row["status"] != "pending"
+        ]
+        enriched = json.dumps(
+            value | {"cutoff_marks": cutoff, "cutoff_as_of": history["as_of"]},
+            separators=(",", ":"),
+            ensure_ascii=False,
+        )
+        if len(enriched.encode()) <= MAX_COMPUTE_BYTES:
+            encoded = enriched
     try:
         async with asyncio.timeout(4):
             result = await calculate(encoded)
@@ -170,6 +196,12 @@ async def performance_report(engine, history, calculate):
         try:
             report = json.loads(result)
             if isinstance(report.get("metrics"), dict):
+                if "observations" in pilot:
+                    points = pilot["observations"]
+                    pilot = pilot | {
+                        "observations": points[-75:],
+                        "older_dates": max(0, len(points) - 75),
+                    }
                 report["metrics"]["cutoff_pilot"] = pilot
                 enriched = json.dumps(report, ensure_ascii=False, separators=(",", ":"))
                 if len(enriched.encode()) <= MAX_REQUEST_BYTES:
