@@ -13,12 +13,12 @@ and the current evidence for the next contributor.
 | --- | --- |
 | AXIS | Account value and capture time, compounded ISA versus VUAG for the latest contiguous matched stretch, drawdown cutoff and top-five concentration |
 | History | 90 UTC dates of saved GBP values and gaps, timed funding and income drill-down, eligible Modified Dietz returns and provisional VUAG comparisons |
-| Risk | Adjustable UTC dates, 90 days by default and up to 367 supported dates, observed losses and drawdown, current concentration, reviewed-session performance, statistical risk and holding correlation with evidence gates |
+| Risk | Adjustable UTC dates, 90 days by default and up to 367 supported dates, observed losses and drawdown, current concentration, reviewed-session performance, the fixed-cutoff capture pilot, statistical risk and holding correlation with evidence gates |
 | Holdings and Exposures | Searchable holdings, sector, issuer domicile and fund-market allocations, currency and cash components, largest/top-five/top-ten weights, coverage and holding drill-down |
 | Portfolio Changes | Two approved UTC dates, ranked signed GBP holding changes, quantity flags, cash and concentration, and comparable saved classification weights with dated holding evidence |
 
-**Deployed sources at handoff** are gateway `d5d6d9e`, session owner
-`3aa8cd5` and sync `5b4d8df`. The gateway runs the private Rust WASM service and
+**Deployed sources at handoff** are gateway and sync `de470af`, with session
+owner `3aa8cd5`. The gateway runs the private Rust WASM service and
 serves the dashboard. The existing session and sync Workers enforce the
 two-member scope around database and broker work. Schema `0008` and the
 ten-minute refresh with sixty-day detailed retention are the operating baseline.
@@ -138,8 +138,18 @@ does not enter the reviewed statement series or statistical estimates.
 
 The pilot uses current schema grants and the existing scheduled path.
 Each accepted date adds one private run and source record. No new broker
-calls, schedule or schema are needed. Publication and the initial hosted
-check are pending.
+calls, schedule or schema are needed. The first release was rolled back after
+two Risk timeouts. The Risk baseline passed after rollback. The revised
+gateway and sync release `de470af` verified the protected bindings, refresh
+schedule, served assets and anonymous denial. One authenticated Risk read
+showed all ten slots as pending and preserved both approved statement returns.
+The verification session was revoked. First scheduled capture is pending.
+
+Focused checks passed for capture reuse, capture when positions fail, missed
+windows, duplicate writes, exact decimals, separate Risk transport and signed-out
+clearing. Earlier focused runs passed ten SQLite/bundle cases, one disposable
+PostgreSQL case with the actual restricted sync role, and two Node browser cases.
+Four targeted Python regressions passed again after simplifying the Risk read.
 
 ## Reviewed session performance and holding correlation
 

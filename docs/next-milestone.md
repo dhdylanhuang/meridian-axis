@@ -35,7 +35,8 @@ reliable fixed-cutoff capture. The pilot targets one provisional
 account observation at 22:00 UTC on each of ten reviewed weekdays, 23
 November through 4 December 2026. The existing sync tick supplies the capture.
 The Risk tab reports actual capture times, missed windows, and funding coverage.
-Review the prospective series before considering it for statistical risk.
+The hosted Risk tab showed all ten slots scheduled. Check the first
+completed capture and review the series before using it for statistical risk.
 
 The ISA sample needs 58 more eligible returns for statistical risk. VUAG
 and holding correlation require separately qualified total-return data.
