@@ -737,27 +737,37 @@
     const status = el('overview-allocation-status');
     legend.replaceChildren();
     ring.hidden = true;
-    status.textContent = data ? 'No usable listing-currency allocation in this snapshot.' : 'Waiting for a saved exposure calculation.';
-    const buckets = (report?.quote_currencies ?? []).filter(row => row.value != null && compare(row.value, '0') > 0);
-    if (!buckets.length || report.observed_holdings?.value == null) return;
-    const colours = ['#78cbd0', '#a8a1ec', '#e7bd7a', '#647993'];
-    const groups = buckets.slice(0, 3).map(row => ({
-      name: row.quote_currency ?? 'Unclassified quote currency', value: row.value, weight: Number(row.value),
+    status.textContent = data ? 'No usable sector allocation in this snapshot.' : 'Waiting for a saved exposure calculation.';
+    const allocation = report?.sectors;
+    const buckets = (allocation?.buckets ?? []).filter(row => row.value != null && compare(row.value, '0') > 0);
+    if (!buckets.length || allocation.observed?.value == null) return;
+    const colours = ['#78cbd0', '#a8a1ec', '#e7bd7a', '#647993', '#9babbc'];
+    const classified = buckets.filter(row => row.label != null);
+    const visible = classified.length === 4 ? 4 : 3;
+    const groups = classified.slice(0, visible).map((row, colour) => ({
+      name: row.label, label: decimal(row.value, data.currency), weight: Number(row.value), colour,
     }));
-    if (buckets.length > 3) {
-      groups.push({ name: 'Other listing currencies', weight: buckets.slice(3).reduce((sum, row) => sum + Number(row.value), 0) });
+    const other = classified.slice(visible);
+    if (other.length) {
+      groups.push({ name: 'Other categories', label: `${other.length} more`,
+        weight: other.reduce((sum, row) => sum + Number(row.value), 0), colour: 3 });
+    }
+    const unclassified = buckets.find(row => row.label == null);
+    if (unclassified) {
+      groups.push({ name: 'Unclassified', label: decimal(unclassified.value, data.currency),
+        weight: Number(unclassified.value), colour: 4 });
     }
     const total = groups.reduce((sum, row) => sum + row.weight, 0);
     if (!Number.isFinite(total) || total <= 0) return;
     status.textContent = report.missing_values ? `${report.missing_values} holdings without a usable GBP mark.` : '';
-    el('overview-marked-value').textContent = decimal(report.observed_holdings.value, data.currency);
+    el('overview-marked-value').textContent = decimal(allocation.observed.value, data.currency);
     const list = add(legend, 'dl');
-    for (const [index, group] of groups.entries()) {
+    for (const group of groups) {
       const row = add(list, 'div');
       const label = add(row, 'dt');
-      add(label, 'i').setAttribute('data-colour', String(index));
+      add(label, 'i').setAttribute('data-colour', String(group.colour));
       add(label, 'span', group.name);
-      add(row, 'dd', group.value == null ? `${buckets.length - 3} more` : decimal(group.value, data.currency));
+      add(row, 'dd', group.label);
     }
     ring.hidden = false;
     const canvas = el('overview-allocation');
@@ -767,11 +777,11 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.lineWidth = 13;
     let position = -Math.PI / 2;
-    for (const [index, group] of groups.entries()) {
+    for (const group of groups) {
       const size = 2 * Math.PI * group.weight / total;
       const gap = groups.length === 1 ? 0 : Math.min(size / 5, .026);
       ctx.beginPath();
-      ctx.strokeStyle = colours[index];
+      ctx.strokeStyle = colours[group.colour];
       ctx.arc(centre, centre, centre - 18, position + gap, position + size - gap);
       ctx.stroke();
       position += size;

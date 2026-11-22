@@ -193,6 +193,7 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
   data.positions[0].current_value = value;
   data.positions.push({name:'Missing Wallet',ticker:'MISSING',quantity:'2',instrument_currency:'USD'});
   const observed = {value,portfolio_pct:'0',invested_pct:'10.1'};
+  const sector = {...observed,value:'5.000000000000000000001',invested_pct:'5.05'};
   const missing = {value:null,portfolio_pct:null,invested_pct:null};
   data.exposures = {
     account_as_of:data.account_retrieval.retrieval_completed_at,
@@ -202,8 +203,11 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
     holdings:[{ticker:'SYNTH',quote_currency:'USD',...observed},{ticker:'MISSING',quote_currency:null,...missing}],
     quote_currencies:[{quote_currency:'USD',missing_values:0,...observed},{quote_currency:null,missing_values:1,...missing}],
     concentration:[{top:1,position_count:1,...missing}],
-    sectors:{classified:observed,observed,sources:{SYNTH:{as_of:'2026-01-01',url:'https://example.test/fact'}},
-      buckets:[{label:'Industrials',...observed,members:{SYNTH:{value,holding_pct:'50'}}}]},
+    sectors:{classified:sector,observed,sources:{SYNTH:{as_of:'2026-01-01',url:'https://example.test/fact'}},
+      buckets:[
+        {label:'Industrials',...sector,members:{SYNTH:{value:sector.value,holding_pct:'50'}}},
+        {label:null,...sector,value:'5',members:{SYNTH:{value:'5',holding_pct:'50'},MISSING:{value:null,holding_pct:'100'}}},
+      ]},
     issuer_domiciles:{classified:missing,observed,sources:{},
       buckets:[{label:null,...observed,members:{SYNTH:{value,holding_pct:'100'},MISSING:{value:null,holding_pct:'100'}}}]},
     cash_component_pct:{availableToTrade:'0',inPies:null,reservedForOrders:null},
@@ -217,7 +221,13 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
   assert.ok(find(section, '10.1%'));
   assert.ok(find(section, 'Largest position'));
   assert.ok(find(section, 'Equity sectors'));
-  assert.ok(find(ui.el('overview-allocation-legend'), '£10.000000000000000000001'));
+  const legend = ui.el('overview-allocation-legend');
+  assert.ok(find(legend, 'Industrials'));
+  assert.ok(find(legend, '£5.000000000000000000001'));
+  assert.ok(find(legend, 'Unclassified'));
+  assert.ok(find(legend, '£5'));
+  assert.equal(find(legend, 'USD'), undefined);
+  assert.equal(ui.el('overview-marked-value').textContent, '£10.000000000000000000001');
   assert.match(ui.el('overview-allocation-status').textContent, /without a usable GBP mark/);
   find(ui.el('overview-top-holdings'), '<img src=x>').listeners.click();
   assert.equal(ui.el('workspace-path').textContent, 'Holdings');
@@ -226,7 +236,7 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
   assert.equal(section.hidden,false);
   find(section, 'Industrials').listeners.click();
   const contributing = ui.el('holdings-body').children[0];
-  assert.ok(find(contributing, 'Bucket contribution: £10.000000000000000000001 · 50% of position'));
+  assert.ok(find(contributing, 'Bucket contribution: £5.000000000000000000001 · 50% of position'));
   assert.equal(find(contributing, 'Source · 1 Jan 2026').href, 'https://example.test/fact');
   find(section, 'Unclassified quote currency').listeners.click();
   assert.equal(ui.el('holdings-panel').hidden,false);
