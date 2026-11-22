@@ -632,3 +632,48 @@ test('Stress Tests tab compares presets and submits a basket with a holding over
   ui.view.clear();
   assert.equal(form.children.length, 0);
 });
+
+test('Meridian refreshes after the 22:02 cutoff even if the snapshot stays unchanged', async () => {
+  const meridian = fs.readFileSync(new URL('../signin/meridian.js', import.meta.url), 'utf8');
+  const nodes = new Map();
+  const document = {
+    createElement: tag => new Element(tag),
+    getElementById(id) {
+      if (!nodes.has(id)) nodes.set(id, new Element());
+      return nodes.get(id);
+    },
+  };
+  let now = Date.parse('2026-11-23T22:01:00Z');
+  class Clock extends Date { static now() { return now; } }
+  let reads = 0;
+  const window = {};
+  const response = {
+    method: 'meridian_common_sample_v1', state: 'insufficient_session_grid',
+    price_basis: 'trading212_fixed_cutoff_gbp_price_v1',
+    window: 90, n: 0, scheduled: 0, isa: '1000', excluded: [],
+  };
+  const context = vm.createContext({ window, document, Date: Clock, AbortController,
+    fetch: async () => {
+      reads++;
+      return { ok: true, json: async () => response };
+    },
+  });
+  vm.runInContext(dates, context);
+  vm.runInContext(meridian, context);
+  const tab = window.meridianDiversification;
+  const saved = snapshot();
+  const settle = () => new Promise(resolve => setImmediate(resolve));
+  tab.setSnapshot(saved);
+  tab.setOpen(true);
+  await settle();
+  tab.setSnapshot(saved);
+  await settle();
+  assert.equal(reads, 1);
+  now = Date.parse('2026-11-23T22:03:00Z');
+  tab.setSnapshot(saved);
+  await settle();
+  tab.setSnapshot(saved);
+  await settle();
+  assert.equal(reads, 2);
+  tab.clear();
+});

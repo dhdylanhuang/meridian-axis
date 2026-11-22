@@ -43,6 +43,12 @@
   };
   const colours = ['#8db9df','#d4967b','#9ec4a0','#bca4df','#d3b777','#d895ad','#81bbb2'];
   let open = false, snapshot = null, report = null, pending = null;
+  let checkedSlot = null;
+  function cutoffSlot() {
+    const elapsed = Date.now() - (22 * 60 + 2) * 60_000;
+    const day = new Date(elapsed).getUTCDay();
+    return Math.floor(elapsed / 86_400_000) - (day === 0 ? 2 : day === 6 ? 1 : 0);
+  }
   let horizon = 90, order = 'global', cluster = -1, exclusionOpen = false, expanded = true;
   let matrixPanel, capitalPanel, detailPanel;
   const toolbar = el('meridian-window');
@@ -65,6 +71,7 @@
     const request = new AbortController();
     pending = request;
     const previous = report;
+    const requestedSlot = cutoffSlot();
     if (!pair) result.replaceChildren();
     status.textContent = pair ? 'Loading rolling windows…' : 'Loading approved evidence…';
     const query = pair ? `&pair=${pair.join(',')}&basis=${pairOnly ? 'pair' : 'common'}` : '';
@@ -83,12 +90,14 @@
       if (pending !== request) return;
       if (next.method !== 'meridian_common_sample_v1' || next.window !== horizon) throw new Error('invalid');
       if (pair && (previous.holdings_time !== next.holdings_time || previous.capture_time !== next.capture_time ||
+          previous.latest_scheduled_date !== next.latest_scheduled_date ||
           pair.some((k,i) => previous.holdings[k]?.ticker !== next.holdings?.[next.pair?.[i]]?.ticker))) {
         void load();
         return;
       }
       status.textContent = next.descriptive && next.matrix ? `Descriptive view · ${next.n} matched returns · reliable estimates require ${next.minimum}.` : '';
       report = next;
+      checkedSlot = requestedSlot;
       if (pair) {
         const basisFocus = detailPanel.contains(document.activeElement);
         matrix();
@@ -421,20 +430,19 @@
     setSnapshot(data) {
       const changed = stamp(snapshot) !== stamp(data) || holdingsStamp(snapshot) !== holdingsStamp(data);
       snapshot = data;
-      if (!changed) return;
-      report = null;
-      if (open) void load();
+      if (changed) report = null;
+      if (open && (changed || (!pending && (!report || checkedSlot !== cutoffSlot())))) void load();
     },
     setOpen(value) {
       if (value === open) return;
       open = value;
       if (open && !snapshot) status.textContent = 'Waiting for an approved GBP ISA snapshot.';
-      if (open && !report) void load();
+      if (open && (!report || checkedSlot !== cutoffSlot())) void load();
       if (!open) { pending?.abort(); pending = null; }
     },
     clear() {
       pending?.abort(); pending = null;
-      open = false; snapshot = null; report = null;
+      open = false; snapshot = null; report = null; checkedSlot = null;
       horizon = 90; cluster = -1; exclusionOpen = false; order = 'global';
       syncControls();
       status.textContent = ''; result.replaceChildren();
