@@ -250,7 +250,24 @@ The active model is portfolio-level only. Confirmed planning goal: **£100,000 b
 
 For a fixed n-period case with end-period contribution c and monthly rate r: `FV=V0(1+r)^n+c((1+r)^n−1)/r`; at r=0 use `V0+n×c`. Beginning-period contributions multiply the contribution term by `(1+r)`. For active dated forecasts, iterate an explicit contribution schedule and growth periods, with a stated treatment of partial periods.
 
-PROPOSED active annual assumption convention: effective annual growth converted with `r=(1+R)^(1/12)−1`. Legacy uses R/12 instead. Q05 now concerns only contribution timing, private opening NAV, partial periods and scenario rates; the £100,000 goal is settled. The workbook's private contribution schedule is historical input, not confirmation that deposits execute automatically. Scenario values must be editable and audited; no invented pessimistic/optimistic rates. No Monte Carlo or confidence claims are required.
+The approved Trading 212 GBP ISA capture is the common opening value for the
+no-new-deposit baseline and two editable plans. Use the UTC date of account
+capture, one-off deposit dates, and the calendar month-end of each selected
+month through the goal date. For an interval of `d` days with effective annual
+rate `R`, multiply the existing balance by `(1+R)^(d/365)` and then apply the
+deposit. A deposit on the goal date adds its full principal with zero elapsed
+growth. The opening book and each new allocation use separate editable annual
+rates, with 0% as the neutral default. Hypothetical stock and cash destinations
+use their entered GBP rates without any external quote dependency.
+
+GBP allocations sum exactly to the deposit and percentage allocations sum
+exactly to 100%. The model retains fractional pennies from percentage splits
+when valuing the modeled deposits. Compounded balances use floating-point
+forecast arithmetic, and reported forecast amounts are shown to penny precision. Report target-date GBP,
+exact contributions, forecast growth net of opening value and contributions, and
+signed surplus or gap against the goal. The schedule lists the input allocation
+for each deposit instruction and each generated UTC date. Plans run in memory
+for the signed-in session. Legacy workbook assumptions remain separate.
 
 ## Attribution and trading statistics
 
@@ -265,6 +282,24 @@ Win/loss ratio, profit factor and average holding period need a defined economic
 ## Stress scenarios and RAG
 
 Stress tests are deterministic hypothetical revaluations. Market shocks (-10/-20%) must state whether they directly shock selected securities or use beta; do not assume these are equivalent. Tech sell-off needs an explicit affected set/shock (Q11). Define GBP appreciation by quote direction: if quote currency costs 5% fewer GBP, multiply its GBP-per-unit FX by 0.95. Preserve the exact mathematical meaning shown in UI; do not ambiguously invert a 5% currency move. Apply overlapping holding/group shocks once using explicit precedence. Cash and hedges require supported treatment. Stress results are not forecasts.
+
+The dedicated Stress Tests tab compares two scenarios with editable −10% and
+−20% defaults. A direct price move applies to positive long stock and ETF
+positions with a saved GBP mark. For an eligible holding, multiply its GBP
+mark by the signed price percentage to obtain the impact. A holding-specific
+override replaces the broader rate. Custom scenarios specify an explicit basket
+of eligible tickers from the approved capture. Sum holding impacts exactly and
+add them to the reported ISA value. Report both account and holdings capture
+times, covered GBP and count, and coverage as a share of the ISA denominator.
+
+Preserve the reported GBP available-to-trade cash component. Display marked
+holdings outside the scenario and the signed reconciliation difference between
+reported ISA value and the sum of all usable GBP marks plus displayed cash.
+Their sum is uncovered value excluding displayed cash. Other cash components
+can overlap and remain part of the reconciliation difference where applicable.
+Cash and uncovered exposure receive no price change. Prices are shocked holding
+FX constant, and no underlying FX exposure is inferred from listing currency.
+Beta, FX and named thematic scenarios need separate methods and evidence.
 
 Holding RAG is requested but its score/threshold meaning is OPEN (Q09). Until decided, display unavailable/configuration required rather than arbitrary red/amber/green investment recommendations. Group RAG and pie target status are excluded.
 

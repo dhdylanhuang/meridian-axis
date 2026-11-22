@@ -7,6 +7,8 @@ pub mod exposures;
 pub mod performance;
 #[cfg(any(test, target_arch = "wasm32"))]
 mod projections;
+#[cfg(any(test, target_arch = "wasm32"))]
+mod stress;
 pub mod risk_sessions;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, FixedOffset};

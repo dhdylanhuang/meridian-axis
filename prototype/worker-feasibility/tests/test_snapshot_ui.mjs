@@ -444,7 +444,7 @@ test('Projections tab accepts deposits, renders comparisons and shows allocation
   const starting = planningSnapshot();
   const result = {target_value:'1100',deposits:'100',growth:'0',goal_difference:'-98900',
     series:[{date:'2026-01-02',value:'1000'},{date:'2030-04-30',value:'1100'}],
-    schedule:[{date:'2030-04-30',total:'100',amounts:[{kind:'cash',amount:'100',growth_pct:'0'}]}]};
+    schedule:[{date:'2030-04-30',deposit:0}],instructions:[{total:'100',allocations:[{kind:'cash',amount:'100',growth_pct:'0'}]}]};
   let submitted = [];
   const ui = setup(async (path, options) => {
     if (path.endsWith('/snapshot')) return Response.json(starting);
@@ -476,6 +476,55 @@ test('Projections tab accepts deposits, renders comparisons and shows allocation
   form.oninput();
   await form.onsubmit({preventDefault(){}});
   assert.match(ui.el('projections-status').textContent, /add up to 100%/);
+  ui.view.clear();
+  assert.equal(form.children.length, 0);
+});
+
+test('Stress Tests tab compares presets and submits a basket with a holding override', async () => {
+  const starting = planningSnapshot();
+  Object.assign(starting.positions[0], {instrument_type:'STOCK', current_value:'800', quantity:'1'});
+  let assumptions;
+  const ui = setup(async (path, options) => {
+    if (path.endsWith('/snapshot')) return Response.json(starting);
+    assert.match(path, /\/stress-tests$/);
+    const payload = JSON.parse(options.body);
+    assumptions = payload.assumptions;
+    if (assumptions.scenarios.some(scenario => scenario.scope === 'basket' && !scenario.basket.length)) {
+      return Response.json({error:'stress_basket_invalid'}, {status:422});
+    }
+    const row = {scope:'all',price_shock_pct:'-10',stressed_value:'920',impact:'-80',impact_pct:'-8',
+      covered_value:'800',covered_pct:'80',covered_holdings:1,uncovered_value:'100',unshocked_marked_value:'0',
+      holdings:[{ticker:'SYNTH',opening_value:'800',shock_pct:'-10',impact:'-80',stressed_value:'720'}]};
+    return Response.json({method:'direct_isa_stress_v1',currency:'GBP',capture_time:payload.capture_time,
+      opening_value:'1000',known_cash:'100',unreconciled_value:'100',total_holdings:1,
+      unvalued_holdings:0,ineligible_holdings:0,scenarios:[row,{...row,scope:'basket'}]});
+  }, true);
+  ui.document.cookie = '__Host-meridian_csrf=synthetic';
+  await ui.view.load();
+  ui.el('stress-tab').listeners.click();
+  assert.equal(ui.el('stress-panel').hidden, false);
+  assert.equal(ui.el('projections-panel').hidden, true);
+  const form = ui.el('stress-form');
+  await form.onsubmit({preventDefault(){}});
+  assert.deepEqual(assumptions.scenarios.map(row => row.price_shock_pct), ['-10','-20']);
+  const field = label => findNode(form, node => node.textContent === label).children[0];
+  const scope = field('Apply shock to');
+  scope.value = 'basket';
+  scope.listeners.change();
+  form.oninput();
+  await form.onsubmit({preventDefault(){}});
+  assert.match(ui.el('stress-status').textContent, /Select at least one/);
+  const selection = field('Include in basket');
+  selection.checked = true;
+  selection.listeners.change();
+  field('Override shock (%)').value = '-5';
+  await form.onsubmit({preventDefault(){}});
+  assert.deepEqual(assumptions.scenarios[0], {scope:'basket',price_shock_pct:'-10',basket:['SYNTH'],
+    overrides:[{ticker:'SYNTH',price_shock_pct:'-5'}]});
+  const result = content(ui.el('stress-results'));
+  assert.match(result, /Stressed ISA value £920/);
+  assert.match(result, /Uncovered value excluding displayed cash £100/);
+  assert.match(result, /largest losses.*SYNTH.*−£80/s);
   ui.view.clear();
   assert.equal(form.children.length, 0);
 });

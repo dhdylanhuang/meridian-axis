@@ -53,7 +53,7 @@ Final methods/schemas are established in the implementation task and FastAPI Ope
 
 All session routes require the configured HTTPS authority; foreign Origin headers are rejected on reads, and mutations require Origin. No forwarded header can choose the accepted authority. Cookies use `__Host-` names, Secure, SameSite=Strict, Path=/ and no Domain; the authentication cookie is HttpOnly, while the independent CSRF cookie is browser-readable. Authentication/provider tokens never enter response JSON. Responses are non-cacheable, including route/method failures; automatic slash redirects are disabled. Login accepts at most 8 KiB streamed JSON with exactly string `email`/`password` fields and rejects duplicate keys; fixed errors never echo credentials. Cookie issuance follows commit. Session rotation preserves original expiry. Supabase provider-token refresh remains unimplemented, so expiry requires a fresh login. Broker data refresh uses the separate authenticated portfolio route. Both approved identities passed hosted setup/login/session/logout checks, and the owner confirmed browser sign-in. Partner browser confirmation and the remaining browser audit are open. All current routes are finite JSON, with direct ASGI privacy-header middleware; adding streaming/background work requires new resource-lifecycle qualification.
 
-## Nine-tab contract
+## Portfolio navigation contract
 
 | Tab | Required content | Honest states and interactions |
 | --- | --- | --- |
@@ -62,12 +62,26 @@ All session routes require the configured HTTPS authority; foreign Origin header
 | **EXPOSURES** | Holding/group allocation, listing-currency breakdown, supported underlying currency and overlap | Denominators/coverage explicit; no-data explanation instead of inferred look-through |
 | **CORRELATION** | Holding/group heatmaps, benchmarks, pair rolling, shrinkage toggle and diagnostics | Frequency/window/estimator/counts visible; clustering/group sort modes; low overlap warning; unavailable series listed |
 | **HOLDINGS** | Ticker/name, group, quantity, management cost; tax cost deferred, current price, value, weight, PnL, dividends, RAG and thesis link | Sort/filter groups; price source/time/delay; tax not applicable/incomplete states; closed positions separate from live poll universe |
-| **RISK** | Historical VaR95/99 and ES, drawdown chart/dates, concentration overall/by group, rolling beta and stress toggles | Method/window/count and loss horizon; flow-adjusted wealth; scenario assumptions and custom target selection |
+| **RISK** | Historical VaR95/99 and ES, drawdown chart/dates, concentration overall/by group, rolling beta | Method/window/count and loss horizon; flow-adjusted wealth |
+| **PROJECTIONS** | Baseline and two editable plans for £100,000 by 30 April 2030 | Approved GBP opening capture, dated deposits, full allocations, growth assumptions, chart and schedule |
+| **STRESS TESTS** | Two deterministic direct-price scenarios | Editable defaults, custom basket, per-holding overrides, loss drivers, GBP cash and uncovered value |
 | **TRANSACTIONS** | Filterable economic events; import/sync history; full authorised audit trail | Raw evidence details redacted appropriately; failed rows/conflicts; dedupe counts; polling log filter |
 | **ATTRIBUTION** | PnL by holding/group/currency; market/residual analysis; win/loss, profit factor, holding period; tax-year summary deferred | Method gates; reconcile residual; wrapper-aware tax; undefined trade statistics remain unavailable |
 | **HISTORY** | Recorded value, true external contributions where available, baseline source invested amounts, cumulative dividends | Irregular snapshot spacing; no fabricated month-end dates; baseline versus derived precedence; May missing Space and July ambiguity visible |
 
-The portfolio planning goal is £100,000 by 30 April 2030; target and forecast remain distinct. Portfolio projections and scenario settings can be a panel/drawer linked from AXIS/HISTORY, not an extra mandatory top-level tab or a group-projection feature. Thesis editing is a holding/group detail action. Settings may be a utility screen; nine tabs describe the main portfolio navigation, not a prohibition on login/settings screens.
+The top-level planning tabs share the existing approved Trading 212 GBP ISA
+snapshot and keep assumptions in page memory. Historical risk measures remain
+in Risk. Thesis editing remains a holding/group detail action.
+
+The authenticated Worker handles `POST /api/v1/portfolio/projections` and
+`POST /api/v1/portfolio/stress-tests`. Both accept JSON assumptions plus
+the displayed account and holdings capture timestamps. The gateway requires
+the configured Origin, matching CSRF cookie and header, and a successful
+authenticated approved-snapshot read from the existing Python session owner.
+It returns a capture conflict if the latest approved snapshot has advanced,
+passes decimal strings to Rust WASM and returns no-store JSON. Inputs contain
+no client-provided balances. The endpoints perform a read-only saved-snapshot
+lookup. Assumptions and computed holdings impacts are kept out of public assets.
 
 ## Data quality vocabulary
 

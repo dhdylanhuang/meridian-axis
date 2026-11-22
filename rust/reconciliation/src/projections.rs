@@ -96,7 +96,7 @@ enum Destination {
     Cash,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Serialize)]
 struct FlowAllocation {
     kind: Destination,
     name: String,
@@ -107,8 +107,7 @@ struct FlowAllocation {
 #[derive(Serialize)]
 struct Flow {
     date: NaiveDate,
-    amounts: Vec<FlowAllocation>,
-    total: String,
+    deposit: usize,
 }
 
 #[derive(Serialize)]
@@ -125,6 +124,7 @@ struct Forecast {
     goal_difference: String,
     series: Vec<Point>,
     schedule: Vec<Flow>,
+    instructions: Vec<Instruction>,
 }
 
 #[derive(Serialize)]
@@ -169,37 +169,30 @@ fn money(value: &BigDecimal) -> String {
     text(&value.round(2))
 }
 
-#[derive(Clone)]
-struct Tranche {
-    amount: BigDecimal,
-    rate: f64,
-}
-
-#[derive(Clone)]
-struct DatedDeposit {
-    tranches: Vec<Tranche>,
+#[derive(Serialize)]
+struct Instruction {
     allocations: Vec<FlowAllocation>,
+    total: String,
+}
+
+struct DepositProgram {
+    growing: Vec<(u64, f64)>,
+    flat: BigDecimal,
     total: BigDecimal,
+    instruction: Instruction,
 }
 
-fn compound(value: &mut BigDecimal, rate: f64, days: i64) -> Result<()> {
-    if days > 0 && rate != 0.0 {
-        let factor = (1.0 + rate).powf(days as f64 / 365.0);
-        *value = (&*value * BigDecimal::from_f64(factor).ok_or(Error("projection_unavailable"))?)
-            .round(16);
-    }
-    Ok(())
+#[derive(Default)]
+struct DepositSchedule {
+    programs: Vec<DepositProgram>,
+    dates: BTreeMap<NaiveDate, Vec<usize>>,
 }
 
-fn dated_flows(
-    plan: Plan,
-    start: NaiveDate,
-    tickers: &BTreeSet<&str>,
-) -> Result<BTreeMap<NaiveDate, Vec<DatedDeposit>>> {
+fn dated_flows(plan: Plan, start: NaiveDate, tickers: &BTreeSet<&str>) -> Result<DepositSchedule> {
     if plan.deposits.len() > 12 {
         return Err(Error("deposit_limit"));
     }
-    let mut events: BTreeMap<_, Vec<_>> = BTreeMap::new();
+    let mut schedule = DepositSchedule::default();
     for deposit in plan.deposits {
         let total = decimal(&deposit.amount).map_err(|_| Error("deposit_amount_invalid"))?;
         if total <= 0 || total > 1_000_000_000 || total.round(2) != total {
@@ -245,7 +238,8 @@ fn dated_flows(
         if sum != expected {
             return Err(Error("allocation_total_invalid"));
         }
-        let mut tranches = Vec::new();
+        let mut growing = Vec::new();
+        let mut flat = BigDecimal::from(0);
         let mut rows = Vec::new();
         for (kind, name, amount, growth) in allocations {
             let rate = growth_rate(&growth)?;
@@ -255,42 +249,56 @@ fn dated_flows(
                 amount: text(&amount),
                 growth_pct: text(&decimal(&growth)?),
             });
-            tranches.push(Tranche { amount, rate });
+            if rate == 0.0 {
+                flat += amount;
+            } else {
+                growing.push((rate.to_bits(), amount.to_f64().expect("bounded allocation")));
+            }
         }
-        let event = DatedDeposit {
-            tranches,
-            allocations: rows,
+        let index = schedule.programs.len();
+        schedule.programs.push(DepositProgram {
+            growing,
+            flat,
+            instruction: Instruction {
+                allocations: rows,
+                total: text(&total),
+            },
             total,
-        };
+        });
         let mut date = match deposit.frequency {
             Frequency::Once => deposit.first_date,
             Frequency::Monthly => month_end(deposit.first_date),
         };
         loop {
-            events.entry(date).or_default().push(event.clone());
+            schedule.dates.entry(date).or_default().push(index);
             if matches!(deposit.frequency, Frequency::Once) || date == target_date() {
                 break;
             }
             date = month_end(date.succ_opt().expect("bounded forecast dates"));
         }
     }
-    Ok(events)
+    Ok(schedule)
 }
 
-fn forecast(
-    opening: &BigDecimal,
-    rate: f64,
-    start: NaiveDate,
-    mut flows: BTreeMap<NaiveDate, Vec<DatedDeposit>>,
-) -> Result<Forecast> {
+fn forecast(opening: &BigDecimal, rate: f64, start: NaiveDate, flows: DepositSchedule) -> Forecast {
     let mut dates = BTreeSet::from([start, target_date()]);
-    dates.extend(flows.keys().copied());
+    dates.extend(flows.dates.keys().copied());
     let mut month = month_end(start);
     while month < target_date() {
         dates.insert(month);
         month = month_end(month.succ_opt().expect("bounded forecast dates"));
     }
-    let mut balances = BTreeMap::from([(rate.to_bits(), opening.clone())]);
+    let mut balances = BTreeMap::new();
+    let mut flat = BigDecimal::from(0);
+    if rate == 0.0 {
+        flat = opening.clone();
+    } else {
+        balances.insert(
+            rate.to_bits(),
+            opening.to_f64().expect("bounded opening value"),
+        );
+    }
+    let mut factors = BTreeMap::new();
     let mut funded = BigDecimal::from(0);
     let mut schedule = Vec::new();
     let mut series = Vec::new();
@@ -298,35 +306,48 @@ fn forecast(
     let mut closing = opening.clone();
     for date in dates {
         let days = (date - previous).num_days();
-        for (rate, balance) in &mut balances {
-            compound(balance, f64::from_bits(*rate), days)?;
+        if days > 0 {
+            for (rate, balance) in &mut balances {
+                let factor = factors.entry((*rate, days)).or_insert_with(|| {
+                    let base = 1.0 + f64::from_bits(*rate);
+                    base.powf(days as f64 / 365.0)
+                });
+                *balance *= *factor;
+            }
         }
-        for event in flows.remove(&date).into_iter().flatten() {
+        for &index in flows.dates.get(&date).into_iter().flatten() {
+            let event = &flows.programs[index];
             funded += &event.total;
-            for tranche in event.tranches {
-                *balances.entry(tranche.rate.to_bits()).or_default() += tranche.amount;
+            flat += &event.flat;
+            for &(rate, amount) in &event.growing {
+                *balances.entry(rate).or_default() += amount;
             }
             schedule.push(Flow {
                 date,
-                amounts: event.allocations,
-                total: text(&event.total),
+                deposit: index,
             });
         }
-        closing = balances.values().sum();
+        let growing = balances.values().sum::<f64>();
+        closing = &flat + BigDecimal::from_f64(growing).expect("forecast values are bounded");
         series.push(Point {
             date,
             value: money(&closing),
         });
         previous = date;
     }
-    Ok(Forecast {
+    Forecast {
         target_value: money(&closing),
         deposits: text(&funded),
         growth: money(&(&closing - opening - &funded)),
         goal_difference: money(&(&closing - goal())),
         series,
         schedule,
-    })
+        instructions: flows
+            .programs
+            .into_iter()
+            .map(|program| program.instruction)
+            .collect(),
+    }
 }
 
 pub(crate) fn calculate_json(input: &str) -> Result<String> {
@@ -355,7 +376,9 @@ pub(crate) fn calculate_json(input: &str) -> Result<String> {
         .map(|row| row.ticker.as_str())
         .collect();
     let [first, second] = assumptions.plans;
-    let run = |plan| forecast(&opening, rate, start, dated_flows(plan, start, &tickers)?);
+    let run = |plan| {
+        dated_flows(plan, start, &tickers).map(|flows| forecast(&opening, rate, start, flows))
+    };
     let report = Report {
         method: METHOD,
         availability: "available",
@@ -366,7 +389,7 @@ pub(crate) fn calculate_json(input: &str) -> Result<String> {
         opening_growth_pct: text(&decimal(&assumptions.opening_growth_pct)?),
         target_date: target_date(),
         goal: text(&goal()),
-        baseline: forecast(&opening, rate, start, BTreeMap::new())?,
+        baseline: forecast(&opening, rate, start, DepositSchedule::default()),
         plans: [run(first)?, run(second)?],
     };
     serde_json::to_string(&report).map_err(|_| Error("output_failed"))

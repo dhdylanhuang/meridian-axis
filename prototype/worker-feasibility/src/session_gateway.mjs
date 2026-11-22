@@ -6,6 +6,7 @@ const ROUTES = new Map([
   ["/api/v1/portfolio/changes", "GET"],
   ["/api/v1/portfolio/risk", "GET"],
   ["/api/v1/portfolio/projections", "POST"],
+  ["/api/v1/portfolio/stress-tests", "POST"],
   ["/api/v1/portfolio/refresh", "POST"],
   ["/api/v1/portfolio/cash-activity", "POST"],
   ["/api/v1/portfolio/refresh/status", "GET"],
@@ -115,6 +116,7 @@ async function calculatePlan(app, origin, headers, body, calculate) {
       "projection_request_invalid", "growth_invalid", "deposit_limit", "deposit_amount_invalid",
       "deposit_date_invalid", "allocation_limit", "destination_invalid", "allocation_amount_invalid",
       "allocation_total_invalid", "projection_horizon_unavailable",
+      "stress_request_invalid", "shock_invalid", "stress_basket_invalid", "stress_override_invalid",
     ]);
     return validation.has(error) ? failure(error, 422) : failure("calculation_unavailable", 503);
   }
@@ -166,7 +168,8 @@ export default {
       if ((csrf !== null && !NONCE.test(csrf)) || (method === "POST" && csrf === null)) {
         return failure("csrf_invalid", 403);
       }
-      const calculator = url.pathname === "/api/v1/portfolio/projections" ? "projections" : null;
+      const endpoint = url.pathname.split("/").at(-1);
+      const calculator = ["projections", "stress-tests"].includes(endpoint) ? endpoint : null;
       if (calculator) {
         const csrfCookies = (request.headers.get("cookie") ?? "").split(";")
           .map(value => value.trim()).filter(value => value.startsWith("__Host-meridian_csrf="));

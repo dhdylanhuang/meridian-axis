@@ -123,3 +123,27 @@ test('WASM exports observed performance through the existing module initializati
   assert.equal(matched.intervals[0].benchmark_pct, '2');
   assert.equal(matched.intervals[0].difference_pp, '21');
 });
+
+test('planning WASM reports both approved-snapshot paths and safe validation errors', async () => {
+  const { portfolio_projection_json, portfolio_stress_json } = await import('../src/reconciliation_wasm/axis_reconciliation.mjs');
+  const snapshot = {
+    source:'trading212',basis:'broker_reported',currency:'GBP',total_value:'1000',
+    account_retrieval:{retrieval_completed_at:'2029-04-30T22:00:00Z'},
+    positions_retrieval:{retrieval_completed_at:'2029-04-30T22:00:01Z'},
+    cash_components:{availableToTrade:'200'},
+    positions:[{ticker:'SYNTH',account_currency:'GBP',instrument_type:'STOCK',quantity:'1',current_value:'800'}],
+  };
+  const run = (calculate, assumptions) => JSON.parse(calculate(JSON.stringify({snapshot, assumptions})));
+  const deposit = {first_date:'2030-04-30',frequency:'once',amount:'100',unit:'gbp',
+    allocations:[{kind:'holding',name:'SYNTH',share:'100',growth_pct:'10'}]};
+  const plans = [{deposits:[]},{deposits:[deposit]}];
+  const projection = run(portfolio_projection_json, {opening_growth_pct:'0',plans});
+  assert.equal(projection.baseline.target_value, '1000');
+  assert.equal(projection.plans[1].target_value, '1100');
+  deposit.allocations[0].share = '50';
+  assert.throws(() => run(portfolio_projection_json, {opening_growth_pct:'0',plans}), error => error === 'allocation_total_invalid');
+  const stress = run(portfolio_stress_json, {scenarios: ['-10','-20'].map(price_shock_pct =>
+    ({scope:'all',price_shock_pct,basket:[],overrides:[]}))});
+  assert.equal(stress.known_cash, '200');
+  assert.deepEqual(stress.scenarios.map(row => row.stressed_value), ['920','840']);
+});

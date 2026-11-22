@@ -52,8 +52,8 @@ projection or attribution requirement is silently removed; tax stays deferred.
 | R02 | Beta/Jensen alpha against VUAG and IWDA proxies, R-squared and observation count | Calculations; Stage 4 |
 | R03 | Top-5/10, HHI and effective holdings, overall and within groups | Calculations; Stage 4 |
 | R04 | Evidence-based ETF/stock overlap and currency exposures, including underlying revenue currency where available | Calculations; Stage 4/5 |
-| R05 | Market -10/-20%, tech, GBP +/-5%, custom holding/group stress scenarios | Calculations; Stage 5 |
-| F01 | £100,000 portfolio goal by 30 April 2030; editable pessimistic/base/optimistic scenarios and monthly contributions | Calculations; Stage 3; Q05 |
+| R05 | Dedicated Stress Tests tab; editable direct −10%/−20% and custom holding baskets with coverage and a side-by-side result. Tech, GBP ±5% and saved groups remain later scenario methods | Calculations; Stage 5 |
+| F01 | £100,000 portfolio goal by 30 April 2030; dedicated Projections tab with a no-deposit baseline, two editable plans, dated one-off and month-end contributions, and GBP or percentage allocations | Calculations; Stage 3; Q05 |
 | F02 | Preserve and reconcile legacy Excel projection behaviour separately from active model | Workbook and calculations; Stage 3 |
 | X01 | Holding/group/currency contribution, market/residual split, trade statistics; tax summary deferred | Calculations; Stage 5; Q10 |
 | K01 | Dedicated GBP log-return correlation module; daily and weekly; 30/90/252 trading-day horizons | Correlation; Stage 4 |

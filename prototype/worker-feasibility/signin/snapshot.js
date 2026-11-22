@@ -135,7 +135,7 @@
     const [x,y] = parts.map(([whole, fraction='']) => BigInt(whole + fraction.padEnd(scale, '0')));
     return x < y ? -1 : x > y ? 1 : 0;
   }
-  const tabs = [['axis-tab','axis-panel'],['exposures-tab','portfolio-exposures'],['holdings-tab','holdings-panel'],['history-tab','history-panel'],['risk-tab','risk-panel'],['changes-tab','changes-panel'],['projections-tab','projections-panel']];
+  const tabs = [['axis-tab','axis-panel'],['exposures-tab','portfolio-exposures'],['holdings-tab','holdings-panel'],['history-tab','history-panel'],['risk-tab','risk-panel'],['changes-tab','changes-panel'],['projections-tab','projections-panel'],['stress-tab','stress-panel']];
   function selectTab(tab) {
     for (const [other, section] of tabs) {
       el(other).setAttribute('aria-pressed',String(other === tab));

@@ -60,3 +60,8 @@ body.signed-in main{max-width:1180px}.workspace-head{display:flex;align-items:ce
 .planning-key-2 { color: #ffb274; }
 .planning-form button[type="button"] { width: auto; padding-inline: .8rem; background: #283d2d; color: #e4efdf; }
 #projections-results details td:last-child { white-space: normal; min-width: 15rem; }
+
+.stress-holdings { display: grid; gap: .5rem; max-height: 24rem; overflow: auto; margin-block: .5rem; }
+.stress-holdings label { margin-top: .4rem; }
+.planning-form input[type="checkbox"] { display: inline-block; vertical-align: middle; width: 1.15rem; min-height: 1.15rem; margin: 0 .5rem; }
+#stress-results .planning-grid > section { min-width: 0; }
