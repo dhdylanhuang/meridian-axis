@@ -4,7 +4,7 @@
   let snapshot = null, generation = 0, controller = null;
   let holdingScope = null;
   let history = null, historyRequest = null, historyIndex = 0, overviewRequested = false;
-  let changesRequest = null;
+  let changesRequest = null, overviewRange = 30;
   let riskLoaded = false, riskRequest = null;
   const detailControllers = new Set();
   const add = (parent, tag, text) => {
@@ -135,11 +135,22 @@
     const [x,y] = parts.map(([whole, fraction='']) => BigInt(whole + fraction.padEnd(scale, '0')));
     return x < y ? -1 : x > y ? 1 : 0;
   }
-  const tabs = [['axis-tab','axis-panel'],['exposures-tab','portfolio-exposures'],['holdings-tab','holdings-panel'],['history-tab','history-panel'],['risk-tab','risk-panel'],['changes-tab','changes-panel'],['projections-tab','projections-panel'],['stress-tab','stress-panel']];
+  const tabs = [
+    ['axis-tab', 'axis-panel', 'AXIS overview'],
+    ['holdings-tab', 'holdings-panel', 'Holdings'],
+    ['exposures-tab', 'portfolio-exposures', 'Exposures'],
+    ['history-tab', 'history-panel', 'History'],
+    ['changes-tab', 'changes-panel', 'Portfolio Changes'],
+    ['risk-tab', 'risk-panel', 'Risk'],
+    ['projections-tab', 'projections-panel', 'Projections'],
+    ['stress-tab', 'stress-panel', 'Stress Tests'],
+  ];
   function selectTab(tab) {
-    for (const [other, section] of tabs) {
-      el(other).setAttribute('aria-pressed',String(other === tab));
-      el(section).hidden = other !== tab;
+    for (const [other, section, label] of tabs) {
+      const selected = other === tab;
+      el(other).setAttribute('aria-pressed', String(selected));
+      el(section).hidden = !selected;
+      if (selected) el('workspace-path').textContent = label;
     }
     if (tab === 'history-tab' && !history) void loadHistory();
     if (tab === 'changes-tab') setChangesDates();
@@ -154,33 +165,35 @@
   const fundingDays = new Map();
   const plot = {left: 175, right: 942, top: 24, bottom: 218};
   const plotX = index => plot.left + (plot.right - plot.left) * index / (history.days.length - 1);
+  function chartValues(observed) {
+    const scale = Math.max(...observed.map(point => point.total_value.split('.')[1]?.length || 0));
+    const values = observed.map(point => {
+      const [whole, fraction = ''] = point.total_value.split('.');
+      return BigInt(whole + fraction.padEnd(scale, '0'));
+    });
+    return { values, min: values.reduce((a, b) => a < b ? a : b), max: values.reduce((a, b) => a > b ? a : b) };
+  }
   function drawHistory() {
     const ctx = el('history-chart').getContext?.('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, 960, 264);
     ctx.font = '13px system-ui';
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#9eaea8';
+    ctx.fillStyle = '#a1b0c1';
     const points = history.days;
     for (const index of [0, 22, 44, 67, 89]) {
       ctx.fillText(points[index].date.slice(5), plotX(index), 252);
     }
     const observed = points.filter(point => point.status === 'observed');
     if (observed.length) {
-      const scale = Math.max(...observed.map(point => point.total_value.split('.')[1]?.length || 0));
-      const values = observed.map(point => {
-        const [whole, fraction = ''] = point.total_value.split('.');
-        return BigInt(whole + fraction.padEnd(scale, '0'));
-      });
-      const min = values.reduce((a,b) => a < b ? a : b);
-      const max = values.reduce((a,b) => a > b ? a : b);
+      const { values, min, max } = chartValues(observed);
       ctx.textAlign = 'right';
       for (const [value, y] of min === max ? [[min, 121]] : [[max, plot.top], [min, plot.bottom]]) {
         const point = observed[values.indexOf(value)];
         ctx.fillText(historyAmount(point), plot.left - 10, y + 4, plot.left - 14);
-        ctx.fillStyle = '#334741';
+        ctx.fillStyle = '#303d4c';
         ctx.fillRect(plot.left, y, plot.right - plot.left, 1);
-        ctx.fillStyle = '#9eaea8';
+        ctx.fillStyle = '#a1b0c1';
       }
       let valueIndex = 0;
       let previous = null;
@@ -189,7 +202,7 @@
         const value = values[valueIndex++];
         const y = min === max ? 121 : plot.bottom - Number((value - min) * 10000n / (max - min)) / 10000 * (plot.bottom - plot.top);
         const x = plotX(index);
-        ctx.fillStyle = '#91e5bc';
+        ctx.fillStyle = '#81d6bf';
         if (previous) {
           ctx.strokeStyle = ctx.fillStyle;
           ctx.lineWidth = 2;
@@ -205,7 +218,7 @@
       }
     }
     for (const [index, point] of points.entries()) {
-      ctx.fillStyle = point.status === 'observed' ? '#91e5bc' : point.status === 'missing' ? '#586a63' : '#e9b879';
+      ctx.fillStyle = point.status === 'observed' ? '#81d6bf' : point.status === 'missing' ? '#586a7d' : '#e9b879';
       ctx.fillRect(plotX(index) - 2, 229, 4, 4);
     }
     ctx.fillStyle = '#e9b879';
@@ -647,7 +660,142 @@
   const overviewNumber = new Intl.NumberFormat('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2});
   const overviewPct = value => value == null ? 'Unavailable' : overviewNumber.format(Number(value)) + '%';
   const overviewDifference = new Intl.NumberFormat('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2, signDisplay:'exceptZero'});
+  function renderOverviewChart() {
+    const caption = el('overview-history-caption');
+    const canvas = el('overview-chart');
+    const points = history?.days.slice(-overviewRange) ?? [];
+    const observed = points.filter(point => point.status === 'observed');
+    canvas.hidden = !observed.length;
+    if (!observed.length) {
+      caption.textContent = history ? 'No usable snapshots in this range.' : 'Waiting for saved history.';
+      return;
+    }
+    caption.textContent = `${observed.length} of ${points.length} UTC days observed · includes funding`;
+    const ctx = canvas.getContext?.('2d');
+    if (!ctx) return;
+    const { values, min, max } = chartValues(observed);
+    const left = 124, right = canvas.width - 22, top = 22, bottom = canvas.height - 29;
+    const x = index => left + (right - left) * index / (points.length - 1);
+    const y = value => min === max ? (top + bottom) / 2
+      : bottom - Number((value - min) * 10000n / (max - min)) * (bottom - top) / 10000;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = '13px system-ui';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#a1b0c1';
+    ctx.strokeStyle = '#354253';
+    ctx.setLineDash([4, 4]);
+    for (const value of min === max ? [min] : [min, max]) {
+      ctx.fillText(historyAmount(observed[values.indexOf(value)]), left - 9, y(value) + 4, left - 23);
+      ctx.beginPath(); ctx.moveTo(left, y(value)); ctx.lineTo(right, y(value)); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.textAlign = 'center';
+    for (const index of [0, Math.floor((points.length - 1) / 2), points.length - 1]) {
+      ctx.fillText(points[index].date.slice(5), x(index), bottom + 21);
+    }
+    let valueIndex = 0;
+    const stretches = [];
+    let stretch = [];
+    for (const [index, point] of points.entries()) {
+      if (point.status === 'observed') {
+        stretch.push([x(index), y(values[valueIndex++])]);
+      } else if (stretch.length) {
+        stretches.push(stretch);
+        stretch = [];
+      }
+    }
+    if (stretch.length) stretches.push(stretch);
+    const fill = ctx.createLinearGradient(0, top, 0, bottom);
+    fill.addColorStop(0, '#81d6bf38');
+    fill.addColorStop(1, '#81d6bf00');
+    for (const line of stretches) {
+      if (line.length === 1) {
+        ctx.fillStyle = '#81d6bf';
+        ctx.beginPath(); ctx.arc(...line[0], 3, 0, 2 * Math.PI); ctx.fill();
+        continue;
+      }
+      ctx.beginPath();
+      ctx.moveTo(...line[0]);
+      for (const point of line.slice(1)) ctx.lineTo(...point);
+      ctx.strokeStyle = '#81d6bf';
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+      ctx.lineTo(line.at(-1)[0], bottom);
+      ctx.lineTo(line[0][0], bottom);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+  }
+  function renderOverviewAllocation(data) {
+    const report = data?.exposures;
+    const ring = el('overview-allocation-ring');
+    const legend = el('overview-allocation-legend');
+    const status = el('overview-allocation-status');
+    legend.replaceChildren();
+    ring.hidden = true;
+    status.textContent = data ? 'No usable listing-currency allocation in this snapshot.' : 'Waiting for a saved exposure calculation.';
+    const buckets = (report?.quote_currencies ?? []).filter(row => row.value != null && compare(row.value, '0') > 0);
+    if (!buckets.length || report.observed_holdings?.value == null) return;
+    const colours = ['#78cbd0', '#a8a1ec', '#e7bd7a', '#647993'];
+    const groups = buckets.slice(0, 3).map(row => ({
+      name: row.quote_currency ?? 'Unclassified quote currency', value: row.value, weight: Number(row.value),
+    }));
+    if (buckets.length > 3) {
+      groups.push({ name: 'Other listing currencies', weight: buckets.slice(3).reduce((sum, row) => sum + Number(row.value), 0) });
+    }
+    const total = groups.reduce((sum, row) => sum + row.weight, 0);
+    if (!Number.isFinite(total) || total <= 0) return;
+    status.textContent = report.missing_values ? `${report.missing_values} holdings without a usable GBP mark.` : '';
+    el('overview-marked-value').textContent = decimal(report.observed_holdings.value, data.currency);
+    const list = add(legend, 'dl');
+    for (const [index, group] of groups.entries()) {
+      const row = add(list, 'div');
+      const label = add(row, 'dt');
+      add(label, 'i').setAttribute('data-colour', String(index));
+      add(label, 'span', group.name);
+      add(row, 'dd', group.value == null ? `${buckets.length - 3} more` : decimal(group.value, data.currency));
+    }
+    ring.hidden = false;
+    const canvas = el('overview-allocation');
+    const ctx = canvas.getContext?.('2d');
+    if (!ctx) return;
+    const centre = canvas.width / 2;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.lineWidth = 13;
+    let position = -Math.PI / 2;
+    for (const [index, group] of groups.entries()) {
+      const size = 2 * Math.PI * group.weight / total;
+      const gap = groups.length === 1 ? 0 : Math.min(size / 5, .026);
+      ctx.beginPath();
+      ctx.strokeStyle = colours[index];
+      ctx.arc(centre, centre, centre - 18, position + gap, position + size - gap);
+      ctx.stroke();
+      position += size;
+    }
+  }
+  function renderOverviewHoldings(data) {
+    const section = el('overview-top-holdings');
+    section.replaceChildren();
+    const ranked = data?.exposures?.holdings?.filter(row => row.value != null).slice(0, 5) ?? [];
+    if (!ranked.length) {
+      add(section, 'p', data ? 'No saved GBP holding ranking is available.' : 'Waiting for a saved holdings ranking.');
+      return;
+    }
+    const names = new Map(data.positions.map(row => [row.ticker, row.name || row.ticker]));
+    const body = exposureTable(section, ['Holding', 'Reported value', '% of ISA'], 'Top five holdings');
+    for (const position of ranked) {
+      const row = add(body, 'tr');
+      const cell = add(row, 'td');
+      const label = names.get(position.ticker) || position.ticker;
+      holdingLink(cell, label, {kind:'ticker', key:position.ticker, label});
+      add(cell, 'small', position.ticker);
+      add(row, 'td', decimal(position.value, data.currency));
+      add(row, 'td', percent(position.portfolio_pct));
+    }
+  }
   function renderOverview() {
+    renderOverviewChart();
     const report = history?.performance;
     const matched = report?.benchmark?.latest_stretch;
     el('overview-comparison').textContent = matched
@@ -663,6 +811,12 @@
       : 'Needs an eligible cash-flow-adjusted interval.';
   }
   function renderOverviewSnapshot(data) {
+    renderOverviewAllocation(data);
+    renderOverviewHoldings(data);
+    el('overview-holding-count').textContent = `${data.positions.length} reported holdings`;
+    const pnl = data.investments.unrealizedProfitLoss;
+    const direction = pnl == null ? 0 : compare(pnl, '0');
+    el('unrealised-pnl').setAttribute('data-tone', direction < 0 ? 'loss' : direction > 0 ? 'gain' : '');
     el('overview-account-time').textContent = `Captured ${utcStamp(data.account_retrieval.retrieval_completed_at)} UTC`;
     const exposure = data.exposures;
     const top = exposure?.concentration?.find(row => row.top === 5);
@@ -724,6 +878,7 @@
           renderOverview();
           el('overview-comparison-period').textContent = 'Saved History could not be loaded.';
           el('overview-risk-period').textContent = 'Saved History could not be loaded.';
+          el('overview-history-caption').textContent = 'Saved history could not be loaded.';
         }
         el('history-status').textContent = history ? 'Reload failed. Showing the previously loaded observations.' : 'Saved history could not be loaded. Use Reload history to try again.';
       }
@@ -1029,7 +1184,16 @@
     el('portfolio-exposures')?.replaceChildren();
     historyRequest?.abort(); historyRequest = null; history = null; overviewRequested = false;
     for (const id of ['overview-comparison','overview-drawdown','overview-concentration']) el(id).textContent = '—';
-    for (const id of ['overview-account-time','overview-comparison-period','overview-risk-period','overview-exposure-time']) el(id).textContent = '';
+    setOverviewRange(30);
+    for (const id of ['overview-chart', 'overview-allocation']) {
+      const canvas = el(id);
+      canvas.getContext?.('2d')?.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    renderOverviewAllocation(null);
+    renderOverviewHoldings(null);
+    el('overview-marked-value').textContent = '';
+    el('unrealised-pnl').setAttribute('data-tone', '');
+    for (const id of ['overview-holding-count','overview-account-time','overview-comparison-period','overview-risk-period','overview-exposure-time']) el(id).textContent = '';
     changesRequest?.abort(); changesRequest = null;
     el('changes-results').replaceChildren();
     el('changes-status').textContent = '';
@@ -1183,12 +1347,25 @@
     } catch { if (version === generation) { backoff(); schedule(); el('refresh-status').textContent = 'Broker refresh is unavailable. Last successful snapshot remains displayed. Retries are paused.'; } }
     finally { el('refresh-broker').disabled = false; }
   }
+  function setOverviewRange(days) {
+    overviewRange = days;
+    for (const range of [30, 90]) el(`overview-${range}d`).setAttribute('aria-pressed', String(days === range));
+    renderOverviewChart();
+  }
+  for (const range of [30, 90]) el(`overview-${range}d`).addEventListener('click', () => setOverviewRange(range));
   for (const [tab] of tabs) el(tab).addEventListener('click', () => selectTab(tab));
   el('clear-holding-scope').addEventListener('click', () => showHoldings(null));
   el('holding-search').addEventListener('input',renderHoldings); el('holding-sort').addEventListener('change',renderHoldings);
   el('reload-snapshot').addEventListener('click',load);
   el('reload-history').addEventListener('click',loadHistory);
-  for (const [button, tab] of [['overview-history','history-tab'],['overview-risk','risk-tab'],['overview-exposures','exposures-tab']]) {
+  for (const [button, tab] of [
+    ['overview-history', 'history-tab'],
+    ['overview-chart-history', 'history-tab'],
+    ['overview-risk', 'risk-tab'],
+    ['overview-exposures', 'exposures-tab'],
+    ['overview-allocation-exposures', 'exposures-tab'],
+    ['overview-holdings', 'holdings-tab'],
+  ]) {
     el(button).addEventListener('click', () => {
       selectTab(tab);
       el(tab).focus?.();

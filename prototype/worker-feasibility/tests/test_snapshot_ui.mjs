@@ -205,6 +205,11 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
   assert.ok(find(section, '10.1%'));
   assert.ok(find(section, 'Largest position'));
   assert.ok(find(section, 'Equity sectors'));
+  assert.ok(find(ui.el('overview-allocation-legend'), '£10.000000000000000000001'));
+  assert.match(ui.el('overview-allocation-status').textContent, /without a usable GBP mark/);
+  find(ui.el('overview-top-holdings'), '<img src=x>').listeners.click();
+  assert.equal(ui.el('workspace-path').textContent, 'Holdings');
+  assert.equal(ui.el('holdings-body').children.length, 1);
   ui.el('exposures-tab').listeners.click();
   assert.equal(section.hidden,false);
   find(section, 'Industrials').listeners.click();
@@ -224,6 +229,8 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
   ui.view.clear();
   assert.equal(section.children.length,0);
   assert.equal(ui.el('holdings-body').children.length,0);
+  assert.equal(ui.el('overview-allocation-legend').children.length,0);
+  assert.equal(ui.el('overview-allocation-ring').hidden,true);
 });
 
 test('History renders exact daily values, breaks the line across gaps, and clears on sign-out',async()=>{
@@ -247,6 +254,10 @@ test('History renders exact daily values, breaks the line across gaps, and clear
  assert.equal(reads,1);
  assert.equal(lines,1);
  assert.match(ui.el('history-status').textContent,/3 of 90 days observed · 87 missing/);
+ assert.match(ui.el('overview-history-caption').textContent,/3 of 30 UTC days observed/);
+ ui.el('overview-90d').listeners.click();
+ assert.match(ui.el('overview-history-caption').textContent,/3 of 90 UTC days observed/);
+ assert.equal(reads,1);
  assert.match(ui.el('history-point').textContent,/£9,007,199,254,740,993.123456789.*11:22:33 UTC.*11:22:34 UTC/);
  assert.equal(ui.el('history-body').children.length,90);
  assert.equal(ui.el('history-body').children[1].children[1].textContent,'No saved snapshot');

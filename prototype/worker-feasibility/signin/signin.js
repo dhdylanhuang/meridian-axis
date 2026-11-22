@@ -91,5 +91,5 @@ elements.logout.addEventListener('click', async () => {
 });
 
 window.addEventListener("meridian-session-ended", () => { signedOut(); message("Your session ended. Sign in again."); });
-window.addEventListener("pagehide", () => { clearInterval(snapshotTimer); window.meridianSnapshot.clear(); });
+window.addEventListener("pagehide", () => { window.meridianSnapshot.clear(); });
 window.addEventListener("pageshow", event => { if (event.persisted) { signedOut(); request("current").then(async response => { if (response.ok) signedIn(await response.json()); }); } });

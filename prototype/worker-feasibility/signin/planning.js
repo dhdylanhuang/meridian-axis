@@ -271,10 +271,10 @@
     const x = date => 95 + 778 * (Date.parse(date) - first) / (last - first || 1);
     const y = value => 275 - 245 * Number(value) / maximum;
     ctx.font = '14px system-ui';
-    ctx.fillStyle = '#b8c7bb';
+    ctx.fillStyle = '#a1b0c1';
     for (const value of [0, maximum / 2, maximum]) {
       ctx.fillText(new Intl.NumberFormat('en-GB', {style: 'currency', currency: 'GBP', maximumFractionDigits: 0}).format(value), 7, y(value) + 4, 80);
-      ctx.strokeStyle = '#496150';
+      ctx.strokeStyle = '#354253';
       ctx.beginPath(); ctx.moveTo(95, y(value)); ctx.lineTo(873, y(value)); ctx.stroke();
     }
     ctx.fillText(series[0][0].date, 95, 299);
