@@ -364,5 +364,7 @@ test("Meridian requires an approved snapshot and bounds analysis options", async
   assert.equal((await gateway.fetch(valid, denied, undefined, planning)).status, 401);
   const invalid = request(path + "?window=30&pair=0,2&basis=pair&window=90", { method: "GET" });
   assert.equal((await gateway.fetch(invalid, state.env, undefined, planning)).status, 400);
+  const privateEvidence = request("/cutoff-holdings", { method: "POST" });
+  assert.equal((await gateway.fetch(privateEvidence, state.env, undefined, planning)).status, 404);
   assert.equal(runs, 1);
 });

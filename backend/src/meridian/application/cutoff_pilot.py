@@ -70,52 +70,60 @@ def _run_id(target):
     return f"isa-cutoff-pilot-{target.date().isoformat()}"
 
 
+def _save(engine, run_id, schema, started, captured, row):
+    payload = canonical(row)
+    digest = hashlib.sha256(payload.encode()).hexdigest()
+    if engine.dialect.name == "postgresql":
+        from sqlalchemy.dialects.postgresql import insert
+    else:
+        from sqlalchemy.dialects.sqlite import insert
+    with Session(engine) as db, db.begin():
+        accepted = db.scalar(
+            insert(ImportRun)
+            .values(
+                id=run_id,
+                account_id=ACCOUNT,
+                kind=KIND,
+                status="succeeded",
+                started_at=started,
+                finished_at=captured,
+                content_hash=digest,
+            )
+            .on_conflict_do_nothing(index_elements=["id"])
+            .returning(ImportRun.id)
+        )
+        if accepted:
+            db.add(
+                SourceRecord(
+                    id=run_id,
+                    account_id=ACCOUNT,
+                    run_id=run_id,
+                    row_number=1,
+                    kind=KIND,
+                    schema_version=schema,
+                    payload_json=payload,
+                    digest=digest,
+                )
+            )
+
+
 def save_observation(engine, target, started, captured, total_value):
     if target is None or not target <= started <= captured < target + WINDOW:
         return
     try:
-        value = decimal_text(number(str(total_value)))
-        row = dict(
-            target_at=target.isoformat(),
-            started_at=started.isoformat(),
-            captured_at=captured.isoformat(),
-            total_value_gbp=value,
+        _save(
+            engine,
+            _run_id(target),
+            SCHEMA,
+            started,
+            captured,
+            dict(
+                target_at=target.isoformat(),
+                started_at=started.isoformat(),
+                captured_at=captured.isoformat(),
+                total_value_gbp=decimal_text(number(str(total_value))),
+            ),
         )
-        payload = canonical(row)
-        digest = hashlib.sha256(payload.encode()).hexdigest()
-        run_id = _run_id(target)
-        if engine.dialect.name == "postgresql":
-            from sqlalchemy.dialects.postgresql import insert
-        else:
-            from sqlalchemy.dialects.sqlite import insert
-        with Session(engine) as db, db.begin():
-            accepted = db.scalar(
-                insert(ImportRun)
-                .values(
-                    id=run_id,
-                    account_id=ACCOUNT,
-                    kind=KIND,
-                    status="succeeded",
-                    started_at=started,
-                    finished_at=captured,
-                    content_hash=digest,
-                )
-                .on_conflict_do_nothing(index_elements=["id"])
-                .returning(ImportRun.id)
-            )
-            if accepted:
-                db.add(
-                    SourceRecord(
-                        id=run_id,
-                        account_id=ACCOUNT,
-                        run_id=run_id,
-                        row_number=1,
-                        kind=KIND,
-                        schema_version=SCHEMA,
-                        payload_json=payload,
-                        digest=digest,
-                    )
-                )
     except Exception:
         # Auxiliary capture cannot fail the scheduled refresh/history path.
         print("cutoff_pilot_capture_unavailable")

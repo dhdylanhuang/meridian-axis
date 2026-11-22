@@ -25,10 +25,12 @@
   const coeff = value => (Math.abs(value) < .005 ? 0 : value).toFixed(2).replace('-', '−');
   const reasons = {
     awaiting_approved_holding_series: 'Approved GBP total-return closes for held listings are missing. Listing and session mappings, split and dividend treatment, eligible prior prices and compatible FX must be reviewed.',
+    cutoff_evidence_unavailable: 'Trading 212 cutoff holding marks could not be read. Dated capital remains available.',
+    missing_cutoff_marks: 'No usable adjacent 22:00 UTC holding marks',
     reviewed_evidence_invalid: 'The reviewed holdings evidence did not pass validation.',
     needs_two_holdings: 'At least two holdings require enough usable, variable GBP returns.',
     insufficient_common_sample: 'The eligible holdings have too few complete shared daily returns.',
-    insufficient_session_grid: 'The reviewed session calendar is shorter than this window.',
+    insufficient_session_grid: 'The selected window needs more scheduled trading sessions.' ,
     missing_gbp_value: 'No comparable saved GBP position value',
     no_positive_value: 'No positive market value',
     position_ineligible: 'Position type or quantity is ineligible',
@@ -119,6 +121,8 @@
     }
   }
 
+  const brokerBasis = () => report.price_basis === 'trading212_fixed_cutoff_gbp_price_v1';
+
   function render() {
     result.replaceChildren();
     const summary = add(result, 'dl', null, 'meridian-coverage');
@@ -130,6 +134,10 @@
     ]) {
       const cell = add(summary, 'div');
       add(cell,'dt',label); add(cell,'dd',value);
+    }
+    if (brokerBasis()) {
+      const scheduled = report.latest_scheduled_date ? ` · Latest scheduled slot ${day(report.latest_scheduled_date)}` : '';
+      add(result, 'p', `Trading 212 · 22:00 UTC capture window · GBP price returns${scheduled}. Quote age and corporate-action adjustments are unverified.`, 'meridian-basis');
     }
     exclusions(result);
     const grid = add(result, 'div', null, 'meridian-grid');
@@ -153,7 +161,7 @@
     for (const [mode,label] of [['global','Clustered'], ['sector','Sector order']]) {
       button(toggle, label, () => { order = mode; matrix(); matrixPanel.querySelector('[aria-pressed=true]')?.focus(); }, order === mode);
     }
-    add(matrixPanel, 'p', order === 'global' ? 'Global average linkage · GBP daily log returns' : 'Average linkage within each sector');
+    add(matrixPanel, 'p', order === 'global' ? (brokerBasis() ? 'Global average linkage · GBP daily log price returns' : 'Global average linkage · GBP daily log returns') : 'Average linkage within each sector');
     const ordering = order === 'global' ? report.order : report.sector_order;
     const sectors = [...new Set(report.holdings.map(h => h.sector))].sort();
     const colour = k => colours[sectors.indexOf(report.holdings[k].sector) % colours.length];

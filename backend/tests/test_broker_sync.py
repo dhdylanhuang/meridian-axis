@@ -643,6 +643,7 @@ def test_exposures_publish_atomically_and_fail_open(setup):
 def test_cutoff_pilot_reuses_scheduled_account_request_and_keeps_gaps(setup, monkeypatch):
     from datetime import UTC, datetime
 
+    from meridian.application.cutoff_holdings import read_holdings
     from meridian.application.cutoff_pilot import read_pilot
     from meridian.security import hosted_sync
 
@@ -655,10 +656,19 @@ def test_cutoff_pilot_reuses_scheduled_account_request_and_keeps_gaps(setup, mon
             calls.append("account")
             return await super().account_summary()
 
+        async def positions(self):
+            calls.append("positions")
+            return await super().positions()
+
         async def history_page(self, *args):
             return [], None
 
     api = ClosedAPI()
+    position = api.rows["positions"]["records"][0]
+    position["instrument"]["isin"] = "GB0000000001"
+    position["quantity"] = "2"
+    position["walletImpact"] = {"currentValue": "8.30", "currency": "GBP"}
+    ticker = position["instrument"]["ticker"]
     monkeypatch.setattr(hosted_sync, "create_binding_engine", lambda *args, **kwargs: engine)
     monkeypatch.setattr(hosted_sync, "Trading212Client", lambda **kwargs: api)
     monkeypatch.setattr(hosted_sync, "BrokerJobs", lambda *args: jobs)
@@ -681,13 +691,21 @@ def test_cutoff_pilot_reuses_scheduled_account_request_and_keeps_gaps(setup, mon
         )
 
     assert run()["status"] == "outside_session"
-    assert calls == ["account"]
+    assert calls == ["account", "positions"]
     clock[0] += timedelta(seconds=1)
     api.rows["account_summary"]["records"][0]["totalValue"] = "999"
+    position["walletImpact"]["currentValue"] = "300"
     assert run()["status"] == "outside_session"
     clock[0] += timedelta(days=2)
     api.rows["account_summary"]["records"][0]["totalValue"] = "10.123456789"
     assert run()["status"] == "outside_session"
+    observed = read_holdings(engine, {"holdings": {ticker:"GB0000000001"}},
+                             now=datetime(2026, 11, 25, 22, 3, tzinfo=UTC))
+    assert observed == {"dates":["2026-11-23", "2026-11-24", "2026-11-25"],
+                        "levels":{ticker:["4.15",None,"150"]}}
+    changed = read_holdings(engine, {"holdings": {ticker:"GB0000000002"}},
+                            now=datetime(2026, 11, 25, 22, 3, tzinfo=UTC))
+    assert changed["levels"][ticker] == [None, None, None]
     coverage = {"start_at": "2026-11-01T00:00:00Z", "end_at": "2026-11-30T00:00:00Z"}
     with Session(engine) as db:
         report = read_pilot(db, "2026-11-25T22:03:00Z", coverage)

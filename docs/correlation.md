@@ -18,14 +18,19 @@ weekly mode and shrinkage remain in the broader roadmap below.
 
 The signed-in tab reads the latest approved GBP ISA snapshot. The Gateway's
 read-only `GET /api/v1/portfolio/meridian?window=90` route first obtains that
-snapshot through the existing session owner. It supplies reviewed holding
-levels and the reviewed valuation calendar from the private risk binding to
-Rust WASM. Level admission uses the existing reviewed evidence schema. The
-tab freezes positive GBP market values from the broker snapshot for current
-weights and ends the grid at the latest reviewed cutoff at or before holdings
-capture. It reports broker-available cash and the signed snapshot difference
-separately. An absent or invalid reviewed holdings panel leaves statistical
-results unavailable and shows dated capital and exclusions.
+snapshot through the session owner. It then reads holding marks from the
+private broker sync Worker on the same 22:00 UTC calendar and two-minute
+window as Risk. The first valid holdings capture per date is retained. On
+closed-session days the existing 22:00 job adds one read-only positions
+request. Account capture remains independent of position capture failure.
+
+The production basis is Trading 212 **GBP price returns**. The input level
+is broker-reported GBP holding value divided by positive quantity. Current
+weights are frozen from the approved snapshot. Ticker and ISIN must match.
+Missing scheduled observations break the price series. Exchange quote times
+and dividend and split adjustments are unverified for this basis. The tab
+shows the basis, progress and exclusions and keeps analytical calculations
+in Rust WASM. Off-window historical snapshots do not qualify.
 
 The categorical branch controls cut global average linkage at distance 0.83.
 Sector order clusters within each saved sector and uses Unclassified for

@@ -125,3 +125,43 @@ fn meridian_matrix_attribution_and_history_use_one_frozen_complete_panel() {
     assert_eq!(short["n"], 30);
     assert!(short["matrix"].is_array() && short["risk"].is_null());
 }
+
+#[test]
+fn broker_cutoff_holding_levels_count_only_adjacent_returns_and_keep_basis_visible() {
+    let mut req = input();
+    let mut panel = json!({"dates":["2026-11-23","2026-11-24","2026-11-25","2026-11-26"],"levels":{
+        "AAA":["10","11",null,"13"],"BBB":["20","18","19","21"]
+    }});
+    req["now"] = json!("2026-11-26T22:03:00Z");
+    req["broker_cutoff"] = panel.clone();
+    let partial = run(&req);
+    assert_eq!(
+        partial["price_basis"],
+        "trading212_fixed_cutoff_gbp_price_v1"
+    );
+    assert_eq!(partial["n"], 1);
+    assert_eq!(partial["scheduled"], 3);
+    assert!(partial["matrix"].is_null());
+
+    let dates = req["reviewed"]["sessions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .skip(8)
+        .map(|r| &r["date"])
+        .collect::<Vec<_>>();
+    panel["dates"] = json!(dates);
+    let rows = req["reviewed"]["holdings"]["instruments"]
+        .as_array()
+        .unwrap();
+    let levels = |i: usize| &rows[i]["levels"].as_array().unwrap()[8..];
+    panel["levels"] = json!({"AAA":levels(0),"BBB":levels(1),"CCC":levels(2)});
+    req["broker_cutoff"] = panel;
+    let full = run(&req);
+    assert_eq!(full["state"], "available");
+    assert_eq!(full["n"], 90);
+    assert_eq!(
+        full["history"].as_array().unwrap().last().unwrap()["imputed"],
+        0
+    );
+}

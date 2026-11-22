@@ -14,6 +14,7 @@ from meridian.adapters.trading212 import PREFIX, BrokerError
 from meridian.application.broker_jobs import BrokerJobs
 from meridian.application.broker_snapshot import broker_snapshot, prepare_exposures
 from meridian.application.cash_reconciliation import prepare_cash_summary
+from meridian.application.cutoff_holdings import save_holdings
 from meridian.application.cutoff_pilot import save_observation
 from meridian.application.snapshot_publish import project_snapshot, publish_snapshot
 from meridian.persistence.models import (
@@ -153,6 +154,8 @@ class BrokerSync:
                         save_observation(
                             self.engine, pilot_target, started, captured, values.total_value
                         )
+                    if pilot_target is not None and family == "positions":
+                        save_holdings(self.engine, pilot_target, started, captured, values)
                     rows = [values] if family == "account_summary" else values
                     observations[family] = {
                         "retrieval_started_at": started.isoformat(),

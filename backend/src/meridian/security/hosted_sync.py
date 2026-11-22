@@ -6,12 +6,13 @@ from datetime import timedelta
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
-from meridian.adapters.trading212 import Trading212Client
+from meridian.adapters.trading212 import BrokerError, Trading212Client
 from meridian.application.broker_jobs import BrokerJobs
 from meridian.application.broker_metadata import latest_metadata, refresh_metadata
 from meridian.application.broker_sessions import relevant_session
 from meridian.application.broker_sync import BrokerSync
-from meridian.application.cutoff_pilot import save_observation, target_at
+from meridian.application.cutoff_holdings import save_holdings
+from meridian.application.cutoff_pilot import WINDOW, save_observation, target_at
 from meridian.persistence.models import Account, BrokerSnapshot, BrokerSyncJob
 from meridian.security.hosted import create_binding_engine
 
@@ -103,6 +104,16 @@ async def run_sync(
                         save_observation(
                             engine, pilot_target, started, captured, summary.total_value
                         )
+                        started = jobs.clock()
+                        if started < pilot_target + WINDOW:
+                            try:
+                                positions = await api.positions()
+                            except BrokerError:
+                                pass  # The matching ISA capture and other jobs remain independent.
+                            else:
+                                save_holdings(
+                                    engine, pilot_target, started, jobs.clock(), positions
+                                )
                 elif result.get("status") != "succeeded":
                     return result | {"session": state}
                 # One history page per ten-minute slot, rotating families.

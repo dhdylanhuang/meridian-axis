@@ -1,4 +1,3 @@
-import { decodeDailyRisk } from './portfolio_classification_catalog.mjs';
 import gateway from './session_gateway.mjs';
 import { portfolioChangesJSON, portfolioMeridianJSON, portfolioProjectionJSON, portfolioSectorRollupJSON, portfolioStressJSON, reconcileCashJSON } from './cash_reconciliation.mjs';
 export { CashReconciliation } from './cash_reconciliation_rpc.mjs';
@@ -8,9 +7,16 @@ export default {
   async fetch(request, env) {
     const response = await gateway.fetch(request, env, portfolioChangesJSON, {
       meridian: async (snapshot, options) => {
-        const reviewed = await decodeDailyRisk(env).catch(() => ({}));
+        const holdings = Object.fromEntries(snapshot.positions
+          .filter(row => typeof row.isin === 'string' && /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(row.isin))
+          .map(row => [row.ticker, row.isin]));
+        const id = env.SYNC.idFromName("shared-isa");
+        const reply = await env.SYNC.get(id).fetch(new Request("https://sync.internal/cutoff-holdings", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ holdings }),
+        }));
+        const broker_cutoff = reply.ok ? await reply.json() : {};
         return portfolioMeridianJSON(JSON.stringify({
-          snapshot, reviewed, now: new Date().toISOString(), ...options,
+          snapshot, broker_cutoff, now: new Date().toISOString(), ...options,
         }));
       },
       projections: portfolioProjectionJSON,

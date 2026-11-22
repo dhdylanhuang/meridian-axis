@@ -14,11 +14,50 @@ const CLUSTER_DISTANCE: f64 = 0.83;
 struct Request {
     snapshot: Value,
     reviewed: Option<Value>,
+    broker_cutoff: Option<Value>,
     now: String,
     window: usize,
     pair: Option<[usize; 2]>,
     #[serde(default)]
     pair_only: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BrokerCutoff {
+    dates: Vec<NaiveDate>,
+    levels: BTreeMap<String, Vec<Option<String>>>,
+}
+
+type PriceRows = BTreeMap<String, (Vec<Option<f64>>, Option<Vec<bool>>)>;
+
+fn cutoff_panel(raw: Value, now: &str) -> Result<(Vec<NaiveDate>, PriceRows)> {
+    let panel: BrokerCutoff =
+        serde_json::from_value(raw).map_err(|_| Error("cutoff_panel_invalid"))?;
+    let now = instant(now)?.with_timezone(&chrono::Utc);
+    if panel.dates.len() > 253
+        || panel.levels.len() > 128
+        || panel.dates.windows(2).any(|pair| pair[0] >= pair[1])
+        || panel
+            .dates
+            .last()
+            .is_some_and(|date| date.and_hms_opt(22, 2, 0).unwrap().and_utc() > now)
+    {
+        return Err(Error("cutoff_panel_invalid"));
+    }
+    let mut prices = BTreeMap::new();
+    for (ticker, series) in panel.levels {
+        crate::identity(&ticker)?;
+        if series.len() != panel.dates.len() {
+            return Err(Error("cutoff_panel_invalid"));
+        }
+        let levels = series
+            .iter()
+            .map(|mark| mark.as_deref().and_then(crate::risk_sessions::level))
+            .collect();
+        prices.insert(ticker, (levels, Some(vec![false; panel.dates.len()])));
+    }
+    Ok((panel.dates, prices))
 }
 
 struct Holding<'a> {
@@ -200,38 +239,50 @@ pub fn calculate_json(input: &str) -> Result<String> {
     let mut marked = BigDecimal::default();
     let mut included = Vec::new();
     let mut excluded = Vec::new();
-    let (reviewed, gate) = match request.reviewed {
-        None => (None, "awaiting_approved_holding_series"),
-        Some(input) => match Reviewed::parse(&input, &request.now) {
-            Ok(data) if data.holdings.is_some() => (Some(data), "available"),
-            Ok(_) => (None, "awaiting_approved_holding_series"),
-            Err(_) => (None, "reviewed_evidence_invalid"),
-        },
+    let broker = request.broker_cutoff.is_some();
+    let (dates, prices, gate) = if let Some(panel) = request.broker_cutoff {
+        match cutoff_panel(panel, &request.now) {
+            Ok((dates, levels)) => (dates, levels, "available"),
+            Err(_) => (Vec::new(), BTreeMap::new(), "cutoff_evidence_unavailable"),
+        }
+    } else {
+        match request.reviewed {
+            Some(input) => match Reviewed::parse(&input, &request.now) {
+                Ok(data) if data.holdings.is_some() => {
+                    let cut_at = instant(holdings_time)?;
+                    let dates = data
+                        .sessions
+                        .iter()
+                        .take_while(|row| instant(&row.cutoff_at).is_ok_and(|at| at <= cut_at))
+                        .map(|s| s.date)
+                        .collect();
+                    let prices = data
+                        .holdings
+                        .unwrap()
+                        .instruments
+                        .into_iter()
+                        .map(|item| (item.ticker, (item.levels, item.imputed)))
+                        .collect();
+                    (dates, prices, "available")
+                }
+                Ok(_) => (
+                    Vec::new(),
+                    BTreeMap::new(),
+                    "awaiting_approved_holding_series",
+                ),
+                Err(_) => (Vec::new(), BTreeMap::new(), "reviewed_evidence_invalid"),
+            },
+            None => (
+                Vec::new(),
+                BTreeMap::new(),
+                "awaiting_approved_holding_series",
+            ),
+        }
     };
-    let cut_at = instant(holdings_time)?;
-    let dates = reviewed
-        .as_ref()
-        .map(|r| {
-            r.sessions
-                .iter()
-                .take_while(|row| instant(&row.cutoff_at).is_ok_and(|at| at <= cut_at))
-                .map(|s| s.date)
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
     let right = dates.len().saturating_sub(1);
     let left = right.saturating_sub(window);
     let threshold = if window == 30 { 3 } else { MINIMUM };
-    let prices: BTreeMap<_, _> = reviewed
-        .as_ref()
-        .and_then(|r| r.holdings.as_ref())
-        .map(|h| {
-            h.instruments
-                .iter()
-                .map(|item| (item.ticker.as_str(), item))
-                .collect()
-        })
-        .unwrap_or_default();
+    let mut collecting = Vec::new();
     let mut labels = BTreeMap::new();
     let mut sectors = BTreeMap::new();
     if let Some(buckets) = snapshot["exposures"]["sectors"]["buckets"].as_array() {
@@ -269,18 +320,30 @@ pub fn calculate_json(input: &str) -> Result<String> {
             {
                 "position_ineligible"
             }
-            (Some(_), None) => "missing_approved_series",
-            (Some(value), Some(series)) => {
-                let returns = returns(&series.levels);
+            (Some(_), None) => {
+                if broker {
+                    "missing_cutoff_marks"
+                } else {
+                    "missing_approved_series"
+                }
+            }
+            (Some(value), Some((levels, imputed))) => {
+                let returns = returns(levels);
                 let usable = || returns[left..right].iter().flatten().copied();
                 count = usable().count();
                 if count < threshold {
-                    "insufficient_holding_returns"
+                    if broker && count > 0 {
+                        collecting.push(returns);
+                    }
+                    if broker && count == 0 {
+                        "missing_cutoff_marks"
+                    } else {
+                        "insufficient_holding_returns"
+                    }
                 } else if !variable(usable()) {
                     "constant_holding"
                 } else {
-                    let carried = series
-                        .imputed
+                    let carried = imputed
                         .as_ref()
                         .map(|marks| marks.windows(2).map(|p| p[0] || p[1]).collect());
                     included.push(Holding {
@@ -319,12 +382,23 @@ pub fn calculate_json(input: &str) -> Result<String> {
     } else {
         common(&columns, left, right)
     };
-    let n = rows.len();
+    let n = if broker && columns.len() < 2 && collecting.len() + columns.len() >= 2 {
+        (left..right)
+            .filter(|&i| {
+                collecting.iter().all(|r| r[i].is_some())
+                    && columns.iter().all(|h| h.returns[i].is_some())
+            })
+            .count()
+    } else {
+        rows.len()
+    };
     let covered: BigDecimal = included.iter().map(|h| &h.value).sum();
     let excluded_value = &marked - &covered;
     let residual = cash.as_ref().map(|cash| &isa - &marked - cash);
     let state = if gate != "available" {
         gate
+    } else if broker && right < window {
+        "insufficient_session_grid"
     } else if included.len() < 2 {
         "needs_two_holdings"
     } else if n < threshold {
@@ -336,6 +410,8 @@ pub fn calculate_json(input: &str) -> Result<String> {
     };
     let mut report = json!({
         "method":"meridian_common_sample_v1", "state":state, "window":window, "minimum":MINIMUM,
+        "price_basis": if broker { "trading212_fixed_cutoff_gbp_price_v1" } else { "reviewed_gbp_total_return" },
+        "latest_scheduled_date":dates.last(),
         "descriptive": window == 30, "capture_time":capture_time, "holdings_time":holdings_time,
         "isa":text(&isa), "n":n, "scheduled":right.min(window), "excluded":excluded,
         "covered_value":text(&covered), "covered_pct":decimal_percent(&covered, &isa),

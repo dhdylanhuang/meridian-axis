@@ -18,6 +18,8 @@ class BrokerSyncDO(DurableObject):
         from urllib.parse import urlsplit
 
         path = urlsplit(request.url).path
+        if path == "/cutoff-holdings" and request.method == "POST":
+            return await self.cutoff_holdings(request)
         if (
             path in {"/cash-activity", "/observed-performance"}
             and request.method == "POST"
@@ -135,6 +137,35 @@ class BrokerSyncDO(DurableObject):
             status=503 if result["status"] == "unavailable" else 200,
             headers={"Cache-Control": "no-store"},
         )
+
+    async def cutoff_holdings(self, request):
+        import json
+        from datetime import UTC, datetime
+
+        from meridian.application.cutoff_holdings import read_holdings
+        from meridian.security.hosted import create_binding_engine
+
+        headers = {"Cache-Control": "no-store"}
+        engine = None
+        async with _LOCK:
+            try:
+                raw = await request.text()
+                if len(raw.encode()) > 24 * 1024:
+                    return Response.json({"error": "request_invalid"}, status=400, headers=headers)
+                if int(time.time() * 1000) < deadline(await self.ctx.storage.get("database-not-before")):
+                    return Response.json({"error": "cutoff_holdings_unavailable"}, status=503, headers=headers)
+                engine = create_binding_engine(
+                    self.env.HYPERDRIVE, expected_role="meridian_sync_public"
+                )
+                result = read_holdings(engine, json.loads(raw), now=datetime.now(UTC))
+                return Response.json(result, headers=headers)
+            except (KeyError, TypeError, ValueError):
+                return Response.json({"error": "request_invalid"}, status=400, headers=headers)
+            except Exception:  # noqa: BLE001 — keep private evidence out of HTTP errors.
+                return Response.json({"error": "cutoff_holdings_unavailable"}, status=503, headers=headers)
+            finally:
+                if engine is not None:
+                    engine.dispose()
 
     async def alarm(self, alarm_info=None):
         from datetime import datetime

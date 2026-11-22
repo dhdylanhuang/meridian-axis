@@ -354,3 +354,4 @@ details p { margin-block: 6px; }
   .meridian-history-grid { grid-template-columns:1fr }
 }
 .meridian-axis { min-height:22px; font-size:9px }
+.meridian-basis { margin:0 0 8px; color:#aebdcc; font-size:11px }
