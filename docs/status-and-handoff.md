@@ -17,8 +17,8 @@ deployed work and the evidence available to the next contributor.
 | Holdings and Exposures | Searchable holdings, sector, issuer domicile and fund-market allocations, currency and cash components, largest/top-five/top-ten weights, coverage and holding drill-down |
 | Portfolio Changes | Two approved UTC dates, ranked signed GBP holding changes, quantity flags, cash and concentration, and comparable saved classification weights with dated holding evidence |
 
-**Deployed sources at handoff** are gateway and sync `907b8d7`, with session
-owner `3aa8cd5`. The gateway runs the private Rust WASM service and
+**Deployed sources at handoff** are gateway `6df217b`, sync `907b8d7`
+and session owner `3aa8cd5`. The gateway runs the private Rust WASM service and
 serves the dashboard. The existing session and sync Workers enforce the
 two-member scope around database and broker work. Schema `0008` and the
 ten-minute refresh with sixty-day detailed retention are the operating baseline.
@@ -183,6 +183,12 @@ two browser cases and a generated WASM calculation. These covered the
 calendar beyond the initial window, funding-adjusted returns, missed dates,
 and the separate cutoff approval gate. See the
 [daily return contract](api-and-ui.md#risk-tab).
+
+Gateway source `6df217b` added the signed net GBP deposits and withdrawals
+and their count beside each computed automatic return. The targeted browser
+check passed for deposits, withdrawals, zero funding and missing returns.
+Exact served assets, the protected bindings and the ten-minute schedule
+were verified. No live capture was requested for this display-only release.
 
 ## Reviewed session performance and holding correlation
 
