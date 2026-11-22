@@ -54,3 +54,8 @@ pub fn portfolio_stress_json(input: &str) -> Result<String, JsValue> {
 pub fn portfolio_sector_rollup_json(input: &str) -> Result<String, JsValue> {
     crate::exposures::sector_rollup_json(input).map_err(|error| JsValue::from_str(error.0))
 }
+
+#[wasm_bindgen]
+pub fn portfolio_meridian_json(input: &str) -> Result<String, JsValue> {
+    crate::meridian::calculate_json(input).map_err(|error| JsValue::from_str(error.0))
+}

@@ -1,11 +1,18 @@
+import { decodeDailyRisk } from './portfolio_classification_catalog.mjs';
 import gateway from './session_gateway.mjs';
-import { portfolioChangesJSON, portfolioProjectionJSON, portfolioSectorRollupJSON, portfolioStressJSON, reconcileCashJSON } from './cash_reconciliation.mjs';
+import { portfolioChangesJSON, portfolioMeridianJSON, portfolioProjectionJSON, portfolioSectorRollupJSON, portfolioStressJSON, reconcileCashJSON } from './cash_reconciliation.mjs';
 export { CashReconciliation } from './cash_reconciliation_rpc.mjs';
 
 export default {
   scheduled: gateway.scheduled,
   async fetch(request, env) {
     const response = await gateway.fetch(request, env, portfolioChangesJSON, {
+      meridian: async (snapshot, options) => {
+        const reviewed = await decodeDailyRisk(env).catch(() => ({}));
+        return portfolioMeridianJSON(JSON.stringify({
+          snapshot, reviewed, now: new Date().toISOString(), ...options,
+        }));
+      },
       projections: portfolioProjectionJSON,
       sectorRollup: portfolioSectorRollupJSON,
       "stress-tests": portfolioStressJSON,

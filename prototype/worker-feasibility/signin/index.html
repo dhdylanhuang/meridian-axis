@@ -22,6 +22,7 @@
         <button id="history-tab" type="button" aria-pressed="false" aria-controls="history-panel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v16h17M7 15l4-5 4 2 5-6"/></svg><span>History</span></button>
         <button id="changes-tab" type="button" aria-pressed="false" aria-controls="changes-panel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h16m-4-4 4 4-4 4m6 6H5m4-4-4 4 4 4"/></svg><span>Portfolio Changes</span></button>
         <button id="risk-tab" type="button" aria-pressed="false" aria-controls="risk-panel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-3 7-10V5l-7-3-7 3v7c0 7 7 10 7 10zM12 8v5m0 3h.01"/></svg><span>Risk</span></button>
+        <button id="meridian-tab" type="button" aria-pressed="false" aria-controls="meridian-panel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M4 15h16M9 4v16m6-16v16"/></svg><span>The Meridian</span></button>
         <button id="projections-tab" type="button" aria-pressed="false" aria-controls="projections-panel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19h16M6 15l5-5 4 3 5-7m-5 0h5v5"/></svg><span>Projections</span></button>
         <button id="stress-tab" type="button" aria-pressed="false" aria-controls="stress-panel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 10-12h-7z"/></svg><span>Stress Tests</span></button>
       </nav>
@@ -146,6 +147,11 @@
   <p id="risk-status" role="status"></p>
   <div id="risk-results"></div>
   <div id="risk-exposures"></div>
+</section>
+<section id="meridian-panel" aria-labelledby="meridian-heading" hidden>
+  <header class="page-heading"><div><h1 id="meridian-heading">The Meridian</h1><p>Today’s holdings at frozen weights</p></div></header>
+  <div class="meridian-toolbar"><div id="meridian-window" class="segmented" role="group" aria-label="Daily window in sessions"></div><p id="meridian-status" role="status"></p></div>
+  <div id="meridian-result"></div>
 </section>
 <section id="projections-panel" class="exposures" aria-labelledby="projections-heading" hidden>
   <h2 id="projections-heading">Projections</h2>

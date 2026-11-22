@@ -48,6 +48,7 @@ pub(crate) struct Instrument {
     pub weight_pct: String,
     #[serde(deserialize_with = "parse_levels")]
     pub levels: Vec<Option<f64>>,
+    pub imputed: Option<Vec<bool>>,
 }
 
 fn label(value: &str) -> bool {
@@ -159,7 +160,19 @@ impl Holdings {
                 .filter(|amount| amount > &0 && amount <= &100)
                 .ok_or(Error("holding_weight_invalid"))?;
             weight += valid_weight;
-            if !seen.insert(&row.ticker) || row.levels.len() != sessions {
+            if !seen.insert(&row.ticker)
+                || row.levels.len() != sessions
+                || row.imputed.as_ref().is_some_and(|flags| {
+                    flags.len() != sessions
+                        || flags.windows(4).any(|run| run.iter().all(|flag| *flag))
+                        || flags.iter().enumerate().any(|(i, imputed)| {
+                            *imputed
+                                && (i == 0
+                                    || row.levels[i].is_none()
+                                    || row.levels[i] != row.levels[i - 1])
+                        })
+                })
+            {
                 return Err(Error("holding_series_invalid"));
             }
         }

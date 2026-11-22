@@ -286,3 +286,71 @@ details p { margin-block: 6px; }
   .page-content { padding-top: 20px; }
   .overview-detail td { padding: 9px; }
 }
+
+/* The Meridian */
+.meridian-toolbar { display:flex; align-items:center; gap:12px; margin:0 0 14px }
+.meridian-toolbar p { margin:0; font-size:12px }
+#meridian-panel .segmented { display:inline-flex; flex-wrap:wrap; width:auto; gap:3px }
+#meridian-panel button { font:inherit; cursor:pointer }
+#meridian-panel .segmented button { width:auto; min-height:29px; padding:4px 9px; margin:0; background:#1b2632; color:#b7c6d1; border:1px solid #344757; border-radius:4px; font-size:11px }
+#meridian-panel .segmented button[aria-pressed=true] { background:#29433f; color:#bcecdf; border-color:#5b9588 }
+.meridian-grid { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px }
+.meridian-panel,.meridian-coverage,.meridian-exclusions { background:#17212c; border:1px solid #31404f; border-radius:8px; padding:14px }
+.meridian-panel h2 { margin:0 0 5px; font-size:16px }
+.meridian-panel p { margin:5px 0 12px; font-size:12px; color:#aebdcc }
+.meridian-panel-head { display:flex; justify-content:space-between; gap:7px; align-items:start; flex-wrap:wrap }
+.meridian-coverage { display:grid; grid-template-columns:1.4fr repeat(3,minmax(0,1fr)); gap:12px; margin:0 0 8px }
+.meridian-coverage dt { color:#aebdcc; font-size:11px }
+.meridian-coverage dd { font-size:14px; text-align:left; margin-top:4px }
+.meridian-exclusions { margin:0 0 14px; font-size:12px; padding-block:9px }
+.meridian-exclusions summary { color:#96dccb }
+.meridian-exclusions ul { margin:7px 0; padding-left:18px }
+.meridian-heat-wrap { overflow:auto; max-height:530px; padding:3px }
+.meridian-heat { display:grid; grid-template-columns:24px minmax(106px,1.9fr) repeat(var(--holdings),minmax(41px,1fr)); align-items:stretch; gap:2px; font-size:10px; width:max-content; min-width:100%; color:#b4c4d1 }
+.meridian-heat .meridian-row { padding:5px 6px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-left:3px solid var(--sector); background:#22303d }
+.meridian-col { text-align:center; padding:0 3px 3px; border-bottom:2px solid var(--sector); white-space:nowrap }
+#meridian-panel .meridian-cell { width:auto; min-height:26px; margin:0; display:grid; place-items:center; border:1px solid transparent; border-radius:2px; padding:1px 3px; font:600 10px ui-monospace,monospace }
+#meridian-panel .meridian-cell[aria-pressed=true] { box-shadow:inset 0 0 0 2px #d9fff2 }
+#meridian-panel .meridian-cluster-cell { border-color:#a3e8d979 }
+#meridian-panel .meridian-branch { position:relative; border:1px solid #617b84; border-right:0; width:auto; min-height:0; margin:0 3px 0 0; padding:0; border-radius:3px; background:#263340; color:#b2c3cf; font-size:10px }
+#meridian-panel .meridian-branch[aria-pressed=true] { color:#b6f2e0; background:#29433f }
+.meridian-legend { display:flex; align-items:center; flex-wrap:wrap; gap:3px 8px; font-size:10px; color:#b6c5d2; margin:7px 0 }
+.meridian-legend i { width:78px; height:6px; background:linear-gradient(90deg,#a55c4d,#222e34,#7ccfba); position:relative }
+.meridian-legend i::after { content:'0'; position:absolute; top:6px; left:50%; transform:translateX(-50%); font-size:8px }
+.meridian-sector::before { content:''; display:inline-block; width:6px; height:6px; margin-right:4px; background:var(--sector) }
+.meridian-panel .meridian-readout { min-height:22px; margin-bottom:0 }
+.meridian-clusters:empty { display:none!important }
+.meridian-comparison { margin:8px 0 0 }
+.meridian-comparison-row { display:grid; grid-template-columns:minmax(72px,1fr) minmax(84px,1fr) minmax(98px,1.25fr); align-items:center; gap:7px; min-height:34px; border-bottom:1px solid #303c49; padding:4px; font-size:11px }
+.meridian-comparison-head { align-items:end; color:#b3c3d0; line-height:1.25 }
+.meridian-total { background:#253c3b; border-radius:4px }
+#meridian-panel .meridian-total button { text-align:left; width:auto; min-height:24px; padding:0; margin:0; border:0; background:none; color:#d3f5eb; font-size:11px }
+.meridian-bar { display:flex; align-items:center; justify-content:space-between; gap:4px; color:#b4c4d0; font-size:10px }
+.meridian-bar strong { min-width:39px; text-align:right; color:#e3edf5; white-space:nowrap }
+.meridian-track { position:relative; flex:1; height:1px; background:#4a5a68 }
+.meridian-track i,.meridian-track b { position:absolute; display:block }
+.meridian-track i { top:-3px; height:7px; background:#91abc7; border-radius:1px }
+.meridian-track .risk { background:#82cbb6 }
+.meridian-track .negative { background:#df967d }
+.meridian-track b { top:-6px; height:13px; width:1px; background:#c8ded9 }
+.meridian-history { margin-top:14px }
+.meridian-history-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(210px,270px); gap:12px }
+.meridian-history svg { display:block; width:100%; border:1px solid #344251; border-radius:5px; background:#131d27 }
+.meridian-history svg text { fill:#b4c4d0; font:10px system-ui }
+.meridian-history .curve { fill:none; stroke:#94e1cc; stroke-width:2; vector-effect:non-scaling-stroke }
+.meridian-history .guide { stroke:#374553 }
+.meridian-history .zero,.meridian-history .marker { stroke:#778c97; stroke-dasharray:4 4 }
+.meridian-history .gap { fill:#504236; opacity:.6 }
+.meridian-history .dot { fill:#ccffec }
+.meridian-history .hit { fill:transparent; cursor:crosshair }
+.meridian-point { padding:10px; background:#131d27; border:1px solid #344251; border-radius:5px }
+.meridian-point input { width:100%; min-height:28px; padding:0; accent-color:#93dfcb }
+.meridian-point dl { gap:5px 8px; grid-template-columns:minmax(0,1fr) minmax(0,1fr); font-size:11px }
+@media(max-width:1050px) {
+  .meridian-grid { grid-template-columns:1fr }
+}
+@media(max-width:650px) {
+  .meridian-coverage { grid-template-columns:1fr 1fr }
+  .meridian-history-grid { grid-template-columns:1fr }
+}
+.meridian-axis { min-height:22px; font-size:9px }

@@ -1,5 +1,5 @@
 //! Deterministic direct-price shocks to eligible saved GBP holding values.
-use crate::{decimal, instant, text, Error, Result};
+use crate::{decimal, decimal_percent, instant, text, Error, Result};
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -291,10 +291,6 @@ pub(crate) fn calculate_json(input: &str) -> Result<String> {
         ],
     };
     serde_json::to_string(&report).map_err(|_| Error("output_failed"))
-}
-
-fn decimal_percent(numerator: &BigDecimal, denominator: &BigDecimal) -> Option<String> {
-    (denominator > &0).then(|| text(&((numerator * BigDecimal::from(100)) / denominator).round(4)))
 }
 
 #[cfg(test)]

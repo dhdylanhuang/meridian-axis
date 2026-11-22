@@ -5,6 +5,7 @@ const ROUTES = new Map([
   ["/api/v1/portfolio/history", "GET"],
   ["/api/v1/portfolio/changes", "GET"],
   ["/api/v1/portfolio/risk", "GET"],
+  ["/api/v1/portfolio/meridian", "GET"],
   ["/api/v1/portfolio/projections", "POST"],
   ["/api/v1/portfolio/stress-tests", "POST"],
   ["/api/v1/portfolio/refresh", "POST"],
@@ -122,6 +123,24 @@ async function calculatePlan(app, origin, headers, body, calculate) {
   }
 }
 
+async function calculateMeridian(app, origin, headers, options, planning) {
+  let source = await app.fetch(new Request(origin.origin + "/api/v1/portfolio/snapshot", {
+    headers, redirect: "manual",
+  }));
+  if (!source.ok) {
+    return new Response(source.body, { status: source.status, headers: privateHeaders(source.headers) });
+  }
+  try {
+    if (planning.sectorRollup) source = await rollupSnapshot(source, planning.sectorRollup);
+    const report = await planning.meridian(await source.json(), options);
+    return new Response(report, { headers: privateHeaders({ "Content-Type": "application/json" }) });
+  } catch (error) {
+    return error === "meridian_pair_invalid"
+      ? failure("meridian_pair_invalid", 409)
+      : failure("meridian_unavailable", 503);
+  }
+}
+
 // Roll up the already-authorised snapshot without modifying saved evidence.
 async function rollupSnapshot(response, calculate) {
   const original = await response.text();
@@ -163,10 +182,12 @@ export default {
       const changes = url.pathname === "/api/v1/portfolio/changes";
       const dateRange = (changes || url.pathname === "/api/v1/portfolio/risk") &&
         /^\?start=\d{4}-\d{2}-\d{2}&end=\d{4}-\d{2}-\d{2}$/.test(url.search);
-      if (((changes || request.url.includes("?")) && !dateRange) || request.url.includes("#")) {
+      const meridian = url.pathname === "/api/v1/portfolio/meridian";
+      const selection = meridian && /^\?window=(30|90|252)(?:&pair=([0-9]{1,3}),([0-9]{1,3})&basis=(common|pair))?$/.exec(url.search);
+      if (((changes || meridian || request.url.includes("?")) && !dateRange && !selection) || request.url.includes("#")) {
         return failure("request_invalid", 400);
       }
-      if (["/", "/signin.js", "/signin.css", "/snapshot.js", "/planning.js", "/dates.js"].includes(url.pathname) && env.ASSETS) {
+      if (["/", "/signin.js", "/signin.css", "/snapshot.js", "/planning.js", "/dates.js", "/meridian.js"].includes(url.pathname) && env.ASSETS) {
         if (request.method !== "GET") return failure("method_not_allowed", 405, { Allow: "GET" });
         const supplied = request.headers.get("origin");
         if (supplied !== null && supplied !== origin.origin) return failure("origin_invalid", 403);
@@ -217,6 +238,12 @@ export default {
       });
       const id = env.APP.idFromName("meridian-session-application");
       const app = env.APP.get(id);
+      if (selection) {
+        const [, window, a, b, basis] = selection;
+        return await calculateMeridian(app, origin, headers, {
+          window: Number(window), pair: a == null ? null : [Number(a), Number(b)], pair_only: basis === "pair",
+        }, planning);
+      }
       if (calculator) {
         return await calculatePlan(app, origin, headers, body, planning[calculator]);
       }

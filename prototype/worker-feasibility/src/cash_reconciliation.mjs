@@ -1,5 +1,5 @@
 // Import this module only from trusted Worker code, not browser assets.
-import { observed_performance_json, portfolio_changes_json, portfolio_projection_json, portfolio_stress_json, portfolio_sector_rollup_json, portfolio_exposures_json } from './reconciliation_wasm/axis_reconciliation.mjs';
+import { observed_performance_json, portfolio_changes_json, portfolio_meridian_json, portfolio_projection_json, portfolio_stress_json, portfolio_sector_rollup_json, portfolio_exposures_json } from './reconciliation_wasm/axis_reconciliation.mjs';
 import module from './reconciliation_wasm/axis_reconciliation_bg.wasm';
 import { createCashReconciler } from './cash_reconciliation_adapter.mjs';
 let engine;
@@ -41,4 +41,9 @@ export function portfolioStressJSON(input) {
 export function portfolioSectorRollupJSON(input) {
   engine ??= createCashReconciler(module);
   return portfolio_sector_rollup_json(input);
+}
+
+export function portfolioMeridianJSON(input) {
+  engine ??= createCashReconciler(module);
+  return portfolio_meridian_json(input);
 }

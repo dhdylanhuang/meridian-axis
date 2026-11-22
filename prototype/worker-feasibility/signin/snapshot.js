@@ -148,6 +148,7 @@
     ['history-tab', 'history-panel', 'History'],
     ['changes-tab', 'changes-panel', 'Portfolio Changes'],
     ['risk-tab', 'risk-panel', 'Risk'],
+    ['meridian-tab', 'meridian-panel', 'The Meridian'],
     ['projections-tab', 'projections-panel', 'Projections'],
     ['stress-tab', 'stress-panel', 'Stress Tests'],
   ];
@@ -173,6 +174,7 @@
     }
     if (tab === 'history-tab' && !history) void loadHistory();
     if (tab === 'changes-tab') setChangesDates();
+    window.meridianDiversification?.setOpen(tab === 'meridian-tab');
     if (tab === 'risk-tab') {
       renderRiskExposure(snapshot);
       if (!riskLoaded && !riskRequest) void loadRisk();
@@ -1309,6 +1311,7 @@
     active = false; clearTimeout(timer); failures = 0; nextRead = 0; nextManual = 0;
     generation++; controller?.abort(); cancelDetails(); snapshot = null;
     window.meridianPlanning?.clear();
+    window.meridianDiversification?.clear();
     amounts.forEach(id => el(id).textContent = '—');
     el('holdings-body').replaceChildren(); el('holding-count').textContent = '';
     if (el('cash-reconciliation')) { el('cash-reconciliation').replaceChildren(); el('cash-reconciliation').textContent = '—'; }
@@ -1429,6 +1432,7 @@
       if (data.source !== 'trading212' || data.basis !== 'broker_reported' || !Array.isArray(data.positions)) throw new Error('invalid');
       snapshot = data;
       window.meridianPlanning?.setSnapshot(data);
+      window.meridianDiversification?.setSnapshot(data);
       const values = [data.total_value,data.investments.currentValue,data.cash_components.availableToTrade,data.investments.unrealizedProfitLoss,data.cash_components.inPies,data.cash_components.reservedForOrders,data.investments.totalCost,data.investments.realizedProfitLoss];
       amounts.forEach((id,index) => el(id).textContent = decimal(values[index],data.currency));
       el('snapshot-time').textContent = `Trading 212 · ${data.environment.toUpperCase()} account · Account captured ${when(data.account_retrieval.retrieval_completed_at)}; holdings captured ${when(data.positions_retrieval.retrieval_completed_at)}.`;

@@ -4,12 +4,13 @@ mod wasm;
 
 pub mod changes;
 pub mod exposures;
+pub mod meridian;
 pub mod performance;
 #[cfg(any(test, target_arch = "wasm32"))]
 mod projections;
+pub mod risk_sessions;
 #[cfg(any(test, target_arch = "wasm32"))]
 mod stress;
-pub mod risk_sessions;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
@@ -712,4 +713,8 @@ pub fn reconcile(request: Request) -> Result<Report> {
         warnings,
         cash_sign_policy: request.cash_sign_policy,
     })
+}
+
+pub(crate) fn decimal_percent(numerator: &BigDecimal, denominator: &BigDecimal) -> Option<String> {
+    (denominator > &0).then(|| text(&((numerator * BigDecimal::from(100)) / denominator).round(4)))
 }

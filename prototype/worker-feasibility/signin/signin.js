@@ -1,5 +1,6 @@
 import './dates.js';
 import './planning.js';
+import './meridian.js';
 import './snapshot.js';
 // Setup secret exists only in this closure; never storage, query strings or logs.
 const elements = Object.fromEntries([...document.querySelectorAll('[id]')].map(el => [el.id, el]));

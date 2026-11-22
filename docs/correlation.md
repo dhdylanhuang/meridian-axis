@@ -14,6 +14,30 @@ remain visible. Missing marks have no runtime imputation. The reviewed input
 retains the basis for any source alignment. The full matrix, rolling views,
 weekly mode and shrinkage remain in the broader roadmap below.
 
+## The Meridian workspace tab
+
+The signed-in tab reads the latest approved GBP ISA snapshot. The Gateway's
+read-only `GET /api/v1/portfolio/meridian?window=90` route first obtains that
+snapshot through the existing session owner. It supplies reviewed holding
+levels and the reviewed valuation calendar from the private risk binding to
+Rust WASM. Level admission uses the existing reviewed evidence schema. The
+tab freezes positive GBP market values from the broker snapshot for current
+weights and ends the grid at the latest reviewed cutoff at or before holdings
+capture. It reports broker-available cash and the signed snapshot difference
+separately. An absent or invalid reviewed holdings panel leaves statistical
+results unavailable and shows dated capital and exclusions.
+
+The categorical branch controls cut global average linkage at distance 0.83.
+Sector order clusters within each saved sector and uses Unclassified for
+unmapped holdings. The 30-session descriptive matrix shows its matched
+count and suppresses risk contributions. Rolling requests add the selected
+pair indices and an explicit common or pair-specific basis. The newest
+common-panel point uses the exact matrix coefficient. Earlier windows retain
+gaps below the reliability minimum. Optional per-level `imputed` flags record
+approved carries. Inputs with flags must preserve the previous eligible mark
+and use at most three consecutive carries. Older manifests without flags
+show unavailable imputation provenance.
+
 ## Inputs and meaning
 
 Use approved daily total-return-compatible prices converted to GBP, never intraday quotes or unapproved `eod_poll` candidates. Include currently held nonzero risky positions and configured benchmark series. Cash, constants, nonpositive prices, unmapped listings and unsupported history are ineligible with explicit reasons and excluded-weight coverage.

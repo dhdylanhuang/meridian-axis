@@ -342,3 +342,27 @@ test("snapshot sector rollup uses only saved exposures on the authenticated path
   rollup.sectorRollup = () => { throw Error("sector_rollup_invalid"); };
   assert.deepEqual(await (await gateway.fetch(current, state.env, undefined, rollup)).json(), original);
 });
+
+test("Meridian requires an approved snapshot and bounds analysis options", async () => {
+  const path = "/api/v1/portfolio/meridian";
+  const state = setup();
+  let runs = 0;
+  const planning = { meridian(snapshot, options) {
+    runs++;
+    assert.equal(snapshot.status, "synthetic");
+    assert.deepEqual(options, { window: 90, pair: [0, 2], pair_only: true });
+    return '{"state":"available"}';
+  } };
+  const valid = request(path + "?window=90&pair=0,2&basis=pair", { method: "GET", headers: { cookie: "synthetic" } });
+  const response = await gateway.fetch(valid, state.env, undefined, planning);
+  assert.equal(await response.json().then(row => row.state), "available");
+  privateResponse(response);
+  assert.equal(state.requests.length, 1);
+  assert.equal(state.requests[0].url, ORIGIN + "/api/v1/portfolio/snapshot");
+  assert.equal(state.requests[0].headers.get("cookie"), "synthetic");
+  const denied = { ...state.env, APP: { idFromName: () => "", get: () => ({fetch: () => new Response("", {status:401})}) } };
+  assert.equal((await gateway.fetch(valid, denied, undefined, planning)).status, 401);
+  const invalid = request(path + "?window=30&pair=0,2&basis=pair&window=90", { method: "GET" });
+  assert.equal((await gateway.fetch(invalid, state.env, undefined, planning)).status, 400);
+  assert.equal(runs, 1);
+});
