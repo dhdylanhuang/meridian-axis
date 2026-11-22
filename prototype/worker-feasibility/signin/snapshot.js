@@ -2,7 +2,8 @@
 (() => {
   const el = id => document.getElementById(id);
   let snapshot = null, generation = 0, controller = null;
-  let holdingScope = null;
+  let holdingScope = null, activeTab = 'axis-tab';
+  const tabTrail = [];
   let history = null, historyRequest = null, historyIndex = 0, overviewRequested = false;
   let changesRequest = null, overviewRange = 30;
   let riskLoaded = false, riskRequest = null;
@@ -150,7 +151,20 @@
     ['projections-tab', 'projections-panel', 'Projections'],
     ['stress-tab', 'stress-panel', 'Stress Tests'],
   ];
-  function selectTab(tab) {
+  function selectTab(tab, { remember = true, scope = null } = {}) {
+    if (remember && activeTab !== tab) tabTrail.push(activeTab);
+    activeTab = tab;
+    if (tab === 'holdings-tab') {
+      if (holdingScope || scope) {
+        el('holding-search').value = '';
+        el('holding-sort').value = 'value';
+      }
+      holdingScope = scope;
+      renderHoldings();
+    }
+    const backToHoldings = tab === 'holdings-tab' && holdingScope;
+    el('workspace-back').disabled = !backToHoldings && tabTrail.length === 0;
+    el('workspace-back').setAttribute('aria-label', backToHoldings ? 'Back to all holdings' : 'Back');
     for (const [other, section, label] of tabs) {
       const selected = other === tab;
       el(other).setAttribute('aria-pressed', String(selected));
@@ -908,12 +922,20 @@
     }
   }
   function showHoldings(scope) {
-    holdingScope = scope;
     el('holding-search').value = '';
-    el('holding-sort').value = 'value';
-    selectTab('holdings-tab');
-    renderHoldings();
+    selectTab('holdings-tab', { scope });
     (scope ? el('holding-scope') : el('holding-search')).focus?.();
+  }
+  function goBack() {
+    if (activeTab === 'holdings-tab' && holdingScope) {
+      showHoldings(null);
+      return;
+    }
+    const previousTab = tabTrail.pop();
+    if (previousTab) {
+      selectTab(previousTab, { remember: false });
+      el('workspace-path').focus?.();
+    }
   }
   function holdingLink(parent, label, scope) {
     const button = add(parent, 'button', label);
@@ -1325,8 +1347,9 @@
     el('history-details').open = false;
     el('history-results').hidden = true;
     el('reload-history').disabled = false;
-    selectTab('axis-tab');
+    tabTrail.length = 0;
     holdingScope = null;
+    selectTab('axis-tab', { remember: false });
     el('holding-scope').hidden = true;
     el('holding-scope').textContent = '';
     el('clear-holding-scope').hidden = true;
@@ -1467,6 +1490,7 @@
   }
   for (const range of [30, 90]) el(`overview-${range}d`).addEventListener('click', () => setOverviewRange(range));
   for (const [tab] of tabs) el(tab).addEventListener('click', () => selectTab(tab));
+  el('workspace-back').addEventListener('click', goBack);
   el('clear-holding-scope').addEventListener('click', () => showHoldings(null));
   el('holding-search').addEventListener('input',renderHoldings); el('holding-sort').addEventListener('change',renderHoldings);
   el('reload-snapshot').addEventListener('click',load);

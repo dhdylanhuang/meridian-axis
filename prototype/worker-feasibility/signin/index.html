@@ -32,7 +32,10 @@
     </aside>
     <main class="workspace-main">
       <header class="topbar">
-        <div class="breadcrumb"><span>Workspace</span><span aria-hidden="true">/</span><strong id="workspace-path">AXIS overview</strong></div>
+        <div class="workspace-location">
+          <button id="workspace-back" type="button" disabled><span aria-hidden="true">←</span> Back</button>
+          <div class="breadcrumb"><span>Workspace</span><span aria-hidden="true">/</span><strong id="workspace-path" tabindex="-1">AXIS overview</strong></div>
+        </div>
         <div class="topbar-actions">
           <button id="reload-snapshot" type="button" title="Read the latest approved snapshot">Reload snapshot</button>
           <button id="logout" type="button">Sign out</button>
@@ -94,7 +97,7 @@
             </section>
           </div>
         </section>
-        <section id="portfolio-exposures" class="exposures" aria-label="Portfolio exposures" hidden></section><section id="holdings-panel" class="exposures" aria-labelledby="holdings-heading" hidden><h2 id="holdings-heading">Holdings</h2><p id="holding-scope" class="hint" tabindex="-1" hidden></p><button id="clear-holding-scope" class="holding-link" type="button" hidden>Show all holdings</button><div class="holding-tools"><label for="holding-search">Find a holding<input id="holding-search" type="search" placeholder="Name or ticker" autocomplete="off"></label><label for="holding-sort">Sort by<select id="holding-sort"><option value="value">Value (largest first)</option><option value="name">Name</option></select></label></div><p id="holding-count" class="hint"></p><div class="table-scroll" tabindex="0" aria-label="Holdings table, scroll horizontally"><table><thead><tr><th scope="col">Holding</th><th scope="col">Quantity</th><th scope="col">Price</th><th scope="col">Value</th><th scope="col">% of portfolio</th><th scope="col">% of invested value</th><th scope="col">Cost</th><th scope="col">Unrealised PnL</th></tr></thead><tbody id="holdings-body"></tbody></table></div></section><section id="history-panel" class="exposures" aria-labelledby="history-heading" hidden>
+        <section id="portfolio-exposures" class="exposures" aria-label="Portfolio exposures" hidden></section><section id="holdings-panel" class="exposures" aria-labelledby="holdings-heading" hidden><h2 id="holdings-heading">Holdings</h2><p id="holding-scope" class="hint" tabindex="-1" hidden></p><button id="clear-holding-scope" type="button" hidden>Back to all holdings</button><div class="holding-tools"><label for="holding-search">Find a holding<input id="holding-search" type="search" placeholder="Name or ticker" autocomplete="off"></label><label for="holding-sort">Sort by<select id="holding-sort"><option value="value">Value (largest first)</option><option value="name">Name</option></select></label></div><p id="holding-count" class="hint"></p><div class="table-scroll" tabindex="0" aria-label="Holdings table, scroll horizontally"><table><thead><tr><th scope="col">Holding</th><th scope="col">Quantity</th><th scope="col">Price</th><th scope="col">Value</th><th scope="col">% of portfolio</th><th scope="col">% of invested value</th><th scope="col">Cost</th><th scope="col">Unrealised PnL</th></tr></thead><tbody id="holdings-body"></tbody></table></div></section><section id="history-panel" class="exposures" aria-labelledby="history-heading" hidden>
   <div class="history-head">
     <h2 id="history-heading">Observed account value</h2>
     <button id="reload-history" type="button">Reload history</button>

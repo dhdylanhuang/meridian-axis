@@ -284,6 +284,47 @@ test('portfolio exposures show exact amounts and filter the existing holdings vi
   assert.equal(ui.el('overview-allocation-ring').hidden,true);
 });
 
+test('Back exits a holding selection and walks back through the workspace tabs', async () => {
+  const data = snapshot();
+  data.positions.push({...data.positions[0],name:'Second holding',ticker:'SECOND'});
+  data.exposures = {
+    positions_as_of:data.positions_retrieval.retrieval_completed_at,
+    account_as_of:data.account_retrieval.retrieval_completed_at,
+    observed_holdings:{value:'20'}, holdings:[{ticker:'SYNTH',value:'10'},{ticker:'SECOND',value:'10'}],
+    concentration:[], quote_currencies:[], cash_component_pct:{},
+  };
+  let reads = 0;
+  const ui = setup(async () => { reads++; return Response.json(data); });
+  await ui.view.load();
+  const back = ui.el('workspace-back');
+  const trail = () => ui.el('workspace-path').textContent;
+  const selectStock = () => findNode(ui.el('overview-top-holdings'), node => node.tag === 'button').listeners.click();
+
+  selectStock();
+  assert.equal(trail(), 'Holdings');
+  assert.equal(ui.el('holdings-body').children.length, 1);
+  assert.equal(back.attributes['aria-label'], 'Back to all holdings');
+  back.listeners.click();
+  assert.equal(trail(), 'Holdings');
+  assert.equal(ui.el('holdings-body').children.length, 2);
+  assert.equal(ui.el('clear-holding-scope').hidden, true);
+  back.listeners.click();
+  assert.equal(trail(), 'AXIS overview');
+  assert.equal(back.disabled, true);
+
+  selectStock();
+  ui.el('holdings-tab').listeners.click();
+  assert.equal(ui.el('holdings-body').children.length, 2);
+  ui.el('exposures-tab').listeners.click();
+  ui.el('projections-tab').listeners.click();
+  back.listeners.click();
+  assert.equal(trail(), 'Exposures');
+  back.listeners.click();
+  assert.equal(trail(), 'Holdings');
+  assert.equal(reads, 1);
+  ui.view.clear();
+  assert.equal(back.disabled, true);
+});
 test('History renders exact daily values, breaks the line across gaps, and clears on sign-out',async()=>{
  const days=Array.from({length:90},(_,index)=>({date:new Date(Date.UTC(2026,0,1+index)).toISOString().slice(0,10),status:'missing'}));
  for (const index of [86,87,89]) Object.assign(days[index],{
