@@ -8,9 +8,18 @@
   let changesRequest = null, overviewRange = 30;
   let riskLoaded = false, riskRequest = null;
   const detailControllers = new Set();
+  const tableColumns = new WeakMap();
   const add = (parent, tag, text) => {
     const node = document.createElement(tag);
     if (text != null) node.textContent = text;
+    if (tag === 'td') {
+      const columns = tableColumns.get(parent.parentElement);
+      if (columns) {
+        node.dataset.column = columns[parent.children.length];
+        node.setAttribute('role', 'cell');
+      }
+    }
+    if (tag === 'tr' && tableColumns.has(parent)) node.setAttribute('role', 'row');
     parent.append(node);
     return node;
   };
@@ -1110,13 +1119,24 @@
   }
   function exposureTable(parent, columns, label) {
     const scroll = add(parent, 'div');
-    scroll.className = 'table-scroll';
+    scroll.className = 'table-scroll mobile-records';
     scroll.tabIndex = 0;
     scroll.setAttribute('aria-label', label);
     const table = add(scroll, 'table');
-    const header = add(add(table, 'thead'), 'tr');
-    for (const title of columns) add(header, 'th', title).scope = 'col';
-    return add(table, 'tbody');
+    table.setAttribute('role', 'table');
+    const head = add(table, 'thead');
+    head.setAttribute('role', 'rowgroup');
+    const header = add(head, 'tr');
+    header.setAttribute('role', 'row');
+    for (const title of columns) {
+      const cell = add(header, 'th', title);
+      cell.scope = 'col';
+      cell.setAttribute('role', 'columnheader');
+    }
+    const body = add(table, 'tbody');
+    body.setAttribute('role', 'rowgroup');
+    tableColumns.set(body, columns);
+    return body;
   }
   function setChangesDates() {
     const start = el('changes-start'), end = el('changes-end');

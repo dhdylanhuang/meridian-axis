@@ -174,7 +174,11 @@
     const ordering = order === 'global' ? report.order : report.sector_order;
     const sectors = [...new Set(report.holdings.map(h => h.sector))].sort();
     const colour = k => colours[sectors.indexOf(report.holdings[k].sector) % colours.length];
+    add(matrixPanel, 'p', 'Swipe across to compare holdings. Tap a cell to inspect the pair.', 'meridian-swipe');
     const tableWrap = add(matrixPanel, 'div', null, 'meridian-heat-wrap');
+    tableWrap.setAttribute('role', 'region');
+    tableWrap.setAttribute('aria-label', 'Holdings correlation matrix, scrollable');
+    tableWrap.tabIndex = 0;
     const table = add(tableWrap, 'div', null, 'meridian-heat');
     table.style.setProperty('--holdings', ordering.length);
     add(table, 'span'); add(table, 'span', 'Holding');

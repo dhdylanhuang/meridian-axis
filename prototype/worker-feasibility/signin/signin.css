@@ -310,6 +310,7 @@ details p { margin-block: 6px; }
 .meridian-exclusions { margin:0 0 14px; font-size:12px; padding-block:9px }
 .meridian-exclusions summary { color:#96dccb }
 .meridian-exclusions ul { margin:7px 0; padding-left:18px }
+.meridian-panel .meridian-swipe { display:none }
 .meridian-heat-wrap { overflow:auto; max-height:530px; padding:3px }
 .meridian-heat { display:grid; grid-template-columns:24px minmax(106px,1.9fr) repeat(var(--holdings),minmax(41px,1fr)); align-items:stretch; gap:2px; font-size:10px; width:max-content; min-width:100%; color:#b4c4d1 }
 .meridian-heat .meridian-row { padding:5px 6px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-left:3px solid var(--sector); background:#22303d }
@@ -352,11 +353,11 @@ details p { margin-block: 6px; }
 .meridian-point input { width:100%; min-height:28px; padding:0; accent-color:#93dfcb }
 .meridian-point dl { gap:5px 8px; grid-template-columns:minmax(0,1fr) minmax(0,1fr); font-size:11px }
 @media(max-width:1050px) {
-  .meridian-grid { grid-template-columns:1fr }
+  .meridian-grid { grid-template-columns:minmax(0,1fr) }
 }
 @media(max-width:650px) {
   .meridian-coverage { grid-template-columns:1fr 1fr }
-  .meridian-history-grid { grid-template-columns:1fr }
+  .meridian-history-grid { grid-template-columns:minmax(0,1fr) }
 }
 .meridian-axis { min-height:22px; font-size:9px }
 .meridian-basis { margin:0 0 8px; color:#aebdcc; font-size:11px }
@@ -522,4 +523,62 @@ details p { margin-block: 6px; }
   .holding-detail-header { position: sticky; top: 0; z-index: 1; padding-bottom: 8px; background: var(--panel); }
   .history-touch-controls { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px; }
   .history-touch-controls button { min-height: 44px; }
+}
+
+@media (max-width: 620px) {
+  .workspace input:not([type="checkbox"]), .workspace select, .workspace textarea { font-size: 16px; }
+  .risk-filter > label, .holding-tools > label { min-width: 0; }
+  .risk-filter input, .planning-form input:not([type="checkbox"]), .planning-form select { min-height: 44px; }
+  .planning-form button, .cash-activity-card dd button, .cash-pagination button,
+  #meridian-panel .segmented button, .meridian-point input { min-height: 44px; }
+  .planning-form .plan-entry { padding-inline: 9px; }
+  .planning-form legend, .stress-holdings label { overflow-wrap: anywhere; }
+
+  .mobile-records { border: 0; overflow: visible; }
+  .mobile-records table, .mobile-records tbody { display: block; min-width: 0; }
+  .mobile-records thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .mobile-records tr {
+    display: block;
+    min-width: 0;
+    margin-bottom: 8px;
+    padding: 4px 10px;
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+  .mobile-records td, #projections-results details .mobile-records td:last-child {
+    display: block;
+    min-width: 0;
+    padding: 7px 0;
+    border: 0;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .mobile-records td:first-child { font-weight: 620; }
+  .mobile-records td + td { border-top: 1px solid var(--line); }
+  .mobile-records td:not(:first-child)::before {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+    content: attr(data-column) / "";
+  }
+  .mobile-compare tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10px; }
+  .mobile-compare tbody td:first-child { grid-column: 1 / -1; }
+
+  .meridian-panel .meridian-swipe { display: block; margin-bottom: 5px; }
+  .meridian-heat-wrap { max-height: min(54dvh, 430px); }
+  .meridian-heat .meridian-row { position: sticky; left: 0; z-index: 1; align-content: center; }
+  #meridian-panel .meridian-cell { min-height: 44px; min-width: 44px; }
+  .meridian-comparison-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .meridian-comparison-row > :first-child { grid-column: 1 / -1; overflow-wrap: anywhere; }
 }

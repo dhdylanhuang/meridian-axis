@@ -265,6 +265,7 @@ test('activity drilldown loads only on demand and paginates the saved total',asy
  const root=ui.el('cash-reconciliation');assert.match(content(root),/all available broker pages fetched/);assert.match(content(root),/completed broker history traversal has not been established/);
  await descendants(root).find(node=>node.textContent==='View transactions').listeners.click();
  assert.equal(calls.length,1);assert.equal(calls[0].snapshot_id,'saved');assert.match(content(root),/Showing 1–20 of 21/);
+ assert.equal(findNode(root, node=>node.textContent==='ref-0').dataset.column,'Trading 212 reference');
  assert.match(content(root),/ref-0/);assert.match(content(root),/SHA-256/);assert.match(content(root),/<img src=x>/);
  await descendants(root).find(node=>node.textContent==='Next page').listeners.click();
  assert.equal(calls[1].offset,20);assert.match(content(root),/Showing 21–21 of 21/);
@@ -719,7 +720,7 @@ test('Projections tab accepts deposits, renders comparisons and shows allocation
   assert.match(content(ui.el('projections-capture')), /12:00pm 2 Jan 2026/);
   const projections = ui.el('projections-results');
   assert.match(content(projections), /Plan A.*£1,100.*cash-flow schedule/s);
-  assert.ok(findNode(projections, node => node.textContent.endsWith(' gap') && node.attributes['data-tone'] === 'loss'));
+  assert.equal(findNode(projections, node => node.textContent.endsWith(' gap') && node.attributes['data-tone'] === 'loss').dataset.column, 'Gap or surplus');
   field('Allocation').value = '90';
   form.oninput();
   await form.onsubmit({preventDefault(){}});
@@ -771,6 +772,7 @@ test('Stress Tests tab compares presets and submits a basket with a holding over
     overrides:[{ticker:'SYNTH',price_shock_pct:'-5'}]});
   const result = content(ui.el('stress-results'));
   assert.match(result, /Stressed ISA value £920/);
+  assert.deepEqual(descendants(ui.el('stress-results')).filter(node => node.textContent === '£920').map(node => node.dataset.column), ['Scenario A', 'Scenario B']);
   assert.equal(findNode(ui.el('stress-results'), node => node.textContent === '−8%').attributes['data-tone'], 'loss');
   assert.match(result, /Uncovered value excluding displayed cash £100/);
   assert.match(result, /largest losses.*SYNTH.*−£80/s);

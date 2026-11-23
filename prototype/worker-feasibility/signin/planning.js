@@ -25,19 +25,31 @@
     if (options.length) node.value = options[0][0];
     return node;
   }
-  function table(parent, headers, rows) {
+  function table(parent, headers, rows, compareScenarios = false) {
     const scroll = add(parent, 'div');
-    scroll.className = 'table-scroll';
+    scroll.className = compareScenarios ? 'table-scroll mobile-records mobile-compare' : 'table-scroll mobile-records';
     scroll.tabIndex = 0;
     const node = add(scroll, 'table');
-    const head = add(add(node, 'thead'), 'tr');
-    for (const label of headers) add(head, 'th', label).scope = 'col';
+    node.setAttribute('role', 'table');
+    const head = add(node, 'thead');
+    head.setAttribute('role', 'rowgroup');
+    const header = add(head, 'tr');
+    header.setAttribute('role', 'row');
+    for (const label of headers) {
+      const cell = add(header, 'th', label);
+      cell.scope = 'col';
+      cell.setAttribute('role', 'columnheader');
+    }
     const body = add(node, 'tbody');
+    body.setAttribute('role', 'rowgroup');
     for (const values of rows) {
       const row = add(body, 'tr');
-      for (const value of values) {
-        if (typeof value === 'string') add(row, 'td', value);
-        else setOutcomeTone(add(row, 'td', value.label), value.amount);
+      row.setAttribute('role', 'row');
+      for (const [index, value] of values.entries()) {
+        const cell = add(row, 'td', typeof value === 'string' ? value : value.label);
+        cell.dataset.column = headers[index];
+        cell.setAttribute('role', 'cell');
+        if (typeof value !== 'string') setOutcomeTone(cell, value.amount);
       }
     }
   }
@@ -64,6 +76,7 @@
     snapshot_unavailable: 'The approved GBP snapshot is unavailable.',
   };
   let snapshot = null, projection = null, stress = null, formatMoney, sessionEnded, setOutcomeTone;
+  let projectionChartObserver;
   const stamp = data => data?.account_retrieval?.retrieval_completed_at;
   const holdingsStamp = data => data?.positions_retrieval?.retrieval_completed_at;
   const captureDate = () => new Date(stamp(snapshot)).toISOString().slice(0, 10);
@@ -81,6 +94,7 @@
     view.pending?.abort();
     view.pending = null;
     view.submit.disabled = !snapshot;
+    if (view === projection) projectionChartObserver?.disconnect();
     view.results.replaceChildren();
     view.status.textContent = message;
   }
@@ -90,6 +104,7 @@
     view.pending = pending;
     view.submit.disabled = true;
     view.status.textContent = 'Calculating…';
+    if (view === projection) projectionChartObserver?.disconnect();
     view.results.replaceChildren();
     try {
       const cookies = document.cookie.split(';').map(value => value.trim())
@@ -274,31 +289,57 @@
     const first = Date.parse(series[0][0].date);
     const last = Date.parse(targetDate);
     const maximum = Math.max(Number(goal), ...series.flatMap(line => line.map(point => Number(point.value))));
-    const x = date => 95 + 778 * (Date.parse(date) - first) / (last - first || 1);
-    const y = value => 275 - 245 * Number(value) / maximum;
-    ctx.font = '14px system-ui';
-    ctx.fillStyle = '#a1b0c1';
-    for (const value of [0, maximum / 2, maximum]) {
-      ctx.fillText(new Intl.NumberFormat('en-GB', {style: 'currency', currency: 'GBP', maximumFractionDigits: 0}).format(value), 7, y(value) + 4, 80);
-      ctx.strokeStyle = '#354253';
-      ctx.beginPath(); ctx.moveTo(95, y(value)); ctx.lineTo(873, y(value)); ctx.stroke();
+    const draw = () => {
+      const width = canvas.clientWidth;
+      if (!width) return;
+      const mobile = width < 500;
+      const height = mobile ? 222 : 310;
+      const scale = window.devicePixelRatio || 1;
+      canvas.width = Math.round(width * scale);
+      canvas.height = Math.round(height * scale);
+      canvas.style.height = height + 'px';
+      ctx.scale(scale, scale);
+      const left = mobile ? 60 : 95;
+      const right = width - 12;
+      const bottom = height - 32;
+      const x = date => left + (right - left) * (Date.parse(date) - first) / (last - first || 1);
+      const y = value => bottom - (bottom - 22) * Number(value) / maximum;
+      const money = new Intl.NumberFormat('en-GB', {
+        style: 'currency', currency: 'GBP', maximumFractionDigits: mobile ? 1 : 0,
+        notation: mobile ? 'compact' : 'standard',
+      });
+      ctx.font = mobile ? '12px system-ui' : '14px system-ui';
+      ctx.fillStyle = '#a1b0c1';
+      for (const value of [0, maximum / 2, maximum]) {
+        ctx.fillText(money.format(value), 7, y(value) + 4, left - 12);
+        ctx.strokeStyle = '#354253';
+        ctx.beginPath(); ctx.moveTo(left, y(value)); ctx.lineTo(right, y(value)); ctx.stroke();
+      }
+      ctx.fillText(formatDay(series[0][0].date), left, height - 9);
+      if (last !== first) {
+        ctx.textAlign = 'right';
+        ctx.fillText(formatDay(targetDate), right, height - 9);
+      }
+      ctx.setLineDash([5, 5]);
+      ctx.strokeStyle = '#dde7f4';
+      ctx.beginPath(); ctx.moveTo(left, y(goal)); ctx.lineTo(right, y(goal)); ctx.stroke();
+      ctx.setLineDash([]);
+      series.forEach((line, index) => {
+        ctx.strokeStyle = colors[index];
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        line.forEach((point, position) => ctx[position ? 'lineTo' : 'moveTo'](x(point.date), y(point.value)));
+        ctx.stroke();
+        ctx.fillStyle = colors[index];
+        const end = line.at(-1);
+        ctx.beginPath(); ctx.arc(x(end.date), y(end.value), 3, 0, Math.PI * 2); ctx.fill();
+      });
+    };
+    draw();
+    if (typeof ResizeObserver === 'function') {
+      projectionChartObserver = new ResizeObserver(draw);
+      projectionChartObserver.observe(canvas);
     }
-    ctx.fillText(formatDay(series[0][0].date), 95, 299);
-    if (last !== first) ctx.fillText(formatDay(targetDate), 795, 299);
-    ctx.setLineDash([5, 5]);
-    ctx.strokeStyle = '#dde7f4';
-    ctx.beginPath(); ctx.moveTo(95, y(goal)); ctx.lineTo(873, y(goal)); ctx.stroke();
-    ctx.setLineDash([]);
-    series.forEach((line, index) => {
-      ctx.strokeStyle = colors[index];
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      line.forEach((point, position) => ctx[position ? 'lineTo' : 'moveTo'](x(point.date), y(point.value)));
-      ctx.stroke();
-      ctx.fillStyle = colors[index];
-      const end = line.at(-1);
-      ctx.beginPath(); ctx.arc(x(end.date), y(end.value), 3, 0, Math.PI * 2); ctx.fill();
-    });
   }
 
   const positiveDecimal = value => typeof value === 'string' && /^\d+(?:\.\d+)?$/.test(value) && /[1-9]/.test(value);
@@ -390,7 +431,7 @@
       ['Uncovered value excluding displayed cash', ...scenarios.map(row => money(row.uncovered_value))],
       ['Of which marked holdings outside the shock', ...scenarios.map(row => money(row.unshocked_marked_value))],
       ['Of which snapshot reconciliation difference', ...scenarios.map(() => money(report.unreconciled_value))],
-    ]);
+    ], true);
     if (report.availability === 'insufficient_data') add(parent, 'p', 'No holdings have sufficient evidence for a direct price shock.');
     add(parent, 'p', `${report.unvalued_holdings} holdings lack a usable GBP mark. ${report.ineligible_holdings} marked holdings are outside the eligible instrument or position scope.`);
     add(parent, 'p', 'Displayed cash is the available-to-trade component. The signed reconciliation difference is the ISA value less marked holdings and displayed cash. It can include other cash components, missing marks and differences between capture times.');
