@@ -159,7 +159,7 @@ label input, label select { margin-top: 5px; }
 [data-tone="loss"] { --outcome-color: var(--loss); color: var(--outcome-color); }
 .overview-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .overview-metrics p { font-size: clamp(19px, 2vw, 27px); }
-.overview-grid, .account-details { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(235px, 1fr); gap: 18px; margin-bottom: 19px; }
+.overview-grid { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(235px, 1fr); gap: 18px; margin-bottom: 19px; }
 .panel-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; padding: 17px 18px 12px; }
 .panel-heading p { font-size: 12px; margin-top: 4px; }
 .chart-caption { padding: 0 18px; font-size: 12px; }
@@ -212,7 +212,6 @@ label input, label select { margin-top: 5px; }
 .exposures > p, .details p { margin-block: 8px 12px; max-width: 83ch; }
 .exposures h3 { margin-top: 20px; margin-bottom: 6px; }
 .exposures .exposures { margin-top: 16px; background: var(--inset); }
-.account-details { align-items: start; margin-top: 20px; }
 .details h2 { margin-bottom: 10px; }
 .details dl, #risk-results dl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto); gap: 10px 14px; margin: 10px 0; }
 .details dt, #risk-results dt { color: var(--muted); }
@@ -275,7 +274,7 @@ details p { margin-block: 6px; }
 }
 @media (max-width: 620px) {
   :root { --gutter: 15px; }
-  .overview-grid, .account-details, .overview-metrics { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .overview-grid, .overview-metrics { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .metrics article { padding: 13px; }
   .metrics article small { font-size: 11px; }
   .breadcrumb > span { display: none; }
@@ -393,3 +392,29 @@ details p { margin-block: 6px; }
 .holding-detail-actions { justify-content: start; margin-top: 12px; }
 #holding-thesis-status { margin-top: 6px; }
 #holding-thesis-status:empty { display: none; }
+
+.cash-page-heading { align-items: center; }
+.cash-page-heading button { background: var(--inset); color: var(--text); border-color: var(--control-line); }
+.cash-section-heading { margin: 0 0 8px; font-size: 16px; }
+.cash-balances { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 7px; }
+.cash-balances h3 { color: var(--muted); font-size: 11px; font-weight: 640; margin-bottom: 8px; }
+.cash-activity { margin-top: 22px; }
+.cash-currency { margin: 14px 0 5px; color: var(--muted); font-size: 12px; }
+.cash-activity-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+.cash-activity-card { padding: 13px 15px; }
+.cash-activity-card h4 { margin: 0; font-size: 14px; }
+.cash-activity-card dl { margin: 5px 0 0; }
+.cash-activity-card dl > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; padding: 7px 0; border-top: 1px solid var(--line); }
+.cash-activity-card dl > div:first-child { border-top: 0; }
+.cash-activity-card dt { color: var(--muted); }
+.cash-activity-card dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.cash-activity-card dd button { display: block; margin-left: auto; min-height: 29px; padding: 0; }
+.cash-source, .cash-transactions { margin-top: 13px; }
+.cash-source { padding-block: 9px; }
+.cash-activity > p.hint { margin-block: 5px 7px; }
+.cash-transactions { padding: 12px 15px; }
+.cash-transactions-header, .cash-pagination { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.cash-transactions .table-scroll { margin-top: 8px; }
+.cash-transactions td details p { white-space: normal; overflow-wrap: anywhere; }
+.cash-pagination:empty { display: none; }
+@media (max-width: 620px) { .cash-balances { grid-template-columns: minmax(0, 1fr); } }

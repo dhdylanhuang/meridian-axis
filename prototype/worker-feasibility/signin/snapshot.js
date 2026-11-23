@@ -35,7 +35,7 @@
     active = true;
     if (!document.hidden) void load();
   }
-  const amounts = ['total-value','investment-value','available-cash','unrealised-pnl','cash-in-pies','reserved-cash','investment-cost','realised-pnl'];
+  const amounts = ['total-value','investment-value','available-cash','unrealised-pnl','investment-cost','realised-pnl'];
   function decimal(value, currency) {
     if (typeof value !== 'string' || !/^-?\d+(\.\d+)?$/.test(value)) return 'Unavailable';
     const negative = value.startsWith('-');
@@ -58,75 +58,130 @@
   }, setOutcomeTone);
   function renderCash(data) {
     const container = el('cash-reconciliation');
-    if (!container) return;
     container.replaceChildren();
-    const current = add(container, 'dl');
+    add(container, 'h2', 'Current balances').className = 'cash-section-heading';
+    const current = add(container, 'div');
+    current.className = 'metrics cash-balances';
     for (const [label, key] of [['Cash available to trade now','availableToTrade'],['Cash in pies','inPies'],['Reserved for orders','reservedForOrders']]) {
-      add(current, 'dt', label); add(current, 'dd', decimal(data.cash_components?.[key], data.currency));
+      const card = add(current, 'article');
+      if (key === 'availableToTrade') card.className = 'metric-primary';
+      add(card, 'h3', label);
+      add(card, 'p', decimal(data.cash_components?.[key], data.currency));
     }
-    add(container, 'p', `Trading 212 cash as of ${when(data.account_retrieval.retrieval_completed_at)}. Components are shown separately.`);
+    add(container, 'p', `Trading 212 cash as of ${when(data.account_retrieval.retrieval_completed_at)}. Components are shown separately.`).className = 'hint';
     const summary = data.cash_reconciliation, activity = summary?.reported_activity;
+    const history = add(container, 'section');
+    history.className = 'cash-activity';
+    add(history, 'h2', 'Income and funding · year to date').className = 'cash-section-heading';
     if (!activity) {
-      add(container, 'p', 'Dividend, interest, deposit and withdrawal amounts are not available in this saved snapshot. Cash above is broker-reported; no activity totals have been assumed.');
+      add(history, 'p', 'Dividend, interest, deposit and withdrawal amounts are not available in this saved snapshot.');
       return;
     }
-    add(container, 'h3', 'Income and funding · year to date');
-    add(container, 'p', `${formatDay(activity.since.slice(0, 10))} to ${formatDay(activity.cutoff.slice(0, 10))} · Trading 212 activity.`);
+    add(history, 'p', `${formatDay(activity.since.slice(0, 10))} to ${formatDay(activity.cutoff.slice(0, 10))} · Trading 212 activity.`).className = 'hint';
+
+    const transactions = {panel: document.createElement('section'), pending:null, opener:null};
+    const groups = [
+      ['Investment income', [['dividends','Paid dividends & distributions'],['cash_interest','Cash interest'],['lending_interest','Lending interest']]],
+      ['Funding and other movements', [['deposits','Deposits'],['withdrawals','Withdrawals'],['fees','Fees'],['transfers','Transfers'],['other','Other cash activity · review']]],
+    ];
+    const currencies = [...new Set([data.currency, ...activity.totals.map(row=>row.currency)])];
+    for (const currency of currencies) {
+      add(history, 'h3', currency).className = 'cash-currency';
+      const grid = add(history, 'div');
+      grid.className = 'cash-activity-grid';
+      for (const [title, entries] of groups) {
+        const card = add(grid, 'section');
+        card.className = 'panel cash-activity-card';
+        add(card, 'h4', title);
+        const list = add(card, 'dl');
+        for (const [category, label] of entries) {
+          const total = activity.totals.find(row => row.currency === currency && row.category === category);
+          if (category === 'other' && !total) continue;
+          const pair = add(list, 'div');
+          add(pair, 'dt', label);
+          const value = add(pair, 'dd', total ? decimal(total.amount, currency) : 'Not established from captured history');
+          if (total && summary.activity_details_available) addActivityButton(value, total, summary, label, transactions);
+        }
+      }
+    }
+    const detailPanel = transactions.panel;
+    detailPanel.id = 'cash-transactions';
+    detailPanel.className = 'panel cash-transactions';
+    detailPanel.hidden = true;
+    const detailHeader = add(detailPanel, 'header');
+    detailHeader.className = 'cash-transactions-header';
+    const detailHeading = add(detailHeader, 'h3', 'Transactions');
+    detailHeading.tabIndex = -1;
+    const close = add(detailHeader, 'button', 'Close transactions');
+    close.type = 'button';
+    close.className = 'holding-link';
+    transactions.heading = detailHeading;
+    transactions.box = add(detailPanel, 'div');
+    close.addEventListener('click', () => {
+      transactions.pending?.abort();
+      transactions.pending = null;
+      detailPanel.hidden = true;
+      transactions.box.replaceChildren();
+      transactions.opener?.focus?.();
+    });
+    history.append(detailPanel);
+    const evidence = add(history, 'details');
+    evidence.className = 'panel details cash-source';
+    add(evidence, 'summary', 'Coverage and methodology');
     const coverage = summary.history_coverage;
     if (coverage?.scope === 'broker_available_history') {
       for (const family of coverage.families) {
         const name = family.family === 'dividends' ? 'Dividend payouts' : 'Cash movements';
-        add(container, 'p', family.state === 'provider_history_traversed'
+        add(evidence, 'p', family.state === 'provider_history_traversed'
           ? `${name}: all available broker pages fetched as of ${when(family.completed_at)}. Earliest captured event: ${family.earliest_observed_at ? when(family.earliest_observed_at) : 'no events returned'}.`
           : `${name}: completed broker history traversal has not been established.`);
       }
-      add(container, 'p', 'Coverage is the history returned by Trading 212. Complete account-lifetime history is not established; these are not statement-certified totals.');
-    } else add(container, 'p', 'Historical coverage is incomplete/unverified; totals may omit earlier or missing events.');
-    const currencies = [...new Set([data.currency, ...activity.totals.map(row=>row.currency)])];
-    const labels = [['dividends','Paid dividends & distributions'],['cash_interest','Cash interest'],['deposits','Deposits'],['withdrawals','Withdrawals'],['fees','Fees'],['transfers','Transfers'],['lending_interest','Lending interest']];
-    for (const currency of currencies) {
-      add(container, 'h3', currency);
-      const list = add(container, 'dl');
-      for (const [category, label] of labels) {
-        const row = activity.totals.find(row=>row.currency === currency && row.category === category);
-        add(list, 'dt', label); const value = add(list, 'dd', row ? decimal(row.amount, currency) : 'Not established from captured history');
-        if (row && summary.activity_details_available) addActivityButton(value, row, summary, add, label);
-      }
-      const other = activity.totals.find(row=>row.currency === currency && row.category === 'other');
-      if (other) { add(list, 'dt', 'Other cash activity · review'); const value=add(list, 'dd', decimal(other.amount, currency)); if(summary.activity_details_available) addActivityButton(value, other, summary, add, 'Other activity'); }
+      add(evidence, 'p', 'Coverage is the history returned by Trading 212. Complete account-lifetime history is not established; these are not statement-certified totals.');
     }
-    add(container, 'p', 'Activity amounts retain Trading 212 signs and currencies. Dividend figures are reported payouts, without inferred gross/net tax treatment. Income and funding may already have been invested or spent; these totals do not describe the composition of today’s cash.');
-    if (activity.excluded_conflicts) add(container, 'p', `${activity.excluded_conflicts} conflicting records excluded from these totals; review required.`);
+    if (coverage?.scope !== 'broker_available_history' ||
+        coverage.families.some(family => family.state !== 'provider_history_traversed')) {
+      add(history, 'p', 'Historical coverage is incomplete/unverified; totals may omit earlier or missing events.').className = 'hint';
+    }
+    add(evidence, 'p', 'Activity amounts retain Trading 212 signs and currencies. Dividend figures are reported payouts, without inferred gross/net tax treatment. Income and funding may already have been invested or spent; these totals do not describe the composition of today’s cash.');
+    if (activity.excluded_conflicts) add(history, 'p', `${activity.excluded_conflicts} conflicting records excluded from these totals; review required.`).className = 'hint';
   }
-  function addActivityButton(parent, total, summary, add, label) {
-    const open = add(parent, 'button', 'View transactions'); open.type = 'button';
-    const box = add(parent, 'div');
-    let loadingPage = false;
+  function addActivityButton(parent, total, summary, label, transactions) {
+    const open = add(parent, 'button', 'View transactions');
+    open.type = 'button';
+    open.className = 'holding-link';
+    open.setAttribute('aria-controls', 'cash-transactions');
+    open.setAttribute('aria-label', `View transactions for ${label} in ${total.currency}`);
     async function page(offset) {
       const version = generation;
-      if (loadingPage) return;
-      loadingPage = true; open.disabled = true;
-      box.replaceChildren(); add(box,'p','Loading transactions…');
-      const pending = new AbortController(); detailControllers.add(pending);
+      transactions.pending?.abort();
+      const pending = new AbortController();
+      transactions.pending = pending;
+      transactions.opener = open;
+      detailControllers.add(pending);
+      open.disabled = true;
+      const {panel, heading, box} = transactions;
+      panel.hidden = false;
+      heading.textContent = label + ' · ' + total.currency;
+      heading.focus?.();
+      box.replaceChildren();
+      add(box, 'p', 'Loading transactions…');
+      const isCurrent = () => version === generation && transactions.pending === pending;
       try {
         const cookies = document.cookie.split(';').map(x=>x.trim()).filter(x=>x.startsWith('__Host-meridian_csrf='));
         const csrf = cookies.length === 1 ? cookies[0].slice(cookies[0].indexOf('=')+1) : '';
         const response = await fetch('/api/v1/portfolio/cash-activity', {method:'POST',credentials:'same-origin',cache:'no-store',redirect:'error',signal:pending.signal,
           headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},
           body:JSON.stringify({snapshot_id:summary.source_snapshot_id,input_revision:summary.input_revision,category:total.category,currency:total.currency,offset,limit:20})});
-        if (version !== generation) return;
+        if (!isCurrent()) return;
         if (response.status === 401 || response.status === 403) { clear(); window.dispatchEvent(new Event('meridian-session-ended')); return; }
         if (!response.ok) {
           box.replaceChildren(); add(box,'p',response.status === 409 ? 'This saved total is no longer available for drill-down. Reload the saved snapshot to continue.' : 'Transactions are unavailable. Your saved total is unchanged.'); return;
         }
         const data = await response.json();
-        if (version !== generation) return;
+        if (!isCurrent()) return;
         if (data.snapshot_id !== summary.source_snapshot_id || data.input_revision !== summary.input_revision || data.category !== total.category || data.currency !== total.currency || data.offset !== offset || data.total_count !== total.event_count) throw new Error('activity_mismatch');
-        box.replaceChildren(); add(box,'p',`${label} · ${decimal(total.amount,total.currency)} total. Showing ${offset+1}–${offset+data.entries.length} of ${data.total_count} transactions.`);
-        const scroll=add(box,'div'); scroll.className='table-scroll';
-        const table=add(scroll,'table'), head=add(table,'thead'), header=add(head,'tr');
-        for(const title of ['Date and time (London)','Payment / movement','Amount','Trading 212 reference','Source evidence']) add(header,'th',title);
-        const body=add(table,'tbody');
+        box.replaceChildren(); add(box,'p',`${decimal(total.amount,total.currency)} total. Showing ${offset+1}–${offset+data.entries.length} of ${data.total_count} transactions.`);
+        const body = exposureTable(box, ['Date and time (London)','Payment / movement','Amount','Trading 212 reference','Source evidence'], `${label} transactions`);
         for(const entry of data.entries){
           const row=add(body,'tr'); timeCell(row, entry.occurred_at); add(row,'td',entry.instrument_label || label);
           add(row,'td',decimal(entry.amount,entry.currency)); add(row,'td',entry.reference);
@@ -134,11 +189,17 @@
           add(evidence,'p',`Trading 212 · ${entry.family} · ${entry.provider_type}`);
           add(evidence,'p',`Source ${entry.source_id}; revision ${entry.revision_id || 'initial capture'}; SHA-256 ${entry.digest}`);
         }
-        if(offset>0){const previous=add(box,'button','Previous page');previous.type='button';previous.addEventListener('click',()=>page(Math.max(0,offset-20)));}
-        if(offset+data.entries.length<data.total_count){const next=add(box,'button','Next page');next.type='button';next.addEventListener('click',()=>page(offset+20));}
+        const pages = add(box,'div');
+        pages.className = 'cash-pagination';
+        if(offset>0){const previous=add(pages,'button','Previous page');previous.type='button';previous.className='holding-link';previous.addEventListener('click',()=>page(Math.max(0,offset-20)));}
+        if(offset+data.entries.length<data.total_count){const next=add(pages,'button','Next page');next.type='button';next.className='holding-link';next.addEventListener('click',()=>page(offset+20));}
       } catch(error) {
-        if(version === generation && error.name !== 'AbortError'){box.replaceChildren();add(box,'p','Transactions are unavailable. Your saved total is unchanged.');}
-      } finally {detailControllers.delete(pending);loadingPage=false;open.disabled=false;}
+        if(isCurrent() && error.name !== 'AbortError'){box.replaceChildren();add(box,'p','Transactions are unavailable. Your saved total is unchanged.');}
+      } finally {
+        detailControllers.delete(pending);
+        if (transactions.pending === pending) transactions.pending = null;
+        open.disabled = false;
+      }
     }
     open.addEventListener('click',()=>page(0));
   }
@@ -160,6 +221,7 @@
     ['meridian-tab', 'meridian-panel', 'The Meridian'],
     ['projections-tab', 'projections-panel', 'Projections'],
     ['stress-tab', 'stress-panel', 'Stress Tests'],
+    ['cash-tab', 'cash-panel', 'Cash'],
   ];
   function selectTab(tab, { remember = true, scope = null } = {}) {
     if (remember && activeTab !== tab) tabTrail.push(activeTab);
@@ -1471,7 +1533,7 @@
       snapshot = data;
       window.meridianPlanning?.setSnapshot(data);
       window.meridianDiversification?.setSnapshot(data);
-      const values = [data.total_value,data.investments.currentValue,data.cash_components.availableToTrade,data.investments.unrealizedProfitLoss,data.cash_components.inPies,data.cash_components.reservedForOrders,data.investments.totalCost,data.investments.realizedProfitLoss];
+      const values = [data.total_value,data.investments.currentValue,data.cash_components.availableToTrade,data.investments.unrealizedProfitLoss,data.investments.totalCost,data.investments.realizedProfitLoss];
       amounts.forEach((id,index) => el(id).textContent = decimal(values[index],data.currency));
       setOutcomeTone(el('unrealised-pnl'), data.investments.unrealizedProfitLoss);
       setOutcomeTone(el('realised-pnl'), data.investments.realizedProfitLoss);
@@ -1539,6 +1601,10 @@
   el('holding-search').addEventListener('input',renderHoldings); el('holding-sort').addEventListener('change',renderHoldings);
   el('reload-snapshot').addEventListener('click',load);
   el('reload-history').addEventListener('click',loadHistory);
+  el('history-cash-link').addEventListener('click', () => {
+    selectTab('cash-tab');
+    el('cash-heading').focus?.();
+  });
   for (const [button, tab] of [
     ['overview-history', 'history-tab'],
     ['overview-chart-history', 'history-tab'],

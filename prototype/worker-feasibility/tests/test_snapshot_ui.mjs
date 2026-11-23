@@ -62,7 +62,7 @@ test('dashboard dates use the requested London-time format and keep UTC date buc
 test('broker total stays exact; values missing remain unavailable and names are literal text',async()=>{
  const ui=setup(async()=>({ok:true,status:200,json:async()=>snapshot()}));await ui.view.load();
  assert.equal(ui.el('total-value').textContent,'£9,007,199,254,740,993.123456789');
- assert.equal(ui.el('cash-in-pies').textContent,'Unavailable');
+ assert.match(content(ui.el('cash-reconciliation')), /Cash in pies Unavailable/);
  assert.equal(ui.el('holdings-body').children[0].children[0].textContent,'<img src=x>');
  ui.el('holding-search').value='absent';ui.el('holding-search').listeners.input();
  assert.equal(ui.el('holdings-body').children.length,0);
@@ -200,6 +200,11 @@ function content(element){return [element.textContent,...element.children.map(co
 test('funding view shows monetary categories separately from current cash and clears them',async()=>{
  const data=snapshot();data.cash_reconciliation={reported_activity:{since:'2026-01-01T00:00:00Z',cutoff:'2026-01-02T12:00:00Z',excluded_conflicts:1,totals:[{category:'dividends',currency:'GBP',amount:'0.01234567890123456789',event_count:1},{category:'cash_interest',currency:'GBP',amount:'0.25',event_count:2},{category:'deposits',currency:'GBP',amount:'100',event_count:1},{category:'withdrawals',currency:'GBP',amount:'-4',event_count:1},{category:'deposits',currency:'USD',amount:'7',event_count:1}]}};
  const ui=setup(async()=>({ok:true,status:200,json:async()=>data}));await ui.view.load();
+ ui.el('axis-tab').listeners.click();
+ assert.equal(ui.el('cash-panel').hidden,true);
+ ui.el('cash-tab').listeners.click();
+ assert.equal(ui.el('cash-panel').hidden,false);
+ assert.equal(ui.el('axis-panel').hidden,true);
  const text=content(ui.el('cash-reconciliation'));
  assert.match(text,/Cash available to trade now £7/);
  assert.match(text,/Paid dividends & distributions £0.01234567890123456789/);
@@ -242,6 +247,9 @@ test('activity drilldown loads only on demand and paginates the saved total',asy
  await descendants(root).find(node=>node.textContent==='Next page').listeners.click();
  assert.equal(calls[1].offset,20);assert.match(content(root),/Showing 21–21 of 21/);
  assert.doesNotMatch(content(root),/ref-0/);
+ await descendants(root).find(node=>node.textContent==='Close transactions').listeners.click();
+ assert.equal(descendants(root).find(node=>node.id==='cash-transactions').hidden,true);
+ assert.doesNotMatch(content(root),/ref-20/);
  ui.view.clear();assert.equal(content(root),'—');
 });
 test('late activity page cannot repopulate after signout',async()=>{
@@ -418,6 +426,12 @@ test('History renders exact daily values, breaks the line across gaps, and clear
  assert.match(ui.el('overview-history-caption').textContent,/3 of 90 UTC days observed/);
  assert.equal(reads,1);
  assert.match(ui.el('history-point').textContent,/£9,007,199,254,740,993.123456789.*12:22pm 31 Mar 2026.*12:22pm 31 Mar 2026/);
+ ui.el('history-cash-link').listeners.click();
+ assert.equal(ui.el('cash-panel').hidden,false);
+ assert.equal(ui.el('history-panel').hidden,true);
+ ui.el('workspace-back').listeners.click();
+ assert.equal(ui.el('history-panel').hidden,false);
+ assert.equal(ui.el('cash-panel').hidden,true);
  assert.equal(ui.el('history-body').children.length,90);
  assert.equal(ui.el('history-body').children[0].children[2].title, days[89].captured_at);
  assert.equal(ui.el('history-body').children[1].children[1].textContent,'No saved snapshot');
