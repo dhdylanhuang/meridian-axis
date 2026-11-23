@@ -496,7 +496,7 @@ test('History exposes funding evidence and explains ineligible returns without b
        start_date:start,end_date:end,benchmark_pct:'2',difference_pp:'0.727273',
        start_mark:{price_gbp:'100',at:start+'T16:35:00+00:00'},
        end_mark:{price_gbp:'102',at:end+'T16:35:00+00:00'}},
-       {portfolio_start_at:interval.start_at,portfolio_end_at:interval.end_at,portfolio_pct:'0',start_date:start,end_date:end,
+       {portfolio_start_at:interval.start_at,portfolio_end_at:interval.end_at,portfolio_pct:'0.002775',start_date:start,end_date:end,
         benchmark_pct:null,difference_pp:null,reason:'missing_benchmark_mark'}]},
 
  };
@@ -508,7 +508,17 @@ test('History exposes funding evidence and explains ineligible returns without b
  assert.equal(ui.el('history-point').children[0].href,'#history-funding-'+end);
  const text=node=>[node.textContent,...node.children.flatMap(text)];
  const results=text(ui.el('history-performance')).join(' ');
- for (const value of ['2.727273%','£20.123456789','invented-ref','Modified Dietz','A saved valuation is missing','0.727273 pp','VUAG capture missing','Quote age and split adjustments are unverified','1 of 2 eligible portfolio intervals matched','£102 · ']) assert.ok(results.includes(value), value);
+ for (const value of ['2.727273%','£20.123456789','invented-ref','Modified Dietz','A saved valuation is missing','0.727273 pp','VUAG capture missing','Quote age and split adjustments are unverified','1 of 2 eligible intervals matched','£102 · ']) assert.ok(results.includes(value), value);
+ const compact = findNode(ui.el('history-performance'), node => node.className === 'benchmark-summary');
+ const rows = findNode(compact, node => node.tag === 'tbody').children;
+ assert.deepEqual(rows[1].children.map(node => node.textContent), ['30–31 Mar 2026','2.73%','2%','0.73 pp']);
+ assert.equal(rows[1].children[1].title, '2.727273%');
+ assert.deepEqual(rows[0].children.map(node => node.textContent), ['30–31 Mar 2026','<0.01%','—','—']);
+ assert.doesNotMatch(content(compact), /£102|VUAG capture missing/);
+ const evidence = findNode(ui.el('history-performance'), node => node.tag === 'details' &&
+   node.children[0]?.textContent === 'Exact returns, prices and capture times');
+ assert.ok(evidence && !evidence.open);
+ assert.match(content(evidence), /0.727273 pp.*£102/s);
  assert.ok(!results.includes('Portfolio drawdown'));
  const comparison = ui.el('overview-comparison').children;
  assert.equal(comparison.map(node => node.textContent).join(''), '2.73% vs 2.00%');

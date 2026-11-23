@@ -355,6 +355,22 @@
     if (event.kind === 'WITHDRAW') return 'Withdrawal';
     return event.kind === 'TRANSFER' ? 'Transfer' : event.kind;
   }
+  function benchmarkDates({start_date, end_date}) {
+    const end = formatDay(end_date);
+    if (start_date === end_date) return end;
+    if (start_date.slice(0, 7) === end_date.slice(0, 7)) return `${Number(start_date.slice(8))}–${end}`;
+    return `${formatDay(start_date, start_date.slice(0, 4) === end_date.slice(0, 4))} – ${end}`;
+  }
+  const benchmarkNumber = new Intl.NumberFormat('en-GB', {maximumFractionDigits:2});
+  function benchmarkCell(row, value, unit) {
+    const number = Number(value);
+    const formatted = value == null ? '—' : number !== 0 && Math.abs(number) < 0.005
+      ? `${number < 0 ? '−' : ''}<0.01${unit}`
+      : benchmarkNumber.format(number).replace('-', '−') + unit;
+    const cell = outcome(row, 'td', formatted, value);
+    if (value != null) cell.title = decimal(value) + unit;
+  }
+
   function renderBenchmark(section, compare) {
     add(section, 'h3', 'VUAG · S&P 500 benchmark proxy');
     const observed = compare?.state === 'broker_observed';
@@ -364,23 +380,45 @@
         : 'VUAG returns need two saved GBP prices on dates with an eligible portfolio return.');
       return;
     }
-    add(section, 'p', `Provisional comparison · ${compare.matched_intervals} of ${compare.eligible_intervals} eligible portfolio intervals matched.`);
+    add(section, 'p', `Provisional · ${compare.matched_intervals} of ${compare.eligible_intervals} eligible intervals matched.`);
     add(section, 'p', observed
-      ? 'VUAG GBP per-share prices come from saved Trading 212 holdings. Times show when holdings were captured. Quote age and split adjustments are unverified.'
+      ? 'Uses saved Trading 212 GBP holding marks. Quote age and split adjustments are unverified.'
       : `GBP London closing prices · ${compare.source} · reviewed ${when(compare.reviewed_at)}. Account capture and closing times can differ.`);
     if (!compare.intervals.length) return;
-    const body = exposureTable(section, ['UTC dates', 'Portfolio', 'VUAG', 'Difference', 'Account captures (London)', observed ? 'VUAG captures (London)' : 'VUAG closes (London)'], 'Portfolio and VUAG matched returns');
-    for (const item of [...compare.intervals].reverse()) {
+    const summary = add(section, 'div');
+    summary.className = 'benchmark-summary';
+    const intervals = [...compare.intervals].reverse();
+    const body = exposureTable(summary, ['UTC dates', 'Portfolio', 'VUAG', 'Gap'], 'Portfolio and VUAG comparison');
+    for (const item of intervals) {
       const row = add(body, 'tr');
-      add(row, 'td', periodRange(item));
-      outcome(row, 'td', percent(item.portfolio_pct), item.portfolio_pct);
-      outcome(row, 'td', percent(item.benchmark_pct), item.benchmark_pct);
-      outcome(row, 'td', item.difference_pp == null
-        ? (item.reason === 'portfolio_capture_date_mismatch' ? 'Account capture crossed UTC date' : observed ? 'VUAG capture missing' : 'Benchmark endpoint missing')
-        : `${decimal(item.difference_pp)} pp`, item.difference_pp);
-      add(row, 'td', [item.portfolio_start_at, item.portfolio_end_at].map(when).join(' to '));
-      add(row, 'td', [item.start_mark, item.end_mark].map(mark => mark
-        ? `${decimal(mark.price_gbp, 'GBP')} · ${when(mark.at)}` : 'Missing').join(' to '));
+      add(row, 'td', benchmarkDates(item));
+      benchmarkCell(row, item.portfolio_pct, '%');
+      benchmarkCell(row, item.benchmark_pct, '%');
+      benchmarkCell(row, item.difference_pp, ' pp');
+    }
+
+    const details = add(section, 'details');
+    add(details, 'summary', 'Exact returns, prices and capture times');
+    const evidence = exposureTable(details, ['UTC dates', 'Exact returns', 'Account captures (London)',
+      observed ? 'VUAG captures (London)' : 'VUAG closes (London)'], 'VUAG capture evidence');
+    for (const item of intervals) {
+      const row = add(evidence, 'tr');
+      add(row, 'td', benchmarkDates(item));
+      const figures = add(row, 'td');
+      outcome(figures, 'small', `Portfolio ${percent(item.portfolio_pct)}`, item.portfolio_pct);
+      outcome(figures, 'small', `VUAG ${percent(item.benchmark_pct)}`, item.benchmark_pct);
+      if (item.difference_pp != null) {
+        outcome(figures, 'small', `Gap ${decimal(item.difference_pp)} pp`, item.difference_pp);
+      } else {
+        add(figures, 'small', item.reason === 'portfolio_capture_date_mismatch' ? 'Account capture crossed UTC date'
+          : observed ? 'VUAG capture missing' : 'Benchmark endpoint missing');
+      }
+      const captures = add(row, 'td');
+      for (const at of [item.portfolio_start_at, item.portfolio_end_at]) add(captures, 'small', when(at));
+      const marks = add(row, 'td');
+      for (const mark of [item.start_mark, item.end_mark]) {
+        add(marks, 'small', mark ? `${decimal(mark.price_gbp, 'GBP')} · ${when(mark.at)}` : 'Missing');
+      }
     }
   }
   function renderDrawdown(section, drawdown) {
