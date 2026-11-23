@@ -68,6 +68,23 @@ test('broker total stays exact; values missing remain unavailable and names are 
  assert.equal(ui.el('holdings-body').children.length,0);
  ui.view.clear();assert.equal(ui.el('total-value').textContent,'—');assert.equal(ui.el('holdings-body').children.length,0);
 });
+test('Holdings sorts exact unrealised PnL in either direction with unavailable values last', async () => {
+  const data = snapshot();
+  data.positions = [
+    ['MISSING',null], ['GAIN','1.000000000000000001'], ['LOSS','-3.25'],
+    ['LARGER','1.000000000000000002'], ['FLAT','0'],
+  ].map(([ticker, pnl]) => ({...data.positions[0], ticker, name:ticker, unrealized_profit_loss:pnl}));
+  const ui = setup(async () => Response.json(data));
+  await ui.view.load();
+  const order = () => ui.el('holdings-body').children.map(row => row.children[0].textContent);
+  const sort = ui.el('holding-sort');
+  sort.value = 'pnl-desc';
+  sort.listeners.change();
+  assert.deepEqual(order(), ['LARGER','GAIN','FLAT','LOSS','MISSING']);
+  sort.value = 'pnl-asc';
+  sort.listeners.change();
+  assert.deepEqual(order(), ['LOSS','FLAT','GAIN','LARGER','MISSING']);
+});
 test('holding detail shows broker figures and keeps notes scoped to the holding across reloads', async () => {
   const data = snapshot();
   data.positions[0].average_price_paid = '8.123456789012345';

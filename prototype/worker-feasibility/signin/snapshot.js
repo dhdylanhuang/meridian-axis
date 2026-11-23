@@ -1464,9 +1464,17 @@
     };
     const rows = (snapshot?.positions || []).filter(row =>
       inScope(row) && `${row.ticker} ${row.name || ''}`.toLowerCase().includes(query));
-    rows.sort(el('holding-sort').value === 'name' ? (a,b) => (a.name || a.ticker).localeCompare(b.name || b.ticker) : (a,b) => compare(
-      report?.holdings ? weights.get(b.ticker)?.value : b.current_value,
-      report?.holdings ? weights.get(a.ticker)?.value : a.current_value));
+    const sort = el('holding-sort').value;
+    rows.sort((a, b) => {
+      if (sort === 'name') return (a.name || a.ticker).localeCompare(b.name || b.ticker);
+      if (sort === 'pnl-desc' || sort === 'pnl-asc') {
+        const left = a.unrealized_profit_loss, right = b.unrealized_profit_loss;
+        if (left == null || right == null) return Number(left == null) - Number(right == null);
+        return sort === 'pnl-desc' ? compare(right, left) : compare(left, right);
+      }
+      return compare(report?.holdings ? weights.get(b.ticker)?.value : b.current_value,
+        report?.holdings ? weights.get(a.ticker)?.value : a.current_value);
+    });
     const fragment = document.createDocumentFragment();
     for (const row of rows) {
       const tr = document.createElement('tr');
