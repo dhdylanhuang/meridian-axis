@@ -223,6 +223,7 @@
     ['stress-tab', 'stress-panel', 'Stress Tests'],
     ['cash-tab', 'cash-panel', 'Cash'],
   ];
+  const mobilePrimary = new Set(['axis-tab', 'holdings-tab', 'meridian-tab', 'risk-tab']);
   function selectTab(tab, { remember = true, scope = null } = {}) {
     if (remember && activeTab !== tab) tabTrail.push(activeTab);
     activeTab = tab;
@@ -240,10 +241,16 @@
     for (const [other, section, label] of tabs) {
       const selected = other === tab;
       el(other).setAttribute('aria-pressed', String(selected));
+      el('mobile-' + other).setAttribute('aria-pressed', String(selected));
       el(section).hidden = !selected;
       if (selected) el('workspace-path').textContent = label;
     }
-    if (tab === 'history-tab' && !history) void loadHistory();
+    el('mobile-more').open = false;
+    el('mobile-more-toggle').setAttribute('data-active', String(!mobilePrimary.has(tab)));
+    if (tab === 'history-tab') {
+      if (history) drawHistory();
+      else void loadHistory();
+    }
     if (tab === 'changes-tab') setChangesDates();
     window.meridianDiversification?.setOpen(tab === 'meridian-tab');
     if (tab === 'risk-tab') {
@@ -254,8 +261,16 @@
   const historyLabel = point => point.status === 'missing' ? 'No saved snapshot' : 'Saved snapshot unavailable';
   const historyAmount = point => decimal(point.total_value, 'GBP');
   const fundingDays = new Map();
-  const plot = {left: 175, right: 942, top: 24, bottom: 218};
-  const plotX = index => plot.left + (plot.right - plot.left) * index / (history.days.length - 1);
+  function historyPlot(canvas) {
+    const width = canvas.clientWidth || 960;
+    const compact = width < 620;
+    const height = compact ? 226 : 264;
+    return {width, height, compact, left:compact ? 12 : 175, right:width - (compact ? 12 : 18),
+      top:compact ? 30 : 24, bottom:height - 46};
+  }
+  const historyAxisMoney = new Intl.NumberFormat('en-GB', {
+    style:'currency', currency:'GBP', notation:'compact', maximumFractionDigits:1,
+  });
   function chartValues(observed) {
     const scale = Math.max(...observed.map(point => point.total_value.split('.')[1]?.length || 0));
     const values = observed.map(point => {
@@ -265,23 +280,35 @@
     return { values, min: values.reduce((a, b) => a < b ? a : b), max: values.reduce((a, b) => a > b ? a : b) };
   }
   function drawHistory() {
-    const ctx = el('history-chart').getContext?.('2d');
+    const canvas = el('history-chart');
+    const ctx = canvas.getContext?.('2d');
     if (!ctx) return;
-    ctx.clearRect(0, 0, 960, 264);
-    ctx.font = '13px system-ui';
-    ctx.textAlign = 'center';
+    const plot = historyPlot(canvas);
+    const ratio = window.devicePixelRatio || 1;
+    const width = Math.round(plot.width * ratio), height = Math.round(plot.height * ratio);
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, plot.width, plot.height);
+    ctx.font = `${plot.compact ? 12 : 13}px system-ui`;
     ctx.fillStyle = '#a1b0c1';
     const points = history.days;
-    for (const index of [0, 22, 44, 67, 89]) {
-      ctx.fillText(formatDay(points[index].date, true), plotX(index), 252);
+    const plotX = index => plot.left + (plot.right - plot.left) * index / (points.length - 1);
+    for (const index of plot.compact ? [0, 44, 89] : [0, 22, 44, 67, 89]) {
+      ctx.textAlign = plot.compact && index === 0 ? 'left' : index === 89 ? 'right' : 'center';
+      ctx.fillText(formatDay(points[index].date, true), plotX(index), plot.height - 12);
     }
     const observed = points.filter(point => point.status === 'observed');
     if (observed.length) {
       const { values, min, max } = chartValues(observed);
       ctx.textAlign = 'right';
-      for (const [value, y] of min === max ? [[min, 121]] : [[max, plot.top], [min, plot.bottom]]) {
+      const middle = (plot.top + plot.bottom) / 2;
+      for (const [value, y] of min === max ? [[min, middle]] : [[max, plot.top], [min, plot.bottom]]) {
         const point = observed[values.indexOf(value)];
-        ctx.fillText(historyAmount(point), plot.left - 10, y + 4, plot.left - 14);
+        if (plot.compact) ctx.fillText(historyAxisMoney.format(Number(point.total_value)), plot.right, y - 6);
+        else ctx.fillText(historyAmount(point), plot.left - 10, y + 4, plot.left - 14);
         ctx.fillStyle = '#303d4c';
         ctx.fillRect(plot.left, y, plot.right - plot.left, 1);
         ctx.fillStyle = '#a1b0c1';
@@ -291,7 +318,7 @@
       for (const [index, point] of points.entries()) {
         if (point.status !== 'observed') { previous = null; continue; }
         const value = values[valueIndex++];
-        const y = min === max ? 121 : plot.bottom - Number((value - min) * 10000n / (max - min)) / 10000 * (plot.bottom - plot.top);
+        const y = min === max ? middle : plot.bottom - Number((value - min) * 10000n / (max - min)) / 10000 * (plot.bottom - plot.top);
         const x = plotX(index);
         ctx.fillStyle = '#81d6bf';
         if (previous) {
@@ -303,24 +330,27 @@
           ctx.stroke();
         }
         ctx.beginPath();
-        ctx.arc(x, y, index === historyIndex ? 5 : 2.5, 0, Math.PI * 2);
+        ctx.arc(x, y, index === historyIndex ? 5 : plot.compact ? 1.8 : 2.5, 0, Math.PI * 2);
         ctx.fill();
         previous = [x,y];
       }
     }
+    const markWidth = plot.compact ? 2 : 4;
     for (const [index, point] of points.entries()) {
       ctx.fillStyle = point.status === 'observed' ? '#81d6bf' : point.status === 'missing' ? '#586a7d' : '#e9b879';
-      ctx.fillRect(plotX(index) - 2, 229, 4, 4);
+      ctx.fillRect(plotX(index) - markWidth / 2, plot.height - 35, markWidth, 4);
     }
     ctx.fillStyle = '#e9b879';
     for (const [index, point] of points.entries()) {
-      if (fundingDays.has(point.date)) ctx.fillRect(plotX(index) - 2, 237, 4, 5);
+      if (fundingDays.has(point.date)) ctx.fillRect(plotX(index) - markWidth / 2, plot.height - 27, markWidth, 5);
     }
     ctx.fillStyle = '#ecf8ee';
-    ctx.fillRect(plotX(historyIndex) - 1, 223, 2, 12);
+    ctx.fillRect(plotX(historyIndex) - 1, plot.height - 41, 2, 12);
   }
   function inspectDay(index) {
     historyIndex = Math.max(0, Math.min(history.days.length - 1, index));
+    el('history-previous-day').disabled = historyIndex === 0;
+    el('history-next-day').disabled = historyIndex === history.days.length - 1;
     const point = history.days[historyIndex];
     const day = formatDay(point.date) + (point.date === history.end_date ? ' (today so far)' : '');
     el('history-point').textContent = point.status === 'observed'
@@ -1454,7 +1484,9 @@
     window.meridianHoldingDetail?.clear();
     window.meridianDiversification?.clear();
     amounts.forEach(id => el(id).textContent = '—');
-    el('holdings-body').replaceChildren(); el('holding-count').textContent = '';
+    el('holdings-body').replaceChildren();
+    el('holdings-mobile-list').replaceChildren();
+    el('holding-count').textContent = '';
     if (el('cash-reconciliation')) { el('cash-reconciliation').replaceChildren(); el('cash-reconciliation').textContent = '—'; }
     el('snapshot-time').textContent = '—'; el('snapshot-status').textContent = ''; el('refresh-status').textContent = '';
     el('portfolio-exposures')?.replaceChildren();
@@ -1487,7 +1519,10 @@
     el('history-funding-note').hidden = true;
     el('history-point').textContent = '';
     el('history-status').textContent = '';
-    el('history-chart').getContext?.('2d')?.clearRect(0, 0, 960, 264);
+    const historyCanvas = el('history-chart');
+    const historyContext = historyCanvas.getContext?.('2d');
+    historyContext?.resetTransform();
+    historyContext?.clearRect(0, 0, historyCanvas.width, historyCanvas.height);
     el('history-details').open = false;
     el('history-results').hidden = true;
     el('reload-history').disabled = false;
@@ -1528,16 +1563,21 @@
         report?.holdings ? weights.get(a.ticker)?.value : a.current_value);
     });
     const fragment = document.createDocumentFragment();
+    const mobile = document.createDocumentFragment();
+    const detail = window.meridianHoldingDetail;
+    const labelDetailButton = (button, row) => {
+      button.type = 'button';
+      button.setAttribute('aria-haspopup', 'dialog');
+      button.addEventListener('click', () => detail.open(row, snapshot, button, decimal, setOutcomeTone));
+    };
+    if (!rows.length) add(mobile, 'li', 'No holdings match this view.').className = 'mobile-holdings-empty';
     for (const row of rows) {
       const tr = document.createElement('tr');
       const name = document.createElement('td');
-      const detail = window.meridianHoldingDetail;
       if (detail) {
         const open = add(name, 'button', row.name || row.ticker);
-        open.type = 'button';
         open.className = 'holding-link holding-detail-link';
-        open.setAttribute('aria-haspopup', 'dialog');
-        open.addEventListener('click', () => detail.open(row, snapshot, open, decimal, setOutcomeTone));
+        labelDetailButton(open, row);
       } else {
         name.textContent = row.name || row.ticker;
       }
@@ -1551,19 +1591,35 @@
         ticker.textContent += ` · Quote: ${weight.quote_currency} (${source})`;
       }
       name.append(ticker);
+      const item = add(mobile, 'li');
+      const mobileButton = add(item, 'button');
+      mobileButton.className = 'mobile-holding';
+      mobileButton.type = 'button';
+      if (detail) labelDetailButton(mobileButton, row);
+      const identity = add(mobileButton, 'span');
+      add(identity, 'strong', row.name || row.ticker);
+      add(identity, 'small', row.ticker);
+      const figures = add(mobileButton, 'span');
+      figures.className = 'mobile-holding-amounts';
+      add(figures, 'strong', decimal(row.current_value, row.account_currency));
+      outcome(figures, 'small', `PnL ${decimal(row.unrealized_profit_loss, row.account_currency)}`, row.unrealized_profit_loss);
       if (contributions) {
         const contribution = contributions[row.ticker];
-        add(name, 'small', `Bucket contribution: ${decimal(contribution.value, snapshot.currency)} · ${percent(contribution.holding_pct)} of position`);
-        if (contribution.source_labels?.length) {
-          add(name, 'small', `Source categories · ${contribution.source_labels.join(', ')}`);
-        }
-        const source = classification.sources[row.ticker];
-        if (source) {
-          const link = add(add(name, 'small'), 'a', `Source · ${formatDay(source.as_of)}`);
-          link.href = source.url;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-        }
+        const addContribution = parent => {
+          add(parent, 'small', `Bucket contribution: ${decimal(contribution.value, snapshot.currency)} · ${percent(contribution.holding_pct)} of position`);
+          if (contribution.source_labels?.length) {
+            add(parent, 'small', `Source categories · ${contribution.source_labels.join(', ')}`);
+          }
+          const source = classification.sources[row.ticker];
+          if (source) {
+            const link = add(add(parent, 'small'), 'a', `Source · ${formatDay(source.as_of)}`);
+            link.href = source.url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+          }
+        };
+        addContribution(name);
+        addContribution(item);
       }
       tr.append(name);
       for (const value of [decimal(row.quantity), decimal(row.current_price,row.instrument_currency), decimal(row.current_value,row.account_currency), percent(weight?.portfolio_pct), percent(weight?.invested_pct), decimal(row.total_cost,row.account_currency)]) {
@@ -1573,6 +1629,7 @@
       fragment.append(tr);
     }
     el('holdings-body').replaceChildren(fragment);
+    el('holdings-mobile-list').replaceChildren(mobile);
     el('holding-count').textContent = `${rows.length} of ${snapshot?.positions.length || 0} holdings`;
   }
   async function load() {
@@ -1655,7 +1712,18 @@
     renderOverviewChart();
   }
   for (const range of [30, 90]) el(`overview-${range}d`).addEventListener('click', () => setOverviewRange(range));
-  for (const [tab] of tabs) el(tab).addEventListener('click', () => selectTab(tab));
+  for (const [tab] of tabs) {
+    el(tab).addEventListener('click', () => selectTab(tab));
+    el('mobile-' + tab).addEventListener('click', () => {
+      selectTab(tab);
+      el('workspace-path').focus?.();
+    });
+  }
+  el('mobile-more').addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || !el('mobile-more').open) return;
+    el('mobile-more').open = false;
+    el('mobile-more-toggle').focus?.();
+  });
   el('workspace-back').addEventListener('click', goBack);
   el('clear-holding-scope').addEventListener('click', () => showHoldings(null));
   el('holding-search').addEventListener('input',renderHoldings); el('holding-sort').addEventListener('change',renderHoldings);
@@ -1700,15 +1768,20 @@
   el('risk-reset').addEventListener('click', () => { void loadRisk(); });
   el('history-chart').addEventListener('click', event => {
     if (!history) return;
-    const chart = el('history-chart');
-    const pixel = event.offsetX * chart.width / chart.clientWidth;
-    inspectDay(Math.round((pixel - plot.left) * (history.days.length - 1) / (plot.right - plot.left)));
+    const plot = historyPlot(el('history-chart'));
+    inspectDay(Math.round((event.offsetX - plot.left) * (history.days.length - 1) / (plot.right - plot.left)));
   });
   el('history-chart').addEventListener('keydown', event => {
     if (!history || !['ArrowLeft','ArrowRight'].includes(event.key)) return;
     event.preventDefault();
     inspectDay(historyIndex + (event.key === 'ArrowLeft' ? -1 : 1));
   });
+  el('history-previous-day').addEventListener('click', () => { if (history) inspectDay(historyIndex - 1); });
+  el('history-next-day').addEventListener('click', () => { if (history) inspectDay(historyIndex + 1); });
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(() => { if (history && activeTab === 'history-tab') drawHistory(); })
+      .observe(el('history-chart-viewport'));
+  }
   el('refresh-broker').addEventListener('click',refreshBroker);
   document.addEventListener('visibilitychange', () => {
     clearTimeout(timer);

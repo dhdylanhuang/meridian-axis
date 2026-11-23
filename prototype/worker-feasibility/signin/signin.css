@@ -423,3 +423,103 @@ details p { margin-block: 6px; }
 .cash-transactions td details p { white-space: normal; overflow-wrap: anywhere; }
 .cash-pagination:empty { display: none; }
 @media (max-width: 620px) { .cash-balances { grid-template-columns: minmax(0, 1fr); } }
+
+.mobile-nav, .holdings-mobile-list, .history-touch-controls, .detail-close-mobile { display: none; }
+.history-chart-viewport {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+#history-chart { min-width: 0; cursor: crosshair; }
+
+@media (max-width: 620px) {
+  :root { --mobile-nav-height: calc(62px + env(safe-area-inset-bottom)); }
+  .workspace .tabs { display: none; }
+  .workspace-main { padding-bottom: var(--mobile-nav-height); }
+  .topbar { position: sticky; top: 0; z-index: 2; }
+  .signed-in #message { bottom: var(--mobile-nav-height); }
+  .mobile-nav {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 4;
+    min-height: var(--mobile-nav-height);
+    padding: 4px 5px calc(4px + env(safe-area-inset-bottom));
+    background: var(--rail);
+    border-top: 1px solid var(--line);
+  }
+  .mobile-nav button, .mobile-more > summary {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    padding: 4px 1px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.2;
+  }
+  .mobile-nav button[aria-pressed="true"], .mobile-more[open] > summary,
+  .mobile-more > summary[data-active="true"] { background: var(--accent-panel); border-color: #36524a; color: var(--accent); }
+  .mobile-more { margin: 0; }
+  .mobile-more > summary { list-style: none; }
+  .mobile-more > summary::-webkit-details-marker { display: none; }
+  .mobile-more-list {
+    position: absolute;
+    right: 8px;
+    bottom: calc(var(--mobile-nav-height) + 4px);
+    width: min(208px, calc(100vw - 16px));
+    max-height: 55dvh;
+    overflow: auto;
+    padding: 5px;
+    background: var(--panel);
+    border: 1px solid var(--control-line);
+    border-radius: 7px;
+    box-shadow: 0 12px 34px #0008;
+  }
+  .mobile-more-list button { flex-direction: row; justify-content: start; gap: 9px; padding: 7px 10px; font-size: 13px; }
+
+  .holdings-table-desktop { display: none; }
+  .holdings-mobile-list { display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; }
+  .holdings-mobile-list > li { min-width: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--inset); }
+  .mobile-holding {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    gap: 8px;
+    width: 100%;
+    min-height: 60px;
+    padding: 10px;
+    text-align: left;
+    background: transparent;
+    color: var(--text);
+    overflow-wrap: anywhere;
+  }
+  .mobile-holding span > strong, .mobile-holding span > small { display: block; }
+  .mobile-holding span > small { margin-top: 3px; font-weight: 500; color: var(--outcome-color, var(--muted)); }
+  .mobile-holding-amounts { text-align: right; font-variant-numeric: tabular-nums; }
+  .holdings-mobile-list > li > small { display: block; padding: 0 10px 5px; color: var(--muted); }
+  .holding-detail {
+    inset: 0;
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+    border-radius: 0;
+    border: 0;
+  }
+  .detail-close-desktop { display: none; }
+  .detail-close-mobile { display: inline; }
+  .holding-detail-header { position: sticky; top: 0; z-index: 1; padding-bottom: 8px; background: var(--panel); }
+  .history-touch-controls { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px; }
+  .history-touch-controls button { min-height: 44px; }
+}

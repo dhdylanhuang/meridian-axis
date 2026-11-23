@@ -84,6 +84,9 @@ test('Holdings sorts exact unrealised PnL in either direction with unavailable v
   sort.value = 'pnl-asc';
   sort.listeners.change();
   assert.deepEqual(order(), ['LOSS','FLAT','GAIN','LARGER','MISSING']);
+  assert.match(content(ui.el('holdings-mobile-list').children[0]), /LOSS.*PnL −£3.25/s);
+  const mobileLoss = findNode(ui.el('holdings-mobile-list'), node => node.textContent === 'PnL −£3.25');
+  assert.equal(mobileLoss.attributes['data-tone'], 'loss');
 });
 test('holding detail shows broker figures and keeps notes scoped to the holding across reloads', async () => {
   const data = snapshot();
@@ -95,7 +98,7 @@ test('holding detail shows broker figures and keeps notes scoped to the holding 
   const load = async () => {
     const ui = setup(async () => Response.json(data), false, storage);
     await ui.view.load();
-    ui.el('holdings-tab').listeners.click();
+    ui.el('mobile-holdings-tab').listeners.click();
     return ui;
   };
   const open = (ui, label) => findNode(ui.el('holdings-body'), node => node.tag === 'button' && node.textContent === label)
@@ -107,7 +110,9 @@ test('holding detail shows broker figures and keeps notes scoped to the holding 
   assert.equal(lossRow.children[4].attributes['data-tone'], undefined);
   assert.equal(ui.el('unrealised-pnl').attributes['data-tone'], 'gain');
   assert.equal(ui.el('realised-pnl').attributes['data-tone'], 'loss');
-  open(ui, '<img src=x>');
+  const mobile = ui.el('holdings-mobile-list').children[0].children[0];
+  mobile.listeners.click();
+  assert.equal(ui.el('mobile-holdings-tab').attributes['aria-pressed'], 'true');
   assert.equal(ui.el('holding-detail-pnl').attributes['data-tone'], 'loss');
   assert.equal(ui.el('holding-detail').open, true);
   assert.equal(ui.el('holding-detail-name').textContent, '<img src=x>');
@@ -432,10 +437,16 @@ test('History renders exact daily values, breaks the line across gaps, and clear
    return fail ? {ok:false,status:503} : {ok:true,status:200,json:async()=>data};
  });
  const ctx=new Proxy({}, {get(_,key){return key === 'lineTo' ? ()=>lines++ : ()=>{};}});
- ui.el('history-chart').getContext=()=>ctx;
- ui.el('history-tab').listeners.click();
+ const chart = ui.el('history-chart');
+ chart.getContext=()=>ctx;
+ chart.clientWidth=358;
+ ui.el('mobile-more').open=true;
+ ui.el('mobile-history-tab').listeners.click();
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(reads,1);
+ assert.equal(ui.el('mobile-more').open,false);
+ assert.equal(ui.el('mobile-more-toggle').attributes['data-active'],'true');
+ assert.equal(chart.width,358);
  assert.equal(lines,1);
  assert.match(ui.el('history-status').textContent,/3 of 90 days observed · 87 missing/);
  assert.match(ui.el('overview-history-caption').textContent,/3 of 30 UTC days observed/);
@@ -452,7 +463,11 @@ test('History renders exact daily values, breaks the line across gaps, and clear
  assert.equal(ui.el('history-body').children.length,90);
  assert.equal(ui.el('history-body').children[0].children[2].title, days[89].captured_at);
  assert.equal(ui.el('history-body').children[1].children[1].textContent,'No saved snapshot');
- ui.el('history-chart').listeners.keydown({key:'ArrowLeft',preventDefault(){}});
+ chart.listeners.click({offsetX:342});
+ assert.match(ui.el('history-point').textContent,/No saved snapshot/);
+ ui.el('history-next-day').listeners.click();
+ assert.match(ui.el('history-point').textContent,/£9,007,199,254,740,993.123456789/);
+ chart.listeners.keydown({key:'ArrowLeft',preventDefault(){}});
  assert.match(ui.el('history-point').textContent,/No saved snapshot/);
  ui.el('axis-tab').listeners.click();
  ui.el('history-tab').listeners.click();
