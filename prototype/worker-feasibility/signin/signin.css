@@ -355,3 +355,40 @@ details p { margin-block: 6px; }
 }
 .meridian-axis { min-height:22px; font-size:9px }
 .meridian-basis { margin:0 0 8px; color:#aebdcc; font-size:11px }
+
+.holding-detail {
+  box-sizing: border-box;
+  width: min(36rem, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  padding: clamp(16px, 4vw, 24px);
+  overflow: auto;
+  border: 1px solid var(--control-line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+}
+.holding-detail::backdrop { background: #080d14be; }
+.holding-detail-header, .holding-detail-actions { display: flex; align-items: start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.holding-detail-header h2 { margin-top: 4px; font-size: 23px; overflow-wrap: anywhere; }
+.holding-detail-header button, #holding-thesis-template { background: var(--inset); color: var(--text); border-color: var(--control-line); }
+.holding-detail-link { font-size: inherit; font-weight: 650; }
+.holding-detail-figures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0 8px; }
+.holding-detail-figures > div { padding: 9px 11px; background: var(--inset); border: 1px solid var(--line); border-radius: 5px; }
+.holding-detail-figures dt { color: var(--muted); font-size: 12px; }
+.holding-detail-figures dd { margin: 3px 0 0; font-size: 16px; overflow-wrap: anywhere; }
+#holding-thesis-form { margin-top: 16px; }
+#holding-thesis-form label { margin: 12px 0 4px; }
+#holding-thesis-form textarea {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--control-line);
+  border-radius: 5px;
+  padding: 8px 10px;
+  background: var(--inset);
+  color: var(--text);
+  resize: vertical;
+  font: inherit;
+}
+.holding-detail-actions { justify-content: start; margin-top: 12px; }
+#holding-thesis-status { margin-top: 6px; }
+#holding-thesis-status:empty { display: none; }

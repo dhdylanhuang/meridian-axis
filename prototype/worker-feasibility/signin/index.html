@@ -181,6 +181,32 @@
             <button id="refresh-broker" type="button">Refresh Trading 212</button>
           </section>
         </div>
+        <dialog id="holding-detail" class="holding-detail" aria-labelledby="holding-detail-name">
+          <header class="holding-detail-header">
+            <div><p id="holding-detail-ticker" class="eyebrow"></p><h2 id="holding-detail-name"></h2></div>
+            <button id="holding-detail-close" type="button" autofocus>Close</button>
+          </header>
+          <dl class="holding-detail-figures">
+            <div><dt>Position value</dt><dd id="holding-detail-value"></dd></div>
+            <div><dt>Average purchase price</dt><dd id="holding-detail-average"></dd></div>
+            <div><dt>Latest saved price</dt><dd id="holding-detail-price"></dd></div>
+            <div><dt>Quantity</dt><dd id="holding-detail-quantity"></dd></div>
+          </dl>
+          <p id="holding-detail-source" class="hint"></p>
+          <form id="holding-thesis-form">
+            <h3>Investment thesis</h3>
+            <p class="hint">Notes are saved in this browser profile.</p>
+            <label for="holding-thesis">Why I own it</label>
+            <textarea id="holding-thesis" rows="4" maxlength="3000" placeholder="What do I believe about this investment, and what evidence supports it?"></textarea>
+            <label for="holding-exit">What would make me exit</label>
+            <textarea id="holding-exit" rows="4" maxlength="3000" placeholder="What would invalidate the thesis or change my risk case?"></textarea>
+            <div class="holding-detail-actions">
+              <button type="submit">Save notes</button>
+              <button id="holding-thesis-template" type="button">Use writing prompts</button>
+            </div>
+            <p id="holding-thesis-status" class="hint" role="status"></p>
+          </form>
+        </dialog>
         <footer class="workspace-footer"><span>Great Dyke Meridian / AXIS</span><span id="expiry"></span></footer>
       </div>
     </main>

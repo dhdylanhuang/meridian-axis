@@ -1311,6 +1311,7 @@
     active = false; clearTimeout(timer); failures = 0; nextRead = 0; nextManual = 0;
     generation++; controller?.abort(); cancelDetails(); snapshot = null;
     window.meridianPlanning?.clear();
+    window.meridianHoldingDetail?.clear();
     window.meridianDiversification?.clear();
     amounts.forEach(id => el(id).textContent = '—');
     el('holdings-body').replaceChildren(); el('holding-count').textContent = '';
@@ -1381,7 +1382,17 @@
     const fragment = document.createDocumentFragment();
     for (const row of rows) {
       const tr = document.createElement('tr');
-      const name = document.createElement('td'); name.textContent = row.name || row.ticker;
+      const name = document.createElement('td');
+      const detail = window.meridianHoldingDetail;
+      if (detail) {
+        const open = add(name, 'button', row.name || row.ticker);
+        open.type = 'button';
+        open.className = 'holding-link holding-detail-link';
+        open.setAttribute('aria-haspopup', 'dialog');
+        open.addEventListener('click', () => detail.open(row, snapshot, open, decimal));
+      } else {
+        name.textContent = row.name || row.ticker;
+      }
       const ticker = document.createElement('small'); ticker.textContent = row.ticker;
       const metadataStates = {pending:'metadata pending',missing:'metadata unavailable',stale:'metadata stale',conflict:'metadata needs review'};
       if (metadataStates[row.metadata?.state]) ticker.textContent += ` · ${metadataStates[row.metadata.state]}`;

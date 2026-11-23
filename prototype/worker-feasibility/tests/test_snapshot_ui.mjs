@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import fs from 'node:fs';
 const source=fs.readFileSync(new URL('../signin/snapshot.js',import.meta.url),'utf8');
 const dates = fs.readFileSync(new URL('../signin/dates.js', import.meta.url), 'utf8');
+const holdingDetail = fs.readFileSync(new URL('../signin/holding-detail.js', import.meta.url), 'utf8');
 const planning = fs.readFileSync(new URL('../signin/planning.js', import.meta.url), 'utf8');
 class Element {
   constructor(tag){this.tag=tag;this.textContent='';this.value='';this.children=[];this.listeners={};this.attributes={};this.dataset={};}
@@ -17,7 +18,7 @@ class Element {
   addEventListener(name,fn){this.listeners[name]=fn;}
   setAttribute(name,value){this.attributes[name]=value;}
 }
-function setup(fetcher, withPlanning = false){
+function setup(fetcher, withPlanning = false, holdingStorage = null){
   const elements=new Map();const window=new EventTarget();
   let now = 1_000_000, nextTimer = 0;
   const timers = new Map(), events = {};
@@ -28,6 +29,18 @@ function setup(fetcher, withPlanning = false){
   const context = vm.createContext({document,window,fetch:fetcher,AbortController,Event,BigInt,Date:Clock,setTimeout,clearTimeout});
   vm.runInContext(dates, context);
   if (withPlanning) vm.runInContext(planning, context);
+  if (holdingStorage) {
+    const dialog = document.getElementById('holding-detail');
+    dialog.showModal = () => { dialog.open = true; };
+    dialog.close = () => { dialog.open = false; dialog.listeners.close(); };
+    document.getElementById('holding-thesis').focus = () => {};
+    document.getElementById('holdings-tab').focus = () => {};
+    context.localStorage = {
+      getItem: key => holdingStorage.get(key) ?? null,
+      setItem: (key, value) => holdingStorage.set(key, value),
+    };
+    vm.runInContext(holdingDetail, context);
+  }
   vm.runInContext(source, context);
   return {view:window.meridianSnapshot,el:id=>document.getElementById(id),window,timers,document,
     advance(ms){now+=ms;},
@@ -54,6 +67,51 @@ test('broker total stays exact; values missing remain unavailable and names are 
  ui.el('holding-search').value='absent';ui.el('holding-search').listeners.input();
  assert.equal(ui.el('holdings-body').children.length,0);
  ui.view.clear();assert.equal(ui.el('total-value').textContent,'—');assert.equal(ui.el('holdings-body').children.length,0);
+});
+test('holding detail shows broker figures and keeps notes scoped to the holding across reloads', async () => {
+  const data = snapshot();
+  data.positions[0].average_price_paid = '8.123456789012345';
+  data.positions.push({...data.positions[0], ticker:'OTHER', name:'Other holding', average_price_paid:null});
+  const storage = new Map();
+  const load = async () => {
+    const ui = setup(async () => Response.json(data), false, storage);
+    await ui.view.load();
+    ui.el('holdings-tab').listeners.click();
+    return ui;
+  };
+  const open = (ui, label) => findNode(ui.el('holdings-body'), node => node.tag === 'button' && node.textContent === label)
+    .listeners.click();
+  const ui = await load();
+  open(ui, '<img src=x>');
+  assert.equal(ui.el('holding-detail').open, true);
+  assert.equal(ui.el('holding-detail-name').textContent, '<img src=x>');
+  assert.equal(ui.el('holding-detail-value').textContent, '£10');
+  assert.equal(ui.el('holding-detail-average').textContent, '8.123456789012345 USD');
+  assert.match(ui.el('holding-detail-source').textContent, /Trading 212 · Holdings captured/);
+  assert.equal(ui.el('holding-thesis').value, '');
+  ui.el('holding-thesis').value = 'Synthetic reason';
+  ui.el('holding-thesis-template').listeners.click();
+  assert.equal(ui.el('holding-thesis').value, 'Synthetic reason');
+  assert.match(ui.el('holding-exit').value, /Thesis invalidation/);
+  ui.el('holding-exit').value = 'Synthetic exit condition';
+  ui.el('holding-thesis-form').listeners.submit({preventDefault(){}});
+  assert.match(ui.el('holding-thesis-status').textContent, /Notes saved/);
+  ui.el('holding-detail-close').listeners.click();
+  assert.equal(ui.el('holding-thesis').value, '');
+  assert.equal(ui.el('holdings-body').children.length, 2);
+  open(ui, 'Other holding');
+  assert.equal(ui.el('holding-detail-average').textContent, 'Unavailable');
+  assert.equal(ui.el('holding-thesis').value, '');
+
+  const restored = await load();
+  open(restored, '<img src=x>');
+  assert.equal(restored.el('holding-thesis').value, 'Synthetic reason');
+  assert.equal(restored.el('holding-exit').value, 'Synthetic exit condition');
+  restored.view.clear();
+  assert.equal(restored.el('holding-detail').open, false);
+  assert.equal(restored.el('holding-detail-name').textContent, '');
+  assert.equal(restored.el('holding-thesis').value, '');
+  assert.equal(storage.size, 1);
 });
 test('late response cannot repopulate after clearing private state',async()=>{
  let finish;const ui=setup(()=>new Promise(resolve=>finish=resolve));const load=ui.view.load();ui.view.clear();finish({ok:true,status:200,json:async()=>snapshot()});await load;

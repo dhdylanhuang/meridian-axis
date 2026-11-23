@@ -193,7 +193,10 @@ test("only fixed same-origin sign-in assets are served and carry CSP", async () 
   const dates = await gateway.fetch(new Request(ORIGIN + '/dates.js'), state.env);
   assert.equal(dates.status, 200);
   privateResponse(dates);
-  assert.equal(accessed, 2);
+  const detail = await gateway.fetch(new Request(ORIGIN + '/holding-detail.js'), state.env);
+  assert.equal(detail.status, 200);
+  privateResponse(detail);
+  assert.equal(accessed, 3);
 });
 
 for (const route of ['snapshot', 'history']) test(`${route} GET uses fixed object; no authorization header or query-selected account`, async () => {

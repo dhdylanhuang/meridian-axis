@@ -187,7 +187,7 @@ export default {
       if (((changes || meridian || request.url.includes("?")) && !dateRange && !selection) || request.url.includes("#")) {
         return failure("request_invalid", 400);
       }
-      if (["/", "/signin.js", "/signin.css", "/snapshot.js", "/planning.js", "/dates.js", "/meridian.js"].includes(url.pathname) && env.ASSETS) {
+      if (["/", "/signin.js", "/signin.css", "/snapshot.js", "/planning.js", "/dates.js", "/meridian.js", "/holding-detail.js"].includes(url.pathname) && env.ASSETS) {
         if (request.method !== "GET") return failure("method_not_allowed", 405, { Allow: "GET" });
         const supplied = request.headers.get("origin");
         if (supplied !== null && supplied !== origin.origin) return failure("origin_invalid", 403);

@@ -71,7 +71,17 @@ All session routes require the configured HTTPS authority; foreign Origin header
 
 The top-level planning tabs share the existing approved Trading 212 GBP ISA
 snapshot and keep assumptions in page memory. Historical risk measures remain
-in Risk. Thesis editing remains a holding/group detail action.
+in Risk. In Holdings, selecting a name opens a keyboard-accessible detail
+dialog with the approved broker position value, average purchase price, saved
+price, quantity and capture time. Position values use the reported account
+currency. Prices use the reported listing currency when available.
+
+The dialog provides investment-thesis and exit-criteria fields with optional
+writing prompts. Saved notes are scoped to a broker listing and environment
+in the current browser profile. They persist across reloads in that profile.
+A shared browser profile can expose the same saved notes to both members.
+Signing out clears the displayed holding and note text. This local implementation
+does not use the planned shared, revisioned instrument and group note store.
 
 The authenticated Worker handles `POST /api/v1/portfolio/projections` and
 `POST /api/v1/portfolio/stress-tests`. Both accept JSON assumptions plus
