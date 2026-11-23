@@ -35,9 +35,14 @@
     const body = add(node, 'tbody');
     for (const values of rows) {
       const row = add(body, 'tr');
-      for (const value of values) add(row, 'td', value);
+      for (const value of values) {
+        if (typeof value === 'string') add(row, 'td', value);
+        else setOutcomeTone(add(row, 'td', value.label), value.amount);
+      }
     }
   }
+
+  const outcome = (label, amount) => ({label, amount});
 
   const targetDate = '2030-04-30';
   const errors = {
@@ -58,7 +63,7 @@
     snapshot_changed: 'A newer approved snapshot is available. Reload the saved snapshot, then recalculate.',
     snapshot_unavailable: 'The approved GBP snapshot is unavailable.',
   };
-  let snapshot = null, projection = null, stress = null, formatMoney, sessionEnded;
+  let snapshot = null, projection = null, stress = null, formatMoney, sessionEnded, setOutcomeTone;
   const stamp = data => data?.account_retrieval?.retrieval_completed_at;
   const holdingsStamp = data => data?.positions_retrieval?.retrieval_completed_at;
   const captureDate = () => new Date(stamp(snapshot)).toISOString().slice(0, 10);
@@ -230,8 +235,8 @@
     const money = value => formatMoney(value, 'GBP');
     add(parent, 'h3', 'Target-date comparison');
     table(parent, ['Path', 'Projected value', 'New deposits', 'Projected growth', 'Gap or surplus'], paths.map((path, index) =>
-      [labels[index], money(path.target_value), money(path.deposits), money(path.growth),
-        `${money(path.goal_difference)} ${path.goal_difference.startsWith('-') ? 'gap' : path.goal_difference === '0' ? 'on target' : 'surplus'}`]));
+      [labels[index], money(path.target_value), money(path.deposits), outcome(money(path.growth), path.growth),
+        outcome(`${money(path.goal_difference)} ${path.goal_difference.startsWith('-') ? 'gap' : path.goal_difference === '0' ? 'on target' : 'surplus'}`, path.goal_difference)]));
     add(parent, 'p', `Opening ISA growth assumption · ${report.opening_growth_pct}% annually. Destination rates are in each schedule.`);
     renderChart(parent, paths, labels, report.goal);
     for (let index = 1; index < paths.length; index++) {
@@ -378,8 +383,8 @@
       ['Direct price shock', ...scenarios.map(row => `${pct(row.price_shock_pct)} · ${row.scope === 'all' ? 'all eligible' : 'custom basket'}`)],
       ['Baseline ISA value', ...scenarios.map(() => money(report.opening_value))],
       ['Stressed ISA value', ...scenarios.map(row => money(row.stressed_value))],
-      ['Impact (GBP)', ...scenarios.map(row => money(row.impact))],
-      ['Impact (% of ISA)', ...scenarios.map(row => pct(row.impact_pct))],
+      ['Impact (GBP)', ...scenarios.map(row => outcome(money(row.impact), row.impact))],
+      ['Impact (% of ISA)', ...scenarios.map(row => outcome(pct(row.impact_pct), row.impact_pct))],
       ['Scenario coverage', ...scenarios.map(row => `${money(row.covered_value)} · ${pct(row.covered_pct)} of ISA · ${row.covered_holdings} of ${report.total_holdings} holdings`)],
       ['GBP cash available to trade', ...scenarios.map(() => money(report.known_cash))],
       ['Uncovered value excluding displayed cash', ...scenarios.map(row => money(row.uncovered_value))],
@@ -398,7 +403,7 @@
       const holdingRows = items => items.map(row => [
         row.name ? `${row.name} (${row.ticker})` : row.ticker, money(row.opening_value),
         `${pct(row.shock_pct)}${row.basis === 'holding_override' ? ' · override' : ''}`,
-        money(row.impact), money(row.stressed_value),
+        outcome(money(row.impact), row.impact), money(row.stressed_value),
       ]);
       const headers = ['Holding', 'Baseline', 'Shock', 'Impact', 'Stressed'];
       if (lossRows.length) table(section, headers, holdingRows(lossRows));
@@ -446,7 +451,7 @@
   }
 
   window.meridianPlanning = {
-    configure(money, denied) { formatMoney = money; sessionEnded = denied; },
+    configure(money, denied, tone) { formatMoney = money; sessionEnded = denied; setOutcomeTone = tone; },
     setSnapshot, clear,
   };
 })();

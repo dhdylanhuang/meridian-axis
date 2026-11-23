@@ -6,11 +6,11 @@
   const exit = el('holding-exit');
   const status = el('holding-thesis-status');
   const { timestamp } = window.meridianDates;
-  const figureIds = ['value', 'average', 'price', 'quantity', 'name', 'ticker', 'source'];
+  const figureIds = ['value', 'average', 'price', 'quantity', 'pnl', 'name', 'ticker', 'source'];
   let selected = null;
   let opener = null;
 
-  function open(holding, snapshot, button, decimal) {
+  function open(holding, snapshot, button, decimal, setOutcomeTone) {
     if (!snapshot || dialog.open) return;
     selected = `meridian-axis:holding-notes:v1:${snapshot.environment}:${holding.ticker}`;
     opener = button;
@@ -22,9 +22,11 @@
       average: money(holding.average_price_paid, holding.instrument_currency),
       price: money(holding.current_price, holding.instrument_currency),
       quantity: decimal(holding.quantity),
+      pnl: money(holding.unrealized_profit_loss, holding.account_currency),
       source: `Trading 212 · Holdings captured ${timestamp(snapshot.positions_retrieval?.retrieval_completed_at)}`,
     };
     for (const id of figureIds) el(`holding-detail-${id}`).textContent = figures[id];
+    setOutcomeTone(el('holding-detail-pnl'), holding.account_currency ? holding.unrealized_profit_loss : null);
     thesis.value = exit.value = '';
     status.textContent = '';
     try {

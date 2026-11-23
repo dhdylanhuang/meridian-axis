@@ -43,10 +43,19 @@
     const formatted = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (fraction === undefined ? '' : '.' + fraction);
     return (negative ? '−' : '') + (currency === 'GBP' ? '£' : '') + formatted + (currency && currency !== 'GBP' ? ' ' + currency : '');
   }
+  function setOutcomeTone(node, value, lossMagnitude = false) {
+    const nonzero = typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value) && /[1-9]/.test(value);
+    const tone = !nonzero ? '' : lossMagnitude || value.startsWith('-') ? 'loss' : 'gain';
+    node.setAttribute('data-tone', tone);
+    return node;
+  }
+  function outcome(parent, tag, label, value, lossMagnitude = false) {
+    return setOutcomeTone(add(parent, tag, label), value, lossMagnitude);
+  }
   window.meridianPlanning?.configure(decimal, () => {
     clear();
     window.dispatchEvent(new Event('meridian-session-ended'));
-  });
+  }, setOutcomeTone);
   function renderCash(data) {
     const container = el('cash-reconciliation');
     if (!container) return;
@@ -302,11 +311,11 @@
     for (const item of [...compare.intervals].reverse()) {
       const row = add(body, 'tr');
       add(row, 'td', periodRange(item));
-      add(row, 'td', percent(item.portfolio_pct));
-      add(row, 'td', item.benchmark_pct == null ? 'Unavailable' : percent(item.benchmark_pct));
-      add(row, 'td', item.difference_pp == null
+      outcome(row, 'td', percent(item.portfolio_pct), item.portfolio_pct);
+      outcome(row, 'td', percent(item.benchmark_pct), item.benchmark_pct);
+      outcome(row, 'td', item.difference_pp == null
         ? (item.reason === 'portfolio_capture_date_mismatch' ? 'Account capture crossed UTC date' : observed ? 'VUAG capture missing' : 'Benchmark endpoint missing')
-        : `${decimal(item.difference_pp)} pp`);
+        : `${decimal(item.difference_pp)} pp`, item.difference_pp);
       add(row, 'td', [item.portfolio_start_at, item.portfolio_end_at].map(when).join(' to '));
       add(row, 'td', [item.start_mark, item.end_mark].map(mark => mark
         ? `${decimal(mark.price_gbp, 'GBP')} · ${when(mark.at)}` : 'Missing').join(' to '));
@@ -320,9 +329,9 @@
     }
     const list = add(section, 'dl');
     add(list, 'dt', 'Drawdown at latest eligible capture');
-    add(list, 'dd', percent(drawdown.current_pct));
+    outcome(list, 'dd', percent(drawdown.current_pct), drawdown.current_pct, true);
     add(list, 'dt', 'Worst drawdown in this stretch');
-    add(list, 'dd', percent(drawdown.worst_pct));
+    outcome(list, 'dd', percent(drawdown.worst_pct), drawdown.worst_pct, true);
     add(section, 'p', `Flow-adjusted stretch · ${when(drawdown.start_at)} to ${when(drawdown.as_of)} · ${drawdown.intervals} eligible intervals. Latest running peak captured ${when(drawdown.current_peak_at)}.`);
     if (drawdown.worst_peak_at && drawdown.worst_trough_at) {
       add(section, 'p', `Worst decline · peak ${when(drawdown.worst_peak_at)} · trough ${when(drawdown.worst_trough_at)}.`);
@@ -360,9 +369,9 @@
       add(row, 'td', label);
       add(row, 'td', stretch ? periodRange(stretch) : 'Unavailable');
       add(row, 'td', String(stretch?.sessions ?? 0));
-      add(row, 'td', percent(stretch?.portfolio_pct));
-      add(row, 'td', percent(stretch?.vuag_pct));
-      add(row, 'td', stretch?.spread_pp == null ? 'Unavailable' : signed(stretch.spread_pp) + ' pp');
+      outcome(row, 'td', percent(stretch?.portfolio_pct), stretch?.portfolio_pct);
+      outcome(row, 'td', percent(stretch?.vuag_pct), stretch?.vuag_pct);
+      outcome(row, 'td', stretch?.spread_pp == null ? 'Unavailable' : signed(stretch.spread_pp) + ' pp', stretch?.spread_pp);
     }
     if (!performance.rows.length) return;
     const details = add(section, 'details');
@@ -379,8 +388,8 @@
       add(row, 'td', `${when(item.start_at)} → ${when(item.end_at)}`);
       add(row, 'td', item.net_external_flow_gbp == null ? 'Unavailable'
         : `${decimal(item.net_external_flow_gbp, 'GBP')} · ${item.external_flow_count} ${item.external_flow_count === 1 ? 'event' : 'events'}`);
-      add(row, 'td', item.reason ? reasons[item.reason] ?? 'Return unavailable' : percent(item.portfolio_pct));
-      add(row, 'td', percent(item.vuag_pct));
+      outcome(row, 'td', item.reason ? reasons[item.reason] ?? 'Return unavailable' : percent(item.portfolio_pct), item.reason ? null : item.portfolio_pct);
+      outcome(row, 'td', percent(item.vuag_pct), item.vuag_pct);
       add(row, 'td', item.vuag_start_at && item.vuag_end_at
         ? `${when(item.vuag_start_at)} → ${when(item.vuag_end_at)}` : 'Unavailable');
     }
@@ -436,7 +445,11 @@
       add(section, 'p', 'Automatic returns could not be calculated.');
     }
     const latest = returns?.latest;
-    if (latest) add(section, 'p', `Latest uninterrupted stretch · ${periodRange(latest)} UTC · ${percent(latest.portfolio_pct)} · ${latest.sessions} returns.`);
+    if (latest) {
+      const stretch = add(section, 'p', `Latest uninterrupted stretch · ${periodRange(latest)} UTC · `);
+      outcome(stretch, 'span', percent(latest.portfolio_pct), latest.portfolio_pct);
+      add(stretch, 'span', ` · ${latest.sessions} returns.`);
+    }
     if (report.calendar_reviewed_through) {
       add(section, 'p', `London session calendar reviewed through ${formatDay(report.calendar_reviewed_through)}.`);
     }
@@ -468,9 +481,9 @@
       const count = interval?.external_flow_count;
       add(row, 'td', net == null ? '—'
         : `${signed(net, 'GBP')} · ${count} ${count === 1 ? 'flow' : 'flows'}`);
-      add(row, 'td', interval?.return_pct != null
+      outcome(row, 'td', interval?.return_pct != null
         ? `${percent(interval.return_pct)} · ${interval.approved ? 'Approved' : 'Provisional'}`
-        : (interval ? reasons[interval.reason] ?? 'Unavailable' : '—'));
+        : (interval ? reasons[interval.reason] ?? 'Unavailable' : '—'), interval?.return_pct);
     }
     if (returns?.approved_risk) {
       const risk = returns.approved_risk;
@@ -490,7 +503,8 @@
     add(list, 'dt', 'Intervals with a loss');
     add(list, 'dd', observed.eligible ? `${observed.loss_intervals} of ${observed.eligible}` : 'Unavailable');
     add(list, 'dt', 'Worst observed interval return');
-    add(list, 'dd', observed.worst ? percent(observed.worst.return_pct) : observed.eligible ? 'No loss' : 'Unavailable');
+    outcome(list, 'dd', observed.worst ? percent(observed.worst.return_pct) : observed.eligible ? 'No loss' : 'Unavailable',
+      observed.worst?.return_pct);
     if (observed.worst) {
       add(section, 'p', `Worst interval · ${when(observed.worst.start_at)} to ${when(observed.worst.end_at)}.`);
     }
@@ -531,7 +545,8 @@
       const row = add(rows,'tr');
       add(row,'td',label);
       const estimate = metric.value == null ? 'Unavailable' : decimal(metric.value) + unit;
-      add(row,'td',metric.value_gbp == null ? estimate : `${estimate} · ${decimal(metric.value_gbp,'GBP')}`);
+      const cell = add(row,'td',metric.value_gbp == null ? estimate : `${estimate} · ${decimal(metric.value_gbp,'GBP')}`);
+      if (key === 'jensen_alpha') setOutcomeTone(cell, metric.value);
       add(row,'td',String(metric.n));
       const tail = metric.tail_n == null ? '' : `${metric.tail_n} tail observations${metric.tail_n < 5 ? ' · thin coverage' : ''}`;
       add(row,'td',[riskReasons[metric.reason],tail].filter(Boolean).join(' · ') || '—');
@@ -639,7 +654,7 @@
       add(row, 'td', label);
       add(row, 'td', item ? periodRange(item) : '—');
       add(row, 'td', item ? String(item.intervals ?? 1) : '—');
-      add(row, 'td', adjustedReturn(item));
+      outcome(row, 'td', adjustedReturn(item), item?.return_pct);
     }
     renderBenchmark(section, report.benchmark);
     const funding = add(section, 'details');
@@ -673,7 +688,7 @@
       add(row, 'td', [item.start_at, item.end_at].map(time => time ? when(time) : '—').join(' to '));
       add(row, 'td', item.external_flow_count == null ? '—' : String(item.external_flow_count));
       add(row, 'td', item.net_external_flow == null ? '—' : decimal(item.net_external_flow, 'GBP'));
-      add(row, 'td', adjustedReturn(item));
+      outcome(row, 'td', adjustedReturn(item), item?.return_pct);
     }
   }
   const overviewNumber = new Intl.NumberFormat('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -832,25 +847,36 @@
     renderOverviewChart();
     const report = history?.performance;
     const matched = report?.benchmark?.latest_stretch;
-    el('overview-comparison').textContent = matched
-      ? `${overviewPct(matched.portfolio_pct)} vs ${overviewPct(matched.benchmark_pct)}`
-      : 'Unavailable';
-    el('overview-comparison-period').textContent = matched
-      ? `${periodRange(matched)} UTC · ${overviewDifference.format(Number(matched.difference_pp))} pp · ${matched.intervals} matched intervals · provisional`
-      : 'Needs a matched portfolio and VUAG interval.';
+    const comparison = el('overview-comparison');
+    const period = el('overview-comparison-period');
+    comparison.replaceChildren();
+    period.replaceChildren();
+    comparison.textContent = matched ? '' : 'Unavailable';
+    period.textContent = matched ? `${periodRange(matched)} UTC · ` : 'Needs a matched portfolio and VUAG interval.';
+    if (matched) {
+      outcome(comparison, 'span', overviewPct(matched.portfolio_pct), matched.portfolio_pct);
+      add(comparison, 'span', ' vs ');
+      outcome(comparison, 'span', overviewPct(matched.benchmark_pct), matched.benchmark_pct);
+      outcome(period, 'span', `${overviewDifference.format(Number(matched.difference_pp))} pp`, matched.difference_pp);
+      add(period, 'span', ` · ${matched.intervals} matched intervals · provisional`);
+    }
     const drawdown = report?.drawdown;
-    el('overview-drawdown').textContent = overviewPct(drawdown?.current_pct);
-    el('overview-risk-period').textContent = drawdown
-      ? `Worst ${overviewPct(drawdown.worst_pct)} · eligible through ${when(drawdown.as_of)}${drawdown.later_unavailable_intervals ? ` · ${drawdown.later_unavailable_intervals} newer intervals unavailable` : ''}`
-      : 'Needs an eligible cash-flow-adjusted interval.';
+    const drawdownValue = el('overview-drawdown');
+    drawdownValue.textContent = overviewPct(drawdown?.current_pct);
+    setOutcomeTone(drawdownValue, drawdown?.current_pct, true);
+    const riskPeriod = el('overview-risk-period');
+    riskPeriod.replaceChildren();
+    riskPeriod.textContent = drawdown ? 'Worst ' : 'Needs an eligible cash-flow-adjusted interval.';
+    if (drawdown) {
+      outcome(riskPeriod, 'span', overviewPct(drawdown.worst_pct), drawdown.worst_pct, true);
+      add(riskPeriod, 'span', ` · eligible through ${when(drawdown.as_of)}${drawdown.later_unavailable_intervals
+        ? ` · ${drawdown.later_unavailable_intervals} newer intervals unavailable` : ''}`);
+    }
   }
   function renderOverviewSnapshot(data) {
     renderOverviewAllocation(data);
     renderOverviewHoldings(data);
     el('overview-holding-count').textContent = `${data.positions.length} reported holdings`;
-    const pnl = data.investments.unrealizedProfitLoss;
-    const direction = pnl == null ? 0 : compare(pnl, '0');
-    el('unrealised-pnl').setAttribute('data-tone', direction < 0 ? 'loss' : direction > 0 ? 'gain' : '');
     el('overview-account-time').textContent = `Captured ${when(data.account_retrieval.retrieval_completed_at)}`;
     const exposure = data.exposures;
     const top = exposure?.concentration?.find(row => row.top === 5);
@@ -1328,7 +1354,7 @@
     renderOverviewAllocation(null);
     renderOverviewHoldings(null);
     el('overview-marked-value').textContent = '';
-    el('unrealised-pnl').setAttribute('data-tone', '');
+    for (const id of ['unrealised-pnl','realised-pnl','overview-drawdown']) setOutcomeTone(el(id), null);
     for (const id of ['overview-holding-count','overview-account-time','overview-comparison-period','overview-risk-period','overview-exposure-time']) el(id).textContent = '';
     changesRequest?.abort(); changesRequest = null;
     el('changes-results').replaceChildren();
@@ -1389,7 +1415,7 @@
         open.type = 'button';
         open.className = 'holding-link holding-detail-link';
         open.setAttribute('aria-haspopup', 'dialog');
-        open.addEventListener('click', () => detail.open(row, snapshot, open, decimal));
+        open.addEventListener('click', () => detail.open(row, snapshot, open, decimal, setOutcomeTone));
       } else {
         name.textContent = row.name || row.ticker;
       }
@@ -1418,9 +1444,10 @@
         }
       }
       tr.append(name);
-      for (const value of [decimal(row.quantity), decimal(row.current_price,row.instrument_currency), decimal(row.current_value,row.account_currency), percent(weight?.portfolio_pct), percent(weight?.invested_pct), decimal(row.total_cost,row.account_currency), decimal(row.unrealized_profit_loss,row.account_currency)]) {
+      for (const value of [decimal(row.quantity), decimal(row.current_price,row.instrument_currency), decimal(row.current_value,row.account_currency), percent(weight?.portfolio_pct), percent(weight?.invested_pct), decimal(row.total_cost,row.account_currency)]) {
         const cell = document.createElement('td'); cell.textContent = value; tr.append(cell);
       }
+      outcome(tr, 'td', decimal(row.unrealized_profit_loss, row.account_currency), row.unrealized_profit_loss);
       fragment.append(tr);
     }
     el('holdings-body').replaceChildren(fragment);
@@ -1446,6 +1473,8 @@
       window.meridianDiversification?.setSnapshot(data);
       const values = [data.total_value,data.investments.currentValue,data.cash_components.availableToTrade,data.investments.unrealizedProfitLoss,data.cash_components.inPies,data.cash_components.reservedForOrders,data.investments.totalCost,data.investments.realizedProfitLoss];
       amounts.forEach((id,index) => el(id).textContent = decimal(values[index],data.currency));
+      setOutcomeTone(el('unrealised-pnl'), data.investments.unrealizedProfitLoss);
+      setOutcomeTone(el('realised-pnl'), data.investments.realizedProfitLoss);
       el('snapshot-time').textContent = `Trading 212 · ${data.environment.toUpperCase()} account · Account captured ${when(data.account_retrieval.retrieval_completed_at)}; holdings captured ${when(data.positions_retrieval.retrieval_completed_at)}.`;
       const changes = data.holding_changes;
       const additions = changes?.added_tickers || [], closures = changes?.closed_tickers || [];

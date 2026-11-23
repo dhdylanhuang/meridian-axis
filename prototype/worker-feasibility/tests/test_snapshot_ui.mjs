@@ -71,7 +71,9 @@ test('broker total stays exact; values missing remain unavailable and names are 
 test('holding detail shows broker figures and keeps notes scoped to the holding across reloads', async () => {
   const data = snapshot();
   data.positions[0].average_price_paid = '8.123456789012345';
-  data.positions.push({...data.positions[0], ticker:'OTHER', name:'Other holding', average_price_paid:null});
+  data.positions[0].unrealized_profit_loss = '-0.000000000000000001';
+  data.investments.realizedProfitLoss = '-1';
+  data.positions.push({...data.positions[0], ticker:'OTHER', name:'Other holding', average_price_paid:null, unrealized_profit_loss:'-0.00'});
   const storage = new Map();
   const load = async () => {
     const ui = setup(async () => Response.json(data), false, storage);
@@ -82,7 +84,14 @@ test('holding detail shows broker figures and keeps notes scoped to the holding 
   const open = (ui, label) => findNode(ui.el('holdings-body'), node => node.tag === 'button' && node.textContent === label)
     .listeners.click();
   const ui = await load();
+  const [lossRow, flatRow] = ui.el('holdings-body').children;
+  assert.equal(lossRow.children.at(-1).attributes['data-tone'], 'loss');
+  assert.equal(flatRow.children.at(-1).attributes['data-tone'], '');
+  assert.equal(lossRow.children[4].attributes['data-tone'], undefined);
+  assert.equal(ui.el('unrealised-pnl').attributes['data-tone'], 'gain');
+  assert.equal(ui.el('realised-pnl').attributes['data-tone'], 'loss');
   open(ui, '<img src=x>');
+  assert.equal(ui.el('holding-detail-pnl').attributes['data-tone'], 'loss');
   assert.equal(ui.el('holding-detail').open, true);
   assert.equal(ui.el('holding-detail-name').textContent, '<img src=x>');
   assert.equal(ui.el('holding-detail-value').textContent, '£10');
@@ -470,8 +479,11 @@ test('History exposes funding evidence and explains ineligible returns without b
  const results=text(ui.el('history-performance')).join(' ');
  for (const value of ['2.727273%','£20.123456789','invented-ref','Modified Dietz','A saved valuation is missing','0.727273 pp','VUAG capture missing','Quote age and split adjustments are unverified','1 of 2 eligible portfolio intervals matched','£102 · ']) assert.ok(results.includes(value), value);
  assert.ok(!results.includes('Portfolio drawdown'));
- assert.equal(ui.el('overview-comparison').textContent,'2.73% vs 2.00%');
- assert.match(ui.el('overview-comparison-period').textContent,/0.73 pp/);
+ const comparison = ui.el('overview-comparison').children;
+ assert.equal(comparison.map(node => node.textContent).join(''), '2.73% vs 2.00%');
+ assert.deepEqual(comparison.map(node => node.attributes['data-tone']), ['gain', undefined, 'gain']);
+ assert.match(content(ui.el('overview-comparison-period')),/0.73 pp/);
+ assert.equal(ui.el('overview-drawdown').attributes['data-tone'], 'loss');
  assert.equal(ui.el('overview-drawdown').textContent,'5.00%');
  ui.view.clear();
  assert.equal(ui.el('history-performance').children.length,0);
@@ -633,7 +645,9 @@ test('Projections tab accepts deposits, renders comparisons and shows allocation
   await form.onsubmit({preventDefault(){}});
   assert.equal(submitted[0].assumptions.plans[0].deposits[0].allocations[0].kind, 'cash');
   assert.match(content(ui.el('projections-capture')), /12:00pm 2 Jan 2026/);
-  assert.match(content(ui.el('projections-results')), /Plan A.*£1,100.*cash-flow schedule/s);
+  const projections = ui.el('projections-results');
+  assert.match(content(projections), /Plan A.*£1,100.*cash-flow schedule/s);
+  assert.ok(findNode(projections, node => node.textContent.endsWith(' gap') && node.attributes['data-tone'] === 'loss'));
   field('Allocation').value = '90';
   form.oninput();
   await form.onsubmit({preventDefault(){}});
@@ -685,6 +699,7 @@ test('Stress Tests tab compares presets and submits a basket with a holding over
     overrides:[{ticker:'SYNTH',price_shock_pct:'-5'}]});
   const result = content(ui.el('stress-results'));
   assert.match(result, /Stressed ISA value £920/);
+  assert.equal(findNode(ui.el('stress-results'), node => node.textContent === '−8%').attributes['data-tone'], 'loss');
   assert.match(result, /Uncovered value excluding displayed cash £100/);
   assert.match(result, /largest losses.*SYNTH.*−£80/s);
   ui.view.clear();
