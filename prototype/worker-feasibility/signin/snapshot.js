@@ -355,20 +355,23 @@
     if (event.kind === 'WITHDRAW') return 'Withdrawal';
     return event.kind === 'TRANSFER' ? 'Transfer' : event.kind;
   }
-  function benchmarkDates({start_date, end_date}) {
+  function compactDateRange(start_date, end_date) {
     const end = formatDay(end_date);
     if (start_date === end_date) return end;
     if (start_date.slice(0, 7) === end_date.slice(0, 7)) return `${Number(start_date.slice(8))}–${end}`;
     return `${formatDay(start_date, start_date.slice(0, 4) === end_date.slice(0, 4))} – ${end}`;
   }
-  const benchmarkNumber = new Intl.NumberFormat('en-GB', {maximumFractionDigits:2});
-  function benchmarkCell(row, value, unit) {
+  const compactNumber = new Intl.NumberFormat('en-GB', {maximumFractionDigits:2});
+  function compactCell(row, value, {currency, unit = '', direction = false} = {}) {
+    if (value == null) return add(row, 'td', '—');
     const number = Number(value);
-    const formatted = value == null ? '—' : number !== 0 && Math.abs(number) < 0.005
-      ? `${number < 0 ? '−' : ''}<0.01${unit}`
-      : benchmarkNumber.format(number).replace('-', '−') + unit;
-    const cell = outcome(row, 'td', formatted, value);
-    if (value != null) cell.title = decimal(value) + unit;
+    const negative = number < 0;
+    const sign = negative ? '−' : direction === 'signed' && number > 0 ? '+' : '';
+    const tiny = number !== 0 && Math.abs(number) < 0.005;
+    const label = `${sign}${tiny ? '<' : ''}${currency === 'GBP' ? '£' : ''}${tiny ? '0.01' : compactNumber.format(Math.abs(number))}${unit}`;
+    const cell = direction ? outcome(row, 'td', label, value) : add(row, 'td', label);
+    cell.title = decimal(value, currency) + unit;
+    return cell;
   }
 
   function renderBenchmark(section, compare) {
@@ -386,15 +389,15 @@
       : `GBP London closing prices · ${compare.source} · reviewed ${when(compare.reviewed_at)}. Account capture and closing times can differ.`);
     if (!compare.intervals.length) return;
     const summary = add(section, 'div');
-    summary.className = 'benchmark-summary';
+    summary.className = 'benchmark-summary compact-table';
     const intervals = [...compare.intervals].reverse();
     const body = exposureTable(summary, ['UTC dates', 'Portfolio', 'VUAG', 'Gap'], 'Portfolio and VUAG comparison');
     for (const item of intervals) {
       const row = add(body, 'tr');
-      add(row, 'td', benchmarkDates(item));
-      benchmarkCell(row, item.portfolio_pct, '%');
-      benchmarkCell(row, item.benchmark_pct, '%');
-      benchmarkCell(row, item.difference_pp, ' pp');
+      add(row, 'td', compactDateRange(item.start_date, item.end_date));
+      compactCell(row, item.portfolio_pct, {unit:'%', direction:true});
+      compactCell(row, item.benchmark_pct, {unit:'%', direction:true});
+      compactCell(row, item.difference_pp, {unit:' pp', direction:true});
     }
 
     const details = add(section, 'details');
@@ -403,7 +406,7 @@
       observed ? 'VUAG captures (London)' : 'VUAG closes (London)'], 'VUAG capture evidence');
     for (const item of intervals) {
       const row = add(evidence, 'tr');
-      add(row, 'td', benchmarkDates(item));
+      add(row, 'td', compactDateRange(item.start_date, item.end_date));
       const figures = add(row, 'td');
       outcome(figures, 'small', `Portfolio ${percent(item.portfolio_pct)}`, item.portfolio_pct);
       outcome(figures, 'small', `VUAG ${percent(item.benchmark_pct)}`, item.benchmark_pct);
@@ -1101,61 +1104,74 @@
   function renderChanges(data) {
     const section = el('changes-results');
     section.replaceChildren();
-    for (const [label, endpoint] of [['Start', data.start], ['End', data.end]]) {
-      add(section, 'h3', `${label} · ${formatDay(endpoint.date)} UTC`);
+    add(section, 'h3', `${compactDateRange(data.start.date, data.end.date)} UTC`);
+    const endpoints = [['Start', data.start], ['End', data.end]];
+    for (const [label, endpoint] of endpoints) {
       if (endpoint.status === 'missing') {
-        add(section, 'p', 'No approved Trading 212 snapshot was saved for this date.');
+        add(section, 'p', `${label} · No approved Trading 212 snapshot was saved.`);
       } else if (endpoint.status === 'unavailable') {
-        add(section, 'p', `A snapshot was saved at ${when(endpoint.observed_at)}. Its GBP holdings or capture evidence could not be verified.`);
-      } else {
-        add(section, 'p', `Holdings captured ${when(endpoint.positions_captured_at)} · Account captured ${when(endpoint.account_captured_at)} · Saved observation ${when(endpoint.observed_at)}`);
-        add(section, 'p', `Weight denominator (reported ISA value) · ${decimal(endpoint.portfolio_denominator, 'GBP')}`);
+        add(section, 'p', `${label} · The saved GBP holdings or capture evidence could not be verified.`);
+      }
+    }
+    if (endpoints.some(([, endpoint]) => endpoint.status !== 'missing')) {
+      const snapshots = add(section, 'details');
+      add(snapshots, 'summary', 'Snapshot times and ISA values');
+      for (const [label, endpoint] of endpoints) {
+        if (endpoint.status === 'missing') continue;
+        add(snapshots, 'h4', label + ' · ' + formatDay(endpoint.date));
+        add(snapshots, 'p', `Saved observation ${when(endpoint.observed_at)}`);
+        if (endpoint.status === 'observed') {
+          add(snapshots, 'p', `Holdings captured ${when(endpoint.positions_captured_at)} · Account captured ${when(endpoint.account_captured_at)}`);
+          add(snapshots, 'p', `Reported ISA value · ${decimal(endpoint.portfolio_denominator, 'GBP')}`);
+        }
       }
     }
     if (data.start.status !== 'observed' || data.end.status !== 'observed') return;
 
-    add(section, 'h3', 'Observed changes in reported holding value');
-    add(section, 'p', 'Ranked by absolute GBP change. Quantity flags compare the saved positions. These snapshots provide no reliable split of the change between price, FX and trading.');
+    add(section, 'h3', 'Holding value changes');
+    add(section, 'p', 'Ranked by size of change. Reported changes can include price moves, FX and trades.');
     const labels = {added:'Added', closed:'Closed', quantity_changed:'Quantity changed',
       quantity_unchanged:'Quantity unchanged', quantity_unavailable:'Quantity unavailable',
       identity_conflict:'Listing identity changed'};
-    const body = exposureTable(section, ['Holding', 'GBP change', 'Start value', 'End value',
-      'Start quantity', 'End quantity', 'Start weight', 'End weight', 'Position status'], 'Holding changes');
+    const holdingTable = add(section, 'div');
+    holdingTable.className = 'compact-table';
+    const body = exposureTable(holdingTable, ['Holding', 'GBP change', 'Start', 'End'], 'Holding changes');
     const links = new Map();
     for (const [index, holding] of data.holdings.entries()) {
       const row = add(body, 'tr');
-      const evidence = add(add(row, 'td'), 'details');
+      const holdingCell = add(row, 'td');
+      const evidence = add(holdingCell, 'details');
       evidence.id = 'change-holding-' + index;
       const summary = add(evidence, 'summary', holding.end.name || holding.start.name || holding.ticker);
       links.set(holding.ticker, {evidence, summary});
       add(evidence, 'small', holding.ticker);
-      for (const [key, side, label] of [['start', holding.start, 'Start'], ['end', holding.end, 'End']]) {
-        const captured = when(data[key].positions_captured_at);
+      if (holding.status !== 'quantity_unchanged') add(holdingCell, 'small', labels[holding.status]);
+      for (const [side, label] of [[holding.start, 'Start'], [holding.end, 'End']]) {
         add(evidence, 'small', side.present
-          ? `${label} · ${side.isin || holding.ticker} · ${captured}`
-          : `${label} · No open position at ${captured}`);
+          ? `${label} · ${decimal(side.value, 'GBP')} · Quantity ${decimal(side.quantity)} · Weight ${percent(side.weight_pct)} · ${side.isin || holding.ticker}`
+          : `${label} · No open position`);
       }
-      add(row, 'td', signed(holding.value_change, 'GBP'));
-      for (const field of ['value','quantity','weight_pct']) {
-        for (const side of [holding.start, holding.end]) {
-          add(row, 'td', field === 'weight_pct' ? percent(side[field])
-            : decimal(side[field], field === 'value' ? 'GBP' : undefined));
-        }
-      }
-      add(row, 'td', labels[holding.status]);
+      add(evidence, 'small', `Exact change · ${signed(holding.value_change, 'GBP')}`);
+      compactCell(row, holding.value_change, {currency:'GBP', direction:'signed'});
+      compactCell(row, holding.start.value, {currency:'GBP'});
+      compactCell(row, holding.end.value, {currency:'GBP'});
     }
     if (!links.size) add(section, 'p', 'Neither snapshot contains open positions.');
 
     const cashLabels = {availableToTrade:'Available to trade', inPies:'Cash in pies', reservedForOrders:'Reserved for orders'};
     function weightChanges(title, rows) {
-      const body = exposureTable(section, ['Reported exposure', 'Start value', 'End value', 'GBP change',
-        'Start weight', 'End weight', 'Weight change'], title);
+      const compact = add(section, 'div');
+      compact.className = 'compact-table';
+      const body = exposureTable(compact, ['Exposure', 'GBP change', 'Weight change'], title);
       for (const item of rows) {
         const row = add(body, 'tr'), cell = add(row, 'td');
         const label = cashLabels[item.label] ?? item.label ?? 'Unclassified';
+        const detail = add(cell, 'details');
+        add(detail, 'summary', label);
+        add(detail, 'small', `Start · ${decimal(item.start_value, 'GBP')} · ${percent(item.start_weight_pct)}`);
+        add(detail, 'small', `End · ${decimal(item.end_value, 'GBP')} · ${percent(item.end_weight_pct)}`);
+        add(detail, 'small', `Exact change · ${signed(item.value_change, 'GBP')} · ${signed(item.weight_change_pp)} pp`);
         if (item.members.length) {
-          const detail = add(cell, 'details');
-          add(detail, 'summary', label);
           const list = add(detail, 'ul');
           for (const member of item.members) {
             const entry = add(list, 'li');
@@ -1170,15 +1186,13 @@
             } else add(entry, 'span', member.ticker);
             add(entry, 'small', `${decimal(member.start_value ?? '0', 'GBP')} → ${decimal(member.end_value ?? '0', 'GBP')}`);
           }
-        } else cell.textContent = label;
-        for (const field of ['start_value', 'end_value']) add(row, 'td', decimal(item[field], 'GBP'));
-        add(row, 'td', signed(item.value_change, 'GBP'));
-        for (const field of ['start_weight_pct', 'end_weight_pct']) add(row, 'td', percent(item[field]));
-        add(row, 'td', signed(item.weight_change_pp) + ' pp');
+        }
+        compactCell(row, item.value_change, {currency:'GBP', direction:'signed'});
+        compactCell(row, item.weight_change_pp, {unit:' pp', direction:'signed'});
       }
     }
     add(section, 'h3', 'Cash and concentration');
-    add(section, 'p', 'Cash components come from the two account captures. Top five uses the largest reported holdings at each endpoint. Weight changes are differences between displayed weights.');
+    add(section, 'p', 'Cash comes from the two account captures. Top five uses the largest holdings at each endpoint.');
     const accountChanges = [...data.cash, ...(data.top_five ? [data.top_five] : [])];
     if (accountChanges.length) weightChanges('Cash and concentration changes', accountChanges);
     const missing = Object.keys(cashLabels).filter(key => !data.cash.some(row => row.label === key)).map(key => cashLabels[key]);

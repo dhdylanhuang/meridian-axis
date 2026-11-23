@@ -509,7 +509,7 @@ test('History exposes funding evidence and explains ineligible returns without b
  const text=node=>[node.textContent,...node.children.flatMap(text)];
  const results=text(ui.el('history-performance')).join(' ');
  for (const value of ['2.727273%','£20.123456789','invented-ref','Modified Dietz','A saved valuation is missing','0.727273 pp','VUAG capture missing','Quote age and split adjustments are unverified','1 of 2 eligible intervals matched','£102 · ']) assert.ok(results.includes(value), value);
- const compact = findNode(ui.el('history-performance'), node => node.className === 'benchmark-summary');
+ const compact = findNode(ui.el('history-performance'), node => node.className?.startsWith('benchmark-summary'));
  const rows = findNode(compact, node => node.tag === 'tbody').children;
  assert.deepEqual(rows[1].children.map(node => node.textContent), ['30–31 Mar 2026','2.73%','2%','0.73 pp']);
  assert.equal(rows[1].children[1].title, '2.727273%');
@@ -619,7 +619,8 @@ test('Portfolio Changes identifies gaps and links exposure rows to dated holding
       holdings:[{ticker:'SYNTH',status:'quantity_changed',value_change:'10',
         start:{present:true,value:'11',quantity:'1',weight_pct:'1.1'},
         end:{present:true,value:'21',quantity:'2',weight_pct:'2.1'}}],
-      cash:[],allocations:[],
+      cash:[{label:'availableToTrade',start_value:'3',end_value:'1.764322',value_change:'-1.235678',
+        start_weight_pct:'0.3',end_weight_pct:'0.18',weight_change_pp:'-0.12',members:[]}],allocations:[],
       top_five:{label:'Top five holdings',start_value:'11',end_value:'21',value_change:'10',
         start_weight_pct:'1.1',end_weight_pct:'2.1',weight_change_pp:'1',
         members:[{ticker:'SYNTH',start_value:'11',end_value:'21'}]},
@@ -637,8 +638,23 @@ test('Portfolio Changes identifies gaps and links exposure rows to dated holding
   assert.match(content(results), /No approved Trading 212 snapshot was saved/);
   missing = false;
   await submit();
-  assert.match(content(results), /\+£10.*Quantity changed/s);
-  assert.match(content(results), /3:00pm 20 Nov 2026/);
+  assert.match(content(results), /19–20 Nov 2026 UTC/);
+  assert.match(content(results), /Quantity changed.*\+£10/s);
+  const snapshots = findNode(results, node => node.tag === 'details' &&
+    node.children[0]?.textContent === 'Snapshot times and ISA values');
+  assert.ok(snapshots && !snapshots.open);
+  assert.match(content(snapshots), /3:00pm 20 Nov 2026/);
+  const tables = results.children.filter(node => node.className === 'compact-table');
+  const holding = findNode(tables[0], node => node.tag === 'tbody').children[0];
+  assert.equal(holding.children.length, 4);
+  assert.equal(holding.children[1].textContent, '+£10');
+  assert.equal(holding.children[1].attributes['data-tone'], 'gain');
+  assert.equal(holding.children[2].attributes['data-tone'], undefined);
+  const cash = findNode(tables[1], node => node.tag === 'tbody').children[0];
+  assert.equal(cash.children[1].textContent, '−£1.24');
+  assert.equal(cash.children[1].title, '−£1.235678');
+  assert.equal(cash.children[1].attributes['data-tone'], 'loss');
+  assert.equal(cash.children[2].attributes['data-tone'], 'loss');
   const link = descendants(results).find(node=>node.href==='#change-holding-0');
   link.listeners.click();
   assert.equal(descendants(results).find(node=>node.id==='change-holding-0').open, true);

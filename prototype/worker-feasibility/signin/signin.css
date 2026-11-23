@@ -231,9 +231,9 @@ td small { display: block; color: var(--muted); margin-top: 4px; }
 #holding-scope, #history-point { overflow-wrap: anywhere; }
 #history-chart { display: block; width: 100%; min-width: 600px; height: auto; }
 #history-chart:focus-visible { outline-offset: -3px; }
-.benchmark-summary table { min-width: 0; }
-.benchmark-summary th, .benchmark-summary td { padding-inline: clamp(5px, 1.4vw, 13px); }
-.benchmark-summary td:first-child { min-width: 0; }
+.compact-table table { min-width: 0; }
+.compact-table th, .compact-table td { padding-inline: clamp(5px, 1.4vw, 13px); }
+.compact-table td:first-child { min-width: 0; }
 
 .history-funding-link { margin-left: .65em; }
 details { margin-block: 9px; }
@@ -255,6 +255,7 @@ details p { margin-block: 6px; }
 #projections-results details td:last-child { white-space: normal; min-width: 13rem; }
 .stress-holdings { display: grid; gap: 6px; max-height: 24rem; overflow: auto; }
 .planning-form input[type="checkbox"] { display: inline-block; width: 17px; min-height: 17px; margin: 0 7px; vertical-align: middle; }
+#changes-results .compact-table details { margin-block: 0; min-width: 0; }
 #changes-results details ul { margin: 5px 0; padding-left: 18px; }
 #changes-results details:target { outline: 2px solid var(--accent); outline-offset: 3px; }
 .workspace-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding-block: 15px 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
