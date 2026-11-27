@@ -1,6 +1,6 @@
 # Current status and handoff
 
-Reviewed **22 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
+Reviewed **27 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
 ## Mobile home screen · 27 November 2026
 
@@ -15,8 +15,7 @@ synthetic data. Both cards rendered after an HTTP 503 and a partial History
 response. Verified all nine live assets, WASM health and anonymous access
 denials. Authenticated verification on a live phone remains open.
 
-The fix is on `fix/mobile-overview`. Include `5511cc4` in the next release
-branch to carry the mobile recovery forward.
+The export release merged `fix/mobile-overview` and carries the mobile recovery forward.
 
 ## Start here
 
@@ -32,9 +31,10 @@ deployed work and the evidence available to the next contributor.
 | Risk | Adjustable UTC dates, 90 days by default and up to 367 supported dates, observed losses and drawdown, current concentration, reviewed-session performance, the fixed-cutoff capture pilot, statistical risk and holding correlation with evidence gates |
 | Holdings and Exposures | Searchable holdings, sector, issuer domicile and fund-market allocations, currency and cash components, largest/top-five/top-ten weights, coverage and holding drill-down |
 | Portfolio Changes | Two approved UTC dates, ranked signed GBP holding changes, quantity flags, cash and concentration, and comparable saved classification weights with dated holding evidence |
+| AI portfolio export | Holdings Markdown download and versioned same-origin JSON with monthly changes, exposures and Meridian risk |
 
-**Deployed sources at handoff** are gateway `6df217b`, sync `907b8d7`
-and session owner `3aa8cd5`. The gateway runs the private Rust WASM service and
+**Deployed sources at handoff** are gateway and session owner `503abda`
+and sync `5eabca4f`. The gateway runs the private Rust WASM service and
 serves the dashboard. The existing session and sync Workers enforce the
 two-member scope around database and broker work. Schema `0008` and the
 ten-minute refresh with sixty-day detailed retention are the operating baseline.
@@ -66,6 +66,20 @@ snapshot for observed monthly changes, current exposures and the 90-session
 Meridian risk summary. See the [export contract](api-and-ui.md#ai-portfolio-export).
 Trade sizing, transaction attribution, constituent overlap and research
 enrichment remain separately scoped.
+
+Gateway and session owner source `503abda` was deployed on 27 November
+2026, preserving the active Portfolio Changes charts from `587c4d1`. The
+release matched the deployed assets, confirmed WASM readiness and anonymous
+denial in both export formats, and verified existing Worker bindings and the
+ten-minute schedule. The sync source remains `5eabca4f`. A short-lived
+approved member session fetched both live formats. The JSON ISA total
+matched the pinned approved observation, the Markdown attachment contained
+the Changes and Meridian sections, and the revoked session was denied.
+
+Focused verification passed 52 gateway and browser tests, three snapshot
+access tests, 11 native Rust tests across Changes, Exposures and Meridian,
+and the packaged WASM input-boundary check. The owner and gateway bundles
+also passed non-deploying builds.
 
 ## Session input qualification follow-up
 
