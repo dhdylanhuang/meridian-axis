@@ -4,7 +4,13 @@
   let snapshot = null, generation = 0, controller = null;
   let holdingScope = null, activeTab = 'axis-tab';
   const tabTrail = [];
-  let history = null, historyRequest = null, historyIndex = 0, overviewRequested = false;
+  let history = null, historyRequest = null, historyIndex = 0;
+  let historyRetry = null, historyFailures = 0, nextHistoryRead = 0;
+  const HISTORY_RETRY_DELAYS = [1500, 5000, 15000];
+  const HISTORY_TEMPORARY_STATES = new Set([
+    'funding_evidence_unavailable', 'calculation_timeout', 'calculation_unavailable',
+    'calculation_response_invalid', 'performance_service_unavailable', 'performance_service_timeout',
+  ]);
   let changesRequest = null, overviewRange = 30;
   let riskLoaded = false, riskRequest = null;
   const detailControllers = new Set();
@@ -42,7 +48,10 @@
   }
   function start() {
     active = true;
-    if (!document.hidden) void load();
+    if (!document.hidden) {
+      void load();
+      resumeHistory();
+    }
   }
   const amounts = ['total-value','investment-value','available-cash','unrealised-pnl','investment-cost','realised-pnl'];
   function decimal(value, currency) {
@@ -986,7 +995,6 @@
     }
   }
   function renderOverview() {
-    renderOverviewChart();
     const report = history?.performance;
     const matched = report?.benchmark?.latest_stretch;
     const comparison = el('overview-comparison');
@@ -1013,6 +1021,12 @@
       outcome(riskPeriod, 'span', overviewPct(drawdown.worst_pct), drawdown.worst_pct, true);
       add(riskPeriod, 'span', ` · eligible through ${when(drawdown.as_of)}${drawdown.later_unavailable_intervals
         ? ` · ${drawdown.later_unavailable_intervals} newer intervals unavailable` : ''}`);
+    }
+    try {
+      renderOverviewChart();
+    } catch {
+      el('overview-chart').hidden = true;
+      el('overview-history-caption').textContent = 'The saved value chart could not be drawn.';
     }
   }
   function renderOverviewSnapshot(data) {
@@ -1056,11 +1070,45 @@
     el('history-body').replaceChildren(body);
     el('history-results').hidden = false;
     el('history-status').textContent = `${periodRange(data)} UTC · ${observed} of ${data.days.length} days observed · ${missing} missing${unavailable ? ' · ' + unavailable + ' unavailable' : ''}. Read at ${when(data.as_of)}.`;
-    const latest = data.days.findLastIndex(point => point.status === 'observed');
+    const latest = data.days.map(point => point.status).lastIndexOf('observed');
     inspectDay(latest === -1 ? data.days.length - 1 : latest);
   }
+  function pauseHistoryRetry() {
+    clearTimeout(historyRetry);
+    historyRetry = null;
+  }
+
+  function resumeHistory() {
+    if (!active || document.hidden || historyRequest || historyRetry !== null ||
+        (history && !historyFailures) || historyFailures > HISTORY_RETRY_DELAYS.length) return;
+    const delay = nextHistoryRead - Date.now();
+    if (delay > 0) {
+      historyRetry = setTimeout(() => {
+        historyRetry = null;
+        resumeHistory();
+      }, delay);
+    } else void loadHistory();
+  }
+
+  function historyUnavailable(retryable) {
+    historyFailures = retryable ? historyFailures + 1 : HISTORY_RETRY_DELAYS.length + 1;
+    const delay = HISTORY_RETRY_DELAYS[historyFailures - 1];
+    const retrying = delay !== undefined && active;
+    nextHistoryRead = retrying ? Date.now() + delay : 0;
+    const message = retrying ? 'Performance is temporarily unavailable. Retrying…'
+      : 'Saved performance could not be loaded. Use Reload history to try again.';
+    if (!history?.performance) {
+      el('overview-comparison-period').textContent = message;
+      el('overview-risk-period').textContent = message;
+    }
+    el('history-status').textContent = history
+      ? `Reload failed. Showing the previously loaded observations.${retrying ? ' Retrying performance…' : ''}`
+      : message;
+  }
+
   async function loadHistory() {
     if (historyRequest) return;
+    pauseHistoryRetry();
     const request = new AbortController();
     historyRequest = request;
     el('reload-history').disabled = true;
@@ -1069,25 +1117,28 @@
       const response = await fetch('/api/v1/portfolio/history', {credentials:'same-origin', cache:'no-store', redirect:'error', signal:request.signal});
       if (historyRequest !== request) return;
       if ([401,403].includes(response.status)) { clear(); window.dispatchEvent(new Event('meridian-session-ended')); return; }
-      if (!response.ok) throw new Error('unavailable');
+      if (!response.ok) {
+        historyUnavailable(response.status >= 500 || [408,429].includes(response.status));
+        return;
+      }
       const data = await response.json();
       if (historyRequest !== request) return;
       if (data.source !== 'trading212' || data.basis !== 'broker_reported' || data.currency !== 'GBP' || data.days?.length !== 90) throw new Error('invalid');
+      if (!data.performance && HISTORY_TEMPORARY_STATES.has(data.performance_state)) {
+        if (!history?.performance) renderHistory(data);
+        historyUnavailable(true);
+        return;
+      }
+      historyFailures = 0;
+      nextHistoryRead = 0;
       renderHistory(data);
     } catch {
-      if (historyRequest === request) {
-        if (!history) {
-          renderOverview();
-          el('overview-comparison-period').textContent = 'Saved History could not be loaded.';
-          el('overview-risk-period').textContent = 'Saved History could not be loaded.';
-          el('overview-history-caption').textContent = 'Saved history could not be loaded.';
-        }
-        el('history-status').textContent = history ? 'Reload failed. Showing the previously loaded observations.' : 'Saved history could not be loaded. Use Reload history to try again.';
-      }
+      if (historyRequest === request) historyUnavailable(true);
     } finally {
       if (historyRequest === request) {
         historyRequest = null;
         el('reload-history').disabled = false;
+        resumeHistory();
       }
     }
   }
@@ -1498,7 +1549,7 @@
     add(section, 'p', 'Shares are calculated separately for each component. Total cash allocation is unavailable because the broker field definitions do not establish that the components are disjoint.');
   }
   function clear() {
-    active = false; clearTimeout(timer); failures = 0; nextRead = 0; nextManual = 0;
+    active = false; loading = false; clearTimeout(timer); failures = 0; nextRead = 0; nextManual = 0;
     generation++; controller?.abort(); cancelDetails(); snapshot = null;
     window.meridianPlanning?.clear();
     window.meridianHoldingDetail?.clear();
@@ -1510,7 +1561,9 @@
     if (el('cash-reconciliation')) { el('cash-reconciliation').replaceChildren(); el('cash-reconciliation').textContent = '—'; }
     el('snapshot-time').textContent = '—'; el('snapshot-status').textContent = ''; el('refresh-status').textContent = '';
     el('portfolio-exposures')?.replaceChildren();
-    historyRequest?.abort(); historyRequest = null; history = null; overviewRequested = false;
+    pauseHistoryRetry();
+    historyRequest?.abort(); historyRequest = null; history = null;
+    historyFailures = 0; nextHistoryRead = 0;
     for (const id of ['overview-comparison','overview-drawdown','overview-concentration']) el(id).textContent = '—';
     setOverviewRange(30);
     for (const id of ['overview-chart', 'overview-allocation']) {
@@ -1683,10 +1736,6 @@
       renderCash(data);
       renderExposures(data);
       renderOverviewSnapshot(data);
-      if (active && !overviewRequested && !history && !historyRequest) {
-        overviewRequested = true;
-        void loadHistory();
-      }
       if (!el('risk-panel').hidden) renderRiskExposure(data);
       health(data.refresh_health);
     } catch (error) {
@@ -1694,7 +1743,12 @@
         backoff();
         el('snapshot-status').textContent = snapshot ? 'Refresh failed. Last successful snapshot remains displayed. Automatic retries are paused.' : 'The saved snapshot could not be loaded. Automatic retries are paused.';
       }
-    } finally { loading = false; if (version === generation) schedule(); }
+    } finally {
+      if (version === generation) {
+        loading = false;
+        schedule();
+      }
+    }
   }
   function health(status) {
     const job = status?.jobs?.snapshot;
@@ -1748,7 +1802,11 @@
   el('clear-holding-scope').addEventListener('click', () => showHoldings(null));
   el('holding-search').addEventListener('input',renderHoldings); el('holding-sort').addEventListener('change',renderHoldings);
   el('reload-snapshot').addEventListener('click',load);
-  el('reload-history').addEventListener('click',loadHistory);
+  el('reload-history').addEventListener('click', () => {
+    historyFailures = 0;
+    nextHistoryRead = 0;
+    return loadHistory();
+  });
   el('history-cash-link').addEventListener('click', () => {
     selectTab('cash-tab');
     el('cash-heading').focus?.();
@@ -1805,7 +1863,11 @@
   el('refresh-broker').addEventListener('click',refreshBroker);
   document.addEventListener('visibilitychange', () => {
     clearTimeout(timer);
-    if (active && !document.hidden) void load();
+    pauseHistoryRetry();
+    if (active && !document.hidden) {
+      void load();
+      resumeHistory();
+    }
   });
   window.meridianSnapshot = {load,clear,start};
 })();
