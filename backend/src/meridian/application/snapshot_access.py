@@ -180,80 +180,122 @@ def _capture(value, observed_at):
 
 def read_changes_endpoints(db, account_id, now, start, end):
     """Return two bounded, digest-checked inputs to the gateway's Rust calculator."""
-    endpoints = []
-    for row in _daily_snapshots(
-        db, account_id, now, (start, end), "SELECT * FROM selected ORDER BY day"
-    ):
-        endpoint = {"date": row["day"], "status": "missing"}
-        endpoints.append(endpoint)
-        if row["id"] is None:
-            continue
-        observed = datetime.fromisoformat(row["observed_at"]).astimezone(UTC)
-        endpoint.update(status="unavailable", observed_at=observed.isoformat())
-        fields = _history_fields(row, False)
-        if (
-            fields.get("source") != "trading212"
-            or fields.get("basis") != "broker_reported"
-            or fields.get("currency") != "GBP"
-        ):
-            continue
-        captures = {}
-        for name in ("account", "positions"):
-            retrieval = fields.get(f"{name}_retrieval")
-            captures[f"{name}_captured_at"] = _capture(
-                retrieval.get("retrieval_completed_at") if isinstance(retrieval, dict) else None,
-                observed,
-            )
-        positions = fields.get("positions")
-        if not all(captures.values()) or not isinstance(positions, list) or len(positions) > 1024:
-            continue
-        tickers = set()
-        selected = []
-        for position in positions:
-            ticker = position.get("ticker") if isinstance(position, dict) else None
-            if not isinstance(ticker, str) or not ticker or ticker in tickers:
-                break
-            tickers.add(ticker)
-            selected.append(
-                {
-                    key: position.get(key) if isinstance(position.get(key), str) else None
-                    for key in (
-                        "ticker",
-                        "name",
-                        "isin",
-                        "quantity",
-                        "current_value",
-                        "account_currency",
-                    )
-                }
-            )
-        else:
-            exposure = fields.get("exposures")
-            if not isinstance(exposure, dict) or (
-                exposure.get("method") != "broker_exposures_v1"
-                or exposure.get("snapshot_id") != row["id"]
-                or exposure.get("currency") != "GBP"
-                or _capture(exposure.get("account_as_of"), observed)
-                != captures["account_captured_at"]
-                or _capture(exposure.get("positions_as_of"), observed)
-                != captures["positions_captured_at"]
-            ):
-                exposure = {}
-            endpoint.update(
-                captures,
-                status="observed",
-                snapshot_id=row["id"],
-                portfolio_value=fields.get("total_value"),
-                invested_value=(fields.get("investments") or {}).get("currentValue"),
-                cash=fields.get("cash_components") or {},
-                positions=selected,
-                allocations={
-                    key: exposure[key]
-                    for key in ("sectors", "issuer_domiciles", "fund_markets")
-                    if key in exposure
-                },
-            )
+    endpoints = [
+        _change_endpoint(row)
+        for row in _daily_snapshots(
+            db, account_id, now, (start, end), "SELECT * FROM selected ORDER BY day"
+        )
+    ]
     return {"start": endpoints[0], "end": endpoints[1]}
+
+
+def _change_endpoint(row, fields=None):
+    endpoint = {"date": row["day"], "status": "missing"}
+    if row["id"] is None:
+        return endpoint
+    observed = datetime.fromisoformat(row["observed_at"]).astimezone(UTC)
+    endpoint.update(status="unavailable", observed_at=observed.isoformat())
+    if fields is None:
+        fields = _history_fields(row, False)
+    if (
+        fields.get("source") != "trading212"
+        or fields.get("basis") != "broker_reported"
+        or fields.get("currency") != "GBP"
+    ):
+        return endpoint
+    captures = {}
+    for name in ("account", "positions"):
+        retrieval = fields.get(f"{name}_retrieval")
+        captures[f"{name}_captured_at"] = _capture(
+            retrieval.get("retrieval_completed_at") if isinstance(retrieval, dict) else None,
+            observed,
+        )
+    positions = fields.get("positions")
+    if not all(captures.values()) or not isinstance(positions, list) or len(positions) > 1024:
+        return endpoint
+    tickers = set()
+    selected = []
+    for position in positions:
+        ticker = position.get("ticker") if isinstance(position, dict) else None
+        if not isinstance(ticker, str) or not ticker or ticker in tickers:
+            break
+        tickers.add(ticker)
+        selected.append(
+            {
+                key: position.get(key) if isinstance(position.get(key), str) else None
+                for key in (
+                    "ticker",
+                    "name",
+                    "isin",
+                    "quantity",
+                    "current_value",
+                    "account_currency",
+                )
+            }
+        )
+    else:
+        exposure = fields.get("exposures")
+        if not isinstance(exposure, dict) or (
+            exposure.get("method") != "broker_exposures_v1"
+            or exposure.get("snapshot_id") != row["id"]
+            or exposure.get("currency") != "GBP"
+            or _capture(exposure.get("account_as_of"), observed)
+            != captures["account_captured_at"]
+            or _capture(exposure.get("positions_as_of"), observed)
+            != captures["positions_captured_at"]
+        ):
+            exposure = {}
+        endpoint.update(
+            captures,
+            status="observed",
+            snapshot_id=row["id"],
+            portfolio_value=fields.get("total_value"),
+            invested_value=(fields.get("investments") or {}).get("currentValue"),
+            cash=fields.get("cash_components") or {},
+            positions=selected,
+            allocations={
+                key: exposure[key]
+                for key in ("sectors", "issuer_domiciles", "fund_markets")
+                if key in exposure
+            },
+        )
+    return endpoint
+
+
+def read_export_inputs(db, account_id, now):
+    """Pin the latest snapshot and select at most one earlier monthly anchor."""
+    row = db.scalar(
+        select(BrokerSnapshot)
+        .where(BrokerSnapshot.account_id == account_id, BrokerSnapshot.observed_at <= now)
+        .order_by(BrokerSnapshot.observed_at.desc(), BrokerSnapshot.id.desc())
+        .limit(1)
+    )
+    if row is None:
+        return None
+    snapshot = decode_snapshot(row.snapshot_json, row.digest)
+    observed = row.observed_at.astimezone(UTC)
+    end = _change_endpoint(
+        {"day": observed.date().isoformat(), "id": row.id, "observed_at": observed.isoformat()},
+        snapshot,
+    )
+    if end["status"] != "observed":
+        raise RuntimeError("snapshot_contract_invalid")
+    previous_month = observed.date().replace(day=1) - timedelta(days=1)
+    target = previous_month.replace(day=min(observed.day, previous_month.day))
+    candidates = _daily_snapshots(
+        db, account_id, now, tuple(target - timedelta(days=i) for i in range(8)),
+        "SELECT * FROM selected WHERE id IS NOT NULL ORDER BY day DESC LIMIT 1",
+    )
+    earlier = next(iter(candidates), None)
+    start = (
+        _change_endpoint(earlier) if earlier is not None
+        else {"date": target.isoformat(), "status": "missing"}
+    )
+    return {
+        "snapshot": snapshot,
+        "changes": {"start": start, "end": end},
+        "target_date": target.isoformat(),
+    }
 
 
 def read_history(db, account_id, now, *, day_count=HISTORY_DAYS, include_benchmark=False):

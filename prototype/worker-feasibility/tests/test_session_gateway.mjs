@@ -371,3 +371,44 @@ test("Meridian requires an approved snapshot and bounds analysis options", async
   assert.equal((await gateway.fetch(privateEvidence, state.env, undefined, planning)).status, 404);
   assert.equal(runs, 1);
 });
+
+test("portfolio export checks membership, pins Meridian input, and renders private Markdown", async () => {
+  const { env } = setup();
+  const capture = { snapshot_id: "synthetic-save", date: "2026-11-30", status: "observed",
+    observed_at: "2026-11-30T20:00:00Z", account_captured_at: "2026-11-30T19:59:00Z",
+    positions_captured_at: "2026-11-30T19:59:01Z", portfolio_value: "1000" };
+  const position = { ticker: "TEST", name: "A | <b>\nB", quantity: "1", account_currency: "GBP",
+    current_value: "15.01", total_cost: "10", unrealized_profit_loss: "5.01" };
+  env.APP.get = () => ({ async fetch(upstream) {
+    assert.equal(new URL(upstream.url).search, "");
+    if (!upstream.headers.has("cookie")) return Response.json({ error: "request_denied" }, { status: 401 });
+    return Response.json({ changes: { start: { date: "2026-10-30", status: "missing" }, end: capture },
+      target_date: "2026-10-30",
+      snapshot: { total_value: "1000", positions: [position] },
+    });
+  } });
+  const path = "/api/v1/portfolio/export";
+  const session = { method: "GET", headers: { cookie: "__Host-meridian_session=synthetic" } };
+  const opts = { meridian: async snapshot => {
+    assert.equal(snapshot.positions[0].current_value, "15.01");
+    throw new Error("private diagnostic");
+  } };
+  const denied = await gateway.fetch(request(path + "?format=markdown", { method: "GET" }), env, null, opts);
+  assert.equal(denied.status, 401);
+  assert.equal(denied.headers.get("cache-control"), "no-store");
+  assert.equal((await gateway.fetch(request(path + "?format=markdown&format=markdown", session), env)).status, 400);
+
+  const json = await gateway.fetch(request(path, session), env, null, opts);
+  const data = await json.json();
+  assert.equal(data.current.snapshot_id, "synthetic-save");
+  assert.equal(data.holdings[0].unrealised_pnl_on_cost_pct, "50.10");
+  assert.equal(data.comparison.reason, "baseline_missing");
+  assert.equal(data.meridian_risk.reason, "meridian_unavailable");
+
+  const markdown = await gateway.fetch(request(path + "?format=markdown", session), env, null, opts);
+  assert.equal(markdown.headers.get("content-disposition"), 'attachment; filename="meridian-portfolio-2026-11-30.md"');
+  const text = await markdown.text();
+  assert.ok(text.includes("A \\| &lt;b&gt; B"));
+  assert.ok(text.includes("15.01") && text.includes("Monthly comparison unavailable"));
+  assert.ok(!text.includes("private diagnostic"));
+});

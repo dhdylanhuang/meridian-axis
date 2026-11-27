@@ -43,6 +43,14 @@ versions above refer to the application source. The documentation revision is
 tracked separately in Git history.
 
 
+## AI portfolio export
+
+The Holdings download and private JSON endpoint reuse one approved saved
+snapshot for observed monthly changes, current exposures and the 90-session
+Meridian risk summary. See the [export contract](api-and-ui.md#ai-portfolio-export).
+Trade sizing, transaction attribution, constituent overlap and research
+enrichment remain separately scoped.
+
 ## Session input qualification follow-up
 
 A bounded, read-only hosted check of 90 completed UTC dates verified an

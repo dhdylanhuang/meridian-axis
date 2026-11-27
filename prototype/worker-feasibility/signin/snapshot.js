@@ -5,7 +5,7 @@
   let holdingScope = null, activeTab = 'axis-tab';
   const tabTrail = [];
   let history = null, historyRequest = null, historyIndex = 0, overviewRequested = false;
-  let changesRequest = null, overviewRange = 30;
+  let changesRequest = null, overviewRange = 30, exportRequest = null;
   let riskLoaded = false, riskRequest = null;
   const detailControllers = new Set();
   const tableColumns = new WeakMap();
@@ -1500,6 +1500,9 @@
   function clear() {
     active = false; clearTimeout(timer); failures = 0; nextRead = 0; nextManual = 0;
     generation++; controller?.abort(); cancelDetails(); snapshot = null;
+    exportRequest?.abort(); exportRequest = null;
+    if (el('download-ai-brief')) el('download-ai-brief').disabled = false;
+    if (el('ai-brief-status')) { el('ai-brief-status').hidden = true; el('ai-brief-status').textContent = ''; }
     window.meridianPlanning?.clear();
     window.meridianHoldingDetail?.clear();
     window.meridianDiversification?.clear();
@@ -1784,6 +1787,41 @@
       return;
     }
     void loadRisk(start, end);
+  });
+  el('download-ai-brief')?.addEventListener('click', async () => {
+    if (!active || exportRequest) return;
+    const button = el('download-ai-brief'), status = el('ai-brief-status');
+    const request = new AbortController();
+    exportRequest = request;
+    button.disabled = true;
+    status.hidden = false;
+    status.textContent = 'Preparing your brief…';
+    try {
+      const response = await fetch('/api/v1/portfolio/export?format=markdown', {
+        credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: request.signal,
+      });
+      if (exportRequest !== request) return;
+      if ([401, 403].includes(response.status)) {
+        clear(); window.dispatchEvent(new Event('meridian-session-ended')); return;
+      }
+      const filename = /^attachment; filename="(meridian-portfolio-\d{4}-\d{2}-\d{2}\.md)"$/.exec(
+        response.headers.get('content-disposition') ?? '',
+      )?.[1];
+      if (!response.ok || !filename) throw new Error('export_unavailable');
+      const file = await response.blob();
+      if (exportRequest !== request) return;
+      const url = URL.createObjectURL(file);
+      const link = document.createElement('a');
+      link.href = url; link.download = filename;
+      document.body.append(link);
+      link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      status.textContent = 'Download started.';
+    } catch {
+      if (exportRequest === request) status.textContent = 'The AI brief is unavailable. Try again shortly.';
+    } finally {
+      if (exportRequest === request) { exportRequest = null; button.disabled = false; }
+    }
   });
   el('risk-reset').addEventListener('click', () => { void loadRisk(); });
   el('history-chart').addEventListener('click', event => {

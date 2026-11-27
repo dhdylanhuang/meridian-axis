@@ -265,6 +265,17 @@ class SessionHttp:
                 # Authorisation commits before the separate sync authority makes upstream calls.
                 result = await self.refresh()
                 return private_response(result, 200 if result.get("status") == "succeeded" else 202)
+            if operation == "portfolio_export":
+                from meridian.application.refresh_status import refresh_status
+                from meridian.application.snapshot_access import read_export_inputs
+
+                with self.database() as db, db.begin():
+                    principal = self.service.authenticate(db, token, now=now)
+                    inputs = read_export_inputs(db, principal.account_id, now)
+                    if inputs is None:
+                        return private_response({"error": "snapshot_unavailable"}, 404)
+                    inputs["refresh_health"] = refresh_status(db, principal.account_id, now)
+                    return private_response(inputs)
             if operation == "changes":
                 from meridian.application.snapshot_access import read_changes_endpoints
 

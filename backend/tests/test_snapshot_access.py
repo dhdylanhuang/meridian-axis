@@ -3,7 +3,7 @@
 import asyncio
 import hashlib
 import json
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -21,7 +21,7 @@ from test_supabase_migration import native_engine as native_engine
 from meridian.adapters.broker_evidence import validate_capture
 from meridian.app import create_app
 from meridian.application.broker_ingestion import ingest_capture
-from meridian.application.snapshot_access import read_history, read_snapshot
+from meridian.application.snapshot_access import read_export_inputs, read_history, read_snapshot
 from meridian.application.snapshot_publish import publish_snapshot
 from meridian.persistence.models import Account, AccountMember, BrokerSnapshot, ImportRun
 from meridian.security.http import SESSION_COOKIE, SessionHttp
@@ -114,6 +114,8 @@ def test_authenticated_snapshot_both_users_and_revocation(engine):
         ) as client:
             url = "/api/v1/portfolio/snapshot"
             history_url = "/api/v1/portfolio/history"
+            export_url = "/api/v1/portfolio/export"
+            assert (await client.get(export_url)).status_code == 401
             assert (await client.get(url)).status_code == 401
             assert (await client.get(history_url)).status_code == 401
             changes_url = (
@@ -122,6 +124,13 @@ def test_authenticated_snapshot_both_users_and_revocation(engine):
             )
             assert (await client.get(changes_url)).status_code == 401
             for token in tokens:
+                export = await client.get(
+                    export_url, headers={"cookie": SESSION_COOKIE + "=" + token}
+                )
+                assert export.status_code == 200 and export.headers["cache-control"] == "no-store"
+                assert export.json()["changes"]["start"]["status"] == "missing"
+                assert export.json()["changes"]["end"]["status"] == "observed"
+                assert "synthetic-broker" not in export.text
                 response = await client.get(url, headers={"cookie": SESSION_COOKIE + "=" + token})
                 assert response.status_code == 200 and response.json()["basis"] == "broker_reported"
                 assert response.headers["cache-control"] == "no-store"
@@ -413,3 +422,43 @@ def test_history_selects_latest_per_utc_day_and_preserves_gaps(engine):
 @pytest.mark.postgres
 def test_history_postgres_daily_selection_and_compact_projection(postgres_engine):
     check_daily_selection(postgres_engine)
+
+def test_portfolio_export_clamps_month_and_picks_only_nearest_saved_baseline(engine):
+    seed(engine)
+    current = datetime(2026, 3, 31, 15, tzinfo=UTC)
+    with Session(engine) as db, db.begin():
+        seed_row = db.scalar(select(BrokerSnapshot))
+        for identity, observed in (
+            ("outside", datetime(2026, 2, 20, 15, tzinfo=UTC)),
+            ("seven", datetime(2026, 2, 21, 15, tzinfo=UTC)),
+            ("current-a", current),
+            ("current-z", current),
+        ):
+            snapshot = json.loads(seed_row.snapshot_json)
+            for field in ("account_retrieval", "positions_retrieval"):
+                snapshot[field]["retrieval_completed_at"] = observed.isoformat()
+            content = json.dumps(snapshot)
+            db.add(ImportRun(
+                id=identity, account_id="shared-isa", kind="trading212_capture",
+                status="succeeded", started_at=observed,
+            ))
+            db.flush()
+            db.add(BrokerSnapshot(
+                id=identity, account_id="shared-isa", source_run_id=identity,
+                snapshot_json=content, digest=hashlib.sha256(content.encode()).hexdigest(),
+                observed_at=observed, created_at=observed,
+            ))
+    with Session(engine) as db:
+        report = read_export_inputs(db, "shared-isa", current)
+        assert report["target_date"] == "2026-02-28"
+        assert report["changes"]["start"]["snapshot_id"] == "seven"
+        assert report["changes"]["end"]["snapshot_id"] == "current-z"
+        assert read_export_inputs(db, "other-account", current) is None
+    with engine.begin() as c:
+        c.execute(
+            text("UPDATE broker_snapshots SET digest=:digest WHERE id='seven'"),
+            {"digest": "a" * 64},
+        )
+    with Session(engine) as db:
+        report = read_export_inputs(db, "shared-isa", current)
+        assert report["changes"]["start"]["status"] == "unavailable"

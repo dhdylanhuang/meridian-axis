@@ -52,6 +52,10 @@ def create_app(*, session_http: SessionHttp | None = None) -> FastAPI:
         async def changes(request: Request):
             return await session_http.handle(request, "changes")
 
+        @app.get("/api/v1/portfolio/export")
+        async def portfolio_export(request: Request):
+            return await session_http.handle(request, "portfolio_export")
+
         @app.get("/api/v1/portfolio/history")
         async def history(request: Request):
             return await session_http.handle(request, "history")

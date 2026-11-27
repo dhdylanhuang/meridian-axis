@@ -1,7 +1,10 @@
+import { buildExport, exportMarkdown } from "./portfolio_export.mjs";
+
 // Application session transport. Provider/database secrets belong to the private owner.
 const ROUTES = new Map([
   ["/health", "GET"],
   ["/api/v1/portfolio/snapshot", "GET"],
+  ["/api/v1/portfolio/export", "GET"],
   ["/api/v1/portfolio/history", "GET"],
   ["/api/v1/portfolio/changes", "GET"],
   ["/api/v1/portfolio/risk", "GET"],
@@ -179,12 +182,14 @@ export default {
       if (url.origin !== origin.origin || (host !== null && host !== origin.host)) {
         return failure("origin_invalid", 403);
       }
+      const portfolioExport = url.pathname === "/api/v1/portfolio/export";
+      const markdown = portfolioExport && url.search === "?format=markdown";
       const changes = url.pathname === "/api/v1/portfolio/changes";
       const dateRange = (changes || url.pathname === "/api/v1/portfolio/risk") &&
         /^\?start=\d{4}-\d{2}-\d{2}&end=\d{4}-\d{2}-\d{2}$/.test(url.search);
       const meridian = url.pathname === "/api/v1/portfolio/meridian";
       const selection = meridian && /^\?window=(30|90|252)(?:&pair=([0-9]{1,3}),([0-9]{1,3})&basis=(common|pair))?$/.exec(url.search);
-      if (((changes || meridian || request.url.includes("?")) && !dateRange && !selection) || request.url.includes("#")) {
+      if (((changes || meridian || request.url.includes("?")) && !dateRange && !selection && !markdown) || request.url.includes("#")) {
         return failure("request_invalid", 400);
       }
       if (["/", "/signin.js", "/signin.css", "/snapshot.js", "/planning.js", "/dates.js", "/meridian.js", "/holding-detail.js"].includes(url.pathname) && env.ASSETS) {
@@ -248,6 +253,21 @@ export default {
         return await calculatePlan(app, origin, headers, body, planning[calculator]);
       }
       const response = await app.fetch(upstream);
+      if (portfolioExport && response.ok) {
+        try {
+          const data = await buildExport(await response.json(), calculateChanges, planning.meridian);
+          const headers = privateHeaders();
+          if (!markdown) {
+            headers.set("Content-Type", "application/json");
+            return new Response(JSON.stringify(data), { headers });
+          }
+          headers.set("Content-Type", "text/markdown; charset=utf-8");
+          headers.set("Content-Disposition", 'attachment; filename="meridian-portfolio-' + data.current.date + '.md"');
+          return new Response(exportMarkdown(data), { headers });
+        } catch {
+          return failure("portfolio_export_unavailable", 503);
+        }
+      }
       if (url.pathname === "/api/v1/portfolio/snapshot" && response.ok && planning.sectorRollup) {
         return await rollupSnapshot(response, planning.sectorRollup);
       }

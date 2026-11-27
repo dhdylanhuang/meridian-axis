@@ -412,6 +412,8 @@ pub fn calculate_json(input: &str) -> Result<String> {
         "method":"meridian_common_sample_v1", "state":state, "window":window, "minimum":MINIMUM,
         "price_basis": if broker { "trading212_fixed_cutoff_gbp_price_v1" } else { "reviewed_gbp_total_return" },
         "latest_scheduled_date":dates.last(),
+        "sample_start":rows.first().map(|&i| dates[i]),
+        "sample_end":rows.last().map(|&i| dates[i + 1]),
         "descriptive": window == 30, "capture_time":capture_time, "holdings_time":holdings_time,
         "isa":text(&isa), "n":n, "scheduled":right.min(window), "excluded":excluded,
         "covered_value":text(&covered), "covered_pct":decimal_percent(&covered, &isa),
@@ -532,6 +534,7 @@ pub fn calculate_json(input: &str) -> Result<String> {
             "ticker":h.ticker, "name":labels[h.ticker], "value":text(&h.value),
             "sector":sectors.get(h.ticker).copied().unwrap_or("Unclassified"),
             "capital":decimal_percent(&h.value, &isa),
+            "covered_capital_pct":decimal_percent(&h.value, &covered),
         }))
         .collect::<Vec<_>>());
     Ok(report.to_string())

@@ -408,3 +408,35 @@ The Portfolio Changes tab defaults to the last two observed dates in the
 loaded History when available. Choose different UTC dates to compare other
 retained anchors. Expand a holding for dated source evidence, or expand an
 allocation or concentration row and follow its links to the compared holdings.
+
+## AI portfolio export
+
+Holdings includes a **Download AI brief** action. The same-origin route
+`GET /api/v1/portfolio/export` returns versioned JSON. With exactly
+`?format=markdown` it returns a dated Markdown attachment. Both use the live
+ISA membership check, private/no-store headers and the same pinned source.
+The gateway sends one authorised request to the private session owner and
+keeps the financial inputs in the request. Files are generated on demand.
+
+The comparison targets one calendar month before the latest saved UTC
+observation, clamped at month end. If that day has no saved capture, the
+selector uses the nearest earlier capture within seven days. The target and
+actual dates, offset, observation IDs and separate retrieval times are
+reported. An invalid selected baseline remains unavailable. A missing or
+invalid baseline preserves current holdings and leaves changes unavailable.
+An absent current snapshot returns 404 and an integrity or service failure
+returns a safe 503.
+
+The export reuses observed Portfolio Changes for holdings, cash, concentration
+and comparable allocation deltas. It includes broker value, cost, P&L,
+current weights, exposure coverage and source attribution. The export adapter
+uses fixed-scale exact integer arithmetic for presentation-only deltas and
+P&L-to-cost ratios. The Meridian section reuses the 90-session Rust report
+with the pinned holdings and includes matched bounds, exclusions, capital
+and variance shares, clusters and strongest positive peers. A missing sample
+or unavailable risk calculation preserves the rest of the response. Markdown
+cells are escaped and the browser drops late downloads after sign-out.
+
+The format covers saved observations and summaries. Trade sizing scenarios,
+reconciled monthly transaction attribution, constituent-level overlap and
+external research inputs are follow-on work.
