@@ -239,7 +239,7 @@ later work. The original code release supplied no daily evidence binding.
 
 ## Portfolio Changes sprint
 
-The 27 November follow-up is locally verified and pending release. Holdings now
+The 27 November follow-up is live on gateway source `619d03c`. Holdings now
 sort by signed GBP change, from largest gain to largest loss. Sector comparisons
 apply the Exposures mapping to both saved dates and merge holding contributions
 within each sector.
@@ -252,6 +252,12 @@ within each sector.
   passed the Changes display and drill-down case.
 - `cargo check --manifest-path rust/reconciliation/Cargo.toml --locked --offline --target wasm32-unknown-unknown --lib --jobs 2`
   passed for the gateway's Rust target.
+
+The release used the active mobile and Allocation Charts baseline. The packaged
+WASM passed a synthetic comparison for signed order, merged Health Care totals
+and holding links. Hosted checks matched all nine assets, confirmed WASM
+readiness and protected route denials, and verified the existing bindings and
+schedule. An authenticated live comparison remains open for this follow-up.
 
 ### Original deployment
 
