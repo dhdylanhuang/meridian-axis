@@ -7,7 +7,7 @@ const dates = fs.readFileSync(new URL('../signin/dates.js', import.meta.url), 'u
 const holdingDetail = fs.readFileSync(new URL('../signin/holding-detail.js', import.meta.url), 'utf8');
 const planning = fs.readFileSync(new URL('../signin/planning.js', import.meta.url), 'utf8');
 class Element {
-  constructor(tag){this.tag=tag;this.textContent='';this.value='';this.children=[];this.listeners={};this.attributes={};this.dataset={};}
+  constructor(tag){this.tag=tag;this.textContent='';this.value='';this.children=[];this.listeners={};this.attributes={};this.dataset={};this.style=new Map();this.style.setProperty=this.style.set;}
   append(child){child.parentElement=this;this.children.push(child);}
   remove(){this.parentElement.children=this.parentElement.children.filter(child=>child!==this);}
   querySelectorAll(selector){
@@ -49,6 +49,14 @@ function setup(fetcher, withPlanning = false, holdingStorage = null){
   };
 }
 function snapshot(){return {source:'trading212',basis:'broker_reported',environment:'demo',currency:'GBP',total_value:'9007199254740993.123456789',investments:{currentValue:'99',totalCost:'11',unrealizedProfitLoss:'2'},cash_components:{availableToTrade:'7'},account_retrieval:{retrieval_completed_at:'2026-01-02T12:00:00Z'},positions_retrieval:{retrieval_completed_at:'2026-01-02T12:00:01Z'},positions:[{name:'<img src=x>',ticker:'SYNTH',quantity:'0.00000000000000001',current_value:'10',account_currency:'GBP',instrument_currency:'USD',current_price:'12.34'}]};}
+function historyResult(performance = null, state = 'unavailable') {
+  const days = Array.from({length:90}, (_, index) => ({
+    date: new Date(Date.UTC(2026, 0, 1 + index)).toISOString().slice(0, 10), status:'missing',
+  }));
+  return {source:'trading212', basis:'broker_reported', currency:'GBP',
+    as_of:'2026-03-31T18:00:00Z', start_date:days[0].date, end_date:days[89].date,
+    days, performance, performance_state:state};
+}
 test('dashboard dates use the requested London-time format and keep UTC date buckets', () => {
  const window = {};
  vm.runInNewContext(dates, {window});
@@ -162,7 +170,7 @@ test('failed saved-snapshot reload retains last successful figures',async()=>{
 
 test('snapshot and health share one request, polling waits ten minutes and pauses while hidden',async()=>{
  let reads=0, historyReads=0;
- const ui=setup(async path=>{if(path.endsWith('/history')){historyReads++;return {ok:false,status:503};}reads++;assert.equal(path,'/api/v1/portfolio/snapshot');return {ok:true,status:200,json:async()=>({...snapshot(),refresh_health:{jobs:{snapshot:{stale:false}}}})};});
+ const ui=setup(async path=>{if(path.endsWith('/history')){historyReads++;return Response.json(historyResult());}reads++;assert.equal(path,'/api/v1/portfolio/snapshot');return {ok:true,status:200,json:async()=>({...snapshot(),refresh_health:{jobs:{snapshot:{stale:false}}}})};});
  ui.view.start();await new Promise(resolve=>setImmediate(resolve));
  assert.equal(reads,1);assert.equal([...ui.timers.values()][0].delay,600_000);
  await ui.tick(599_999);assert.equal(reads,1);
@@ -174,7 +182,7 @@ test('snapshot and health share one request, polling waits ten minutes and pause
 });
 test('outage backoff resists reload and visibility storms and retains last-good values',async()=>{
  let reads=0, fail=false;
- const ui=setup(async path=>{if(path.endsWith('/history')) return {ok:false,status:503};reads++;return fail?{ok:false,status:503}:{ok:true,status:200,json:async()=>snapshot()};});
+ const ui=setup(async path=>{if(path.endsWith('/history')) return Response.json(historyResult());reads++;return fail?{ok:false,status:503}:{ok:true,status:200,json:async()=>snapshot()};});
  ui.view.start();await new Promise(resolve=>setImmediate(resolve));fail=true;
  await ui.tick(600_000);assert.equal(reads,2);
  for(let i=0;i<5;i++){await ui.view.load();await ui.visibility(true);await ui.visibility(false);}
@@ -483,6 +491,58 @@ test('History renders exact daily values, breaks the line across gaps, and clear
  assert.equal(ui.el('history-results').hidden,true);
 });
 
+test('overview metrics recover from a mobile first-load network error and a partial History response', async () => {
+  let historyReads = 0;
+  const ui = setup(async path => {
+    if (path.endsWith('/snapshot')) return {ok:false,status:503};
+    historyReads++;
+    if (historyReads === 1) throw new Error('mobile connection interrupted');
+    if (historyReads === 2) return Response.json(historyResult(null, 'performance_service_timeout'));
+    return Response.json(historyResult({
+      funding:[], intervals:[],
+      benchmark:{state:'broker_observed', intervals:[],
+        latest_stretch:{start_date:'2026-03-30',end_date:'2026-03-31',portfolio_pct:'2',benchmark_pct:'1',difference_pp:'1',intervals:1}},
+      drawdown:{current_pct:'5',worst_pct:'6',as_of:'2026-03-31T18:00:00Z'},
+    }, 'available'));
+  });
+  ui.document.hidden = true;
+  ui.view.start();
+  assert.equal(historyReads, 0);
+  await ui.visibility(false);
+  assert.equal(historyReads, 1);
+  await ui.visibility(true);
+  await ui.tick(1500);
+  assert.equal(historyReads, 1);
+  await ui.visibility(false);
+  assert.equal(historyReads, 2);
+  assert.match(ui.el('overview-risk-period').textContent, /Retrying/);
+  await ui.tick(5000);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(historyReads, 3);
+  assert.equal(ui.el('overview-comparison').children.map(node => node.textContent).join(''), '2.00% vs 1.00%');
+  assert.equal(ui.el('overview-drawdown').textContent, '5.00%');
+  await ui.visibility(true);
+  await ui.visibility(false);
+  assert.equal(historyReads, 3);
+});
+
+test('overview History retry is cancelled when private state is cleared', async () => {
+  let historyReads = 0;
+  const ui = setup(async path => {
+    if (path.endsWith('/snapshot')) return Response.json(snapshot());
+    historyReads++;
+    return Response.json(historyResult(null, 'calculation_timeout'));
+  });
+  ui.view.start();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(historyReads, 1);
+  assert.match(ui.el('overview-comparison-period').textContent, /Retrying/);
+  ui.view.clear();
+  await ui.tick(30000);
+  assert.equal(historyReads, 1);
+  assert.equal(ui.el('overview-comparison').textContent, '—');
+});
+
 test('late History reads cannot repopulate a signed-out dashboard',async()=>{
  let finish;
  const ui=setup(()=>new Promise(resolve=>finish=resolve));
@@ -626,20 +686,24 @@ test('Portfolio Changes identifies gaps and links exposure rows to dated holding
   const date = '2026-11-20', capture = date + 'T15:00:00.123456+00:00';
   const observed = {date,status:'observed',positions_captured_at:capture,
     account_captured_at:capture,observed_at:capture,portfolio_denominator:'1000'};
+  const holding = {ticker:'SYNTH',status:'quantity_changed',value_change:'10',
+    start:{present:true,value:'11',quantity:'1',weight_pct:'1.1'},
+    end:{present:true,value:'21',quantity:'2',weight_pct:'2.1'}};
+  const shift = {label:'Health Care',start_value:'11',end_value:'21',value_change:'10',
+    start_weight_pct:'1.1',end_weight_pct:'2.1',weight_change_pp:'1',
+    members:[{ticker:'SYNTH',start_value:'11',end_value:'21'}]};
   let missing = true;
   const ui = setup(async url => {
     assert.equal(url, '/api/v1/portfolio/changes?start=2026-11-19&end=2026-11-20');
     return {ok:true,status:200,json:async()=>({
       method:'observed_portfolio_changes_v1',
       start:{...observed,date:'2026-11-19',status:missing?'missing':'observed'}, end:observed,
-      holdings:[{ticker:'SYNTH',status:'quantity_changed',value_change:'10',
-        start:{present:true,value:'11',quantity:'1',weight_pct:'1.1'},
-        end:{present:true,value:'21',quantity:'2',weight_pct:'2.1'}}],
+      holdings:[holding,{...holding,ticker:'FLAT',value_change:'0'},
+        {...holding,ticker:'LOSS',value_change:'-20'},{...holding,ticker:'GAP',value_change:null}],
       cash:[{label:'availableToTrade',start_value:'3',end_value:'1.764322',value_change:'-1.235678',
-        start_weight_pct:'0.3',end_weight_pct:'0.18',weight_change_pp:'-0.12',members:[]}],allocations:[],
-      top_five:{label:'Top five holdings',start_value:'11',end_value:'21',value_change:'10',
-        start_weight_pct:'1.1',end_weight_pct:'2.1',weight_change_pp:'1',
-        members:[{ticker:'SYNTH',start_value:'11',end_value:'21'}]},
+        start_weight_pct:'0.3',end_weight_pct:'0.18',weight_change_pp:'-0.12',members:[]}],
+      allocations:[{dimension:'sectors',comparable:true,buckets:[shift]}],
+      top_five:{...shift,label:'Top five holdings'},
     })};
   });
   ui.el('changes-tab').listeners.click();
@@ -652,20 +716,31 @@ test('Portfolio Changes identifies gaps and links exposure rows to dated holding
   await submit();
   const results = ui.el('changes-results');
   assert.match(content(results), /No approved Trading 212 snapshot was saved/);
+  assert.equal(findNode(results, node => node.className === 'changes-charts'), undefined);
   missing = false;
   await submit();
   assert.match(content(results), /19–20 Nov 2026 UTC/);
+  assert.match(content(results), /Sorted from largest gain to largest loss/);
   assert.match(content(results), /Quantity changed.*\+£10/s);
+  assert.match(content(results), /1 up.*1 down.*1 unchanged · 1 unavailable/s);
+  const charts = findNode(results, node => node.className === 'changes-charts');
+  const chartRows = descendants(charts).filter(node => node.className === 'changes-chart-row');
+  assert.deepEqual(chartRows.map(row => row.href), ['#change-holding-0', '#change-holding-2', '#change-sector-0']);
+  const bars = descendants(charts).filter(node => node.className === 'changes-chart-track').map(track => track.children[0]);
+  assert.deepEqual(bars.map(bar => bar.style.get('--bar-width')), ['25%', '50%', '50%']);
+  assert.deepEqual(bars.map(bar => bar.attributes['data-tone']), ['gain', 'loss', 'gain']);
+  chartRows[2].listeners.click();
+  assert.equal(findNode(results, node => node.id === 'change-sector-0').open, true);
   const snapshots = findNode(results, node => node.tag === 'details' &&
     node.children[0]?.textContent === 'Snapshot times and ISA values');
   assert.ok(snapshots && !snapshots.open);
   assert.match(content(snapshots), /3:00pm 20 Nov 2026/);
   const tables = results.children.filter(node => node.className === 'compact-table');
-  const holding = findNode(tables[0], node => node.tag === 'tbody').children[0];
-  assert.equal(holding.children.length, 4);
-  assert.equal(holding.children[1].textContent, '+£10');
-  assert.equal(holding.children[1].attributes['data-tone'], 'gain');
-  assert.equal(holding.children[2].attributes['data-tone'], undefined);
+  const holdingRow = findNode(tables[0], node => node.tag === 'tbody').children[0];
+  assert.equal(holdingRow.children.length, 4);
+  assert.equal(holdingRow.children[1].textContent, '+£10');
+  assert.equal(holdingRow.children[1].attributes['data-tone'], 'gain');
+  assert.equal(holdingRow.children[2].attributes['data-tone'], undefined);
   const cash = findNode(tables[1], node => node.tag === 'tbody').children[0];
   assert.equal(cash.children[1].textContent, '−£1.24');
   assert.equal(cash.children[1].title, '−£1.235678');

@@ -408,6 +408,11 @@ The Portfolio Changes tab defaults to the last two observed dates in the
 loaded History when available. Choose different UTC dates to compare other
 retained anchors. Expand a holding for dated source evidence, or expand an
 allocation or concentration row and follow its links to the compared holdings.
+Holdings are ordered from largest reported GBP gain to largest loss. The
+sector comparison uses the same broad categories as Exposures.
+The chart overview shows reported ISA values, holding counts by direction,
+the largest holding changes in GBP, and the largest sector weight changes in
+percentage points. Select a bar row to open its detailed evidence.
 
 ## AI portfolio export
 

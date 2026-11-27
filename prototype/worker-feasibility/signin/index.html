@@ -147,13 +147,17 @@
   </div>
 </section>
 <section id="changes-panel" class="exposures" aria-labelledby="changes-heading" hidden>
-  <h2 id="changes-heading">Portfolio Changes</h2>
-  <p>Compare the last approved Trading 212 snapshot on each UTC date.</p>
-  <form id="changes-filter" class="risk-filter">
-    <label for="changes-start">Start date (UTC)<input id="changes-start" type="date" required></label>
-    <label for="changes-end">End date (UTC)<input id="changes-end" type="date" required></label>
-    <button id="changes-apply" type="submit">Compare dates</button>
-  </form>
+  <header class="changes-header">
+    <div>
+      <h2 id="changes-heading">Portfolio Changes</h2>
+      <p>Compare approved Trading 212 snapshots across two UTC dates.</p>
+    </div>
+    <form id="changes-filter">
+      <label for="changes-start">Start date (UTC)<input id="changes-start" type="date" required></label>
+      <label for="changes-end">End date (UTC)<input id="changes-end" type="date" required></label>
+      <button id="changes-apply" type="submit">Compare dates</button>
+    </form>
+  </header>
   <p id="changes-status" role="status"></p>
   <div id="changes-results"></div>
 </section>

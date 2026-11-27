@@ -333,7 +333,8 @@ Account and positions retrieval completions are shown separately, along with
 the saved observation time. A missing or unusable date blocks the comparison.
 
 For each broker ticker, subtract its opening reported GBP value from its ending
-value and sort by the absolute difference, with ticker as the tie-breaker.
+value and sort by the signed difference from highest to lowest, with ticker as
+the tie-breaker.
 Amounts and quantities are exact decimal strings. A position absent from a
 complete saved list, or with a saved zero quantity, has zero open quantity and
 value for comparison. Positions with unavailable values remain visible at the
@@ -347,7 +348,9 @@ displayed weights. Cash components are independent account fields. Top-five
 concentration ranks the available open positions at each endpoint and requires
 complete GBP values. Classification changes use the compatible allocation
 projections saved with the selected snapshots. Sector, issuer domicile and fund
-markets retain their own scope and classified versus observed GBP value. A
+markets retain their own scope and classified versus observed GBP value. Sector
+buckets use the Exposures sector mapping at both endpoints. Merged buckets sum
+their GBP values and combine contributions by holding before comparison. A
 missing bucket represents zero observed allocation to that bucket where both
 projections are compatible. Holdings drill-down shows membership and GBP
 contributions from each selected endpoint.

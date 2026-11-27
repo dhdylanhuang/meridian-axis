@@ -1,5 +1,5 @@
 //! Exact changes between two approved GBP broker observations.
-use crate::exposures::{nonnegative, percent, portfolio_denominator};
+use crate::exposures::{broad_sector, nonnegative, percent, portfolio_denominator};
 use crate::{decimal, text, Error, Result};
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
@@ -72,6 +72,50 @@ struct Bucket {
     label: Option<String>,
     value: Option<String>,
     members: BTreeMap<String, Amount>,
+}
+
+impl Allocation {
+    fn rollup_sectors(&mut self) {
+        #[derive(Default)]
+        struct Totals {
+            value: Option<BigDecimal>,
+            members: BTreeMap<String, Option<BigDecimal>>,
+        }
+
+        fn add(total: &mut Option<BigDecimal>, value: Option<&str>) {
+            if let Some(value) = nonnegative(value) {
+                *total.get_or_insert_with(BigDecimal::default) += value;
+            }
+        }
+
+        let mut sectors = BTreeMap::<_, Totals>::new();
+        for bucket in std::mem::take(&mut self.buckets) {
+            let label = bucket.label.as_deref().map(broad_sector).map(str::to_owned);
+            let sector = sectors.entry(label).or_default();
+            add(&mut sector.value, bucket.value.as_deref());
+            for (ticker, amount) in bucket.members {
+                add(
+                    sector.members.entry(ticker).or_default(),
+                    amount.value.as_deref(),
+                );
+            }
+        }
+        self.buckets = sectors
+            .into_iter()
+            .map(|(label, sector)| Bucket {
+                label,
+                value: sector.value.as_ref().map(text),
+                members: sector
+                    .members
+                    .into_iter()
+                    .map(|(ticker, amount)| {
+                        let value = amount.as_ref().map(text);
+                        (ticker, Amount { value })
+                    })
+                    .collect(),
+            })
+            .collect();
+    }
 }
 
 #[derive(Serialize)]
@@ -272,7 +316,7 @@ fn holdings(start: &View, end: &View) -> Vec<HoldingChange> {
                 status,
                 value_change: delta.as_ref().map(text),
             };
-            (delta.map(|value| value.abs()), change)
+            (delta, change)
         })
         .collect();
     ranked.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.ticker.cmp(&b.1.ticker)));
@@ -384,8 +428,16 @@ pub fn calculate_json(input: &str) -> Result<String> {
     if input.len() > 1024 * 1024 {
         return Err(Error("input_size_limit"));
     }
-    let Request { start, end } =
+    let Request { mut start, mut end } =
         serde_json::from_str(input).map_err(|_| Error("request_invalid"))?;
+    let observed = start.capture.status == Status::Observed && end.capture.status == Status::Observed;
+    if observed {
+        for endpoint in [&mut start, &mut end] {
+            if let Some(sectors) = endpoint.allocations.get_mut("sectors") {
+                sectors.rollup_sectors();
+            }
+        }
+    }
     let a = View::new(&start)?;
     let b = View::new(&end)?;
     let denominators = a.denominator.as_ref().zip(b.denominator.as_ref());
@@ -393,7 +445,7 @@ pub fn calculate_json(input: &str) -> Result<String> {
     let mut cash = Vec::new();
     let mut top_five = None;
     let mut allocations = Vec::new();
-    if start.capture.status == Status::Observed && end.capture.status == Status::Observed {
+    if observed {
         holdings_changes = holdings(&a, &b);
         let complete = a.complete_values() && b.complete_values();
         if let Some(denominators) = denominators {

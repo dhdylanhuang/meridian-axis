@@ -30,16 +30,16 @@ fn ranks_signed_changes_and_links_saved_contributions() {
         rows.iter()
             .map(|row| row["ticker"].as_str().unwrap())
             .collect::<Vec<_>>(),
-        ["B_EQ", "C_EQ", "A_EQ"]
+        ["C_EQ", "A_EQ", "B_EQ"]
     );
-    assert_eq!(rows[0]["status"], "closed");
-    assert_eq!(rows[0]["value_change"], "-100");
-    assert_eq!(rows[0]["end"]["quantity"], "0");
-    assert_eq!(rows[1]["status"], "added");
-    assert_eq!(rows[1]["value_change"], "50");
-    assert_eq!(rows[2]["status"], "quantity_changed");
-    assert_eq!(rows[2]["value_change"], "29.9999");
-    assert_eq!(rows[2]["end"]["weight_pct"], "23");
+    assert_eq!(rows[0]["status"], "added");
+    assert_eq!(rows[0]["value_change"], "50");
+    assert_eq!(rows[1]["status"], "quantity_changed");
+    assert_eq!(rows[1]["value_change"], "29.9999");
+    assert_eq!(rows[1]["end"]["weight_pct"], "23");
+    assert_eq!(rows[2]["status"], "closed");
+    assert_eq!(rows[2]["value_change"], "-100");
+    assert_eq!(rows[2]["end"]["quantity"], "0");
     assert_eq!(report["start"]["portfolio_denominator"], "1000");
     assert_eq!(report["top_five"]["weight_change_pp"], "-2");
     assert_eq!(report["cash"][0]["weight_change_pp"], "0");
@@ -48,6 +48,49 @@ fn ranks_signed_changes_and_links_saved_contributions() {
     assert_eq!(sectors["buckets"][0]["weight_change_pp"], "3");
     assert_eq!(sectors["buckets"][0]["members"][0]["ticker"], "A_EQ");
     assert_eq!(report["allocations"][1]["comparable"], false);
+}
+
+#[test]
+fn compares_broad_sectors_and_merges_each_holding_contribution() {
+    let start = json!({
+        "classified":{"value":"50"}, "observed":{"value":"90"},
+        "buckets":[
+            {"label":"J.P. Morgan · Pharmaceutical/Medical Technology","value":"20.25",
+                "members":{"FUND_EQ":{"value":"20.25"}}},
+            {"label":"J.P. Morgan · Health Services & Systems","value":"19.75",
+                "members":{"FUND_EQ":{"value":"19.75"}}},
+            {"label":"Baillie Gifford · Healthcare","value":"10",
+                "members":{"TRUST_EQ":{"value":"10"}}},
+            {"label":null,"value":"40","members":{}}
+        ]
+    });
+    let end = json!({
+        "classified":{"value":"65"}, "observed":{"value":"100"},
+        "buckets":[
+            {"label":"Health Care","value":"15","members":{"TRUST_EQ":{"value":"15"}}},
+            {"label":"J.P. Morgan · Health Services & Systems","value":"50",
+                "members":{"FUND_EQ":{"value":"50"}}},
+            {"label":null,"value":"35","members":{}}
+        ]
+    });
+    let report: Value = serde_json::from_str(&calculate_json(&json!({
+        "start": snapshot("2026-11-19", vec![position("FUND_EQ","1","65"), position("TRUST_EQ","1","25")], start),
+        "end": snapshot("2026-11-20", vec![position("FUND_EQ","1","70"), position("TRUST_EQ","1","30")], end)
+    }).to_string()).unwrap()).unwrap();
+    let sectors = &report["allocations"][0];
+    assert_eq!(sectors["start_classified"], "50");
+    assert_eq!(sectors["end_observed"], "100");
+    let buckets = sectors["buckets"].as_array().unwrap();
+    assert_eq!(buckets.len(), 2);
+    assert!(buckets[0]["label"].is_null());
+    assert_eq!(buckets[1], json!({
+        "label":"Health Care","start_value":"50","end_value":"65","value_change":"15",
+        "start_weight_pct":"5","end_weight_pct":"6.5","weight_change_pp":"1.5",
+        "members":[
+            {"ticker":"FUND_EQ","start_value":"40","end_value":"50"},
+            {"ticker":"TRUST_EQ","start_value":"10","end_value":"15"}
+        ]
+    }));
 }
 
 #[test]

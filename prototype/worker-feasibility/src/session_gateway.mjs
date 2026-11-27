@@ -144,19 +144,25 @@ async function calculateMeridian(app, origin, headers, options, planning) {
   }
 }
 
+function rollupExposures(snapshot, calculate) {
+  const report = snapshot.exposures;
+  if (report?.method === "broker_exposures_v1" && report.sectors && calculate) {
+    const { sectors, portfolio_denominator, invested_denominator } = report;
+    report.sectors = JSON.parse(calculate(JSON.stringify({
+      sectors, portfolio_denominator, invested_denominator,
+    })));
+    report.sector_rollup_method = "broad_sectors_v1";
+  }
+  return snapshot;
+}
+
 // Roll up the already-authorised snapshot without modifying saved evidence.
 async function rollupSnapshot(response, calculate) {
   const original = await response.text();
   const headers = privateHeaders(response.headers);
   try {
-    const snapshot = JSON.parse(original);
-    const report = snapshot.exposures;
-    if (report?.method === "broker_exposures_v1" && report.sectors) {
-      const { sectors, portfolio_denominator, invested_denominator } = report;
-      report.sectors = JSON.parse(calculate(JSON.stringify({
-        sectors, portfolio_denominator, invested_denominator,
-      })));
-      report.sector_rollup_method = "broad_sectors_v1";
+    const snapshot = rollupExposures(JSON.parse(original), calculate);
+    if (snapshot.exposures?.sector_rollup_method === "broad_sectors_v1") {
       headers.delete("Content-Length");
       headers.delete("Content-Encoding");
       return new Response(JSON.stringify(snapshot), { status: response.status, headers });
@@ -255,7 +261,11 @@ export default {
       const response = await app.fetch(upstream);
       if (portfolioExport && response.ok) {
         try {
-          const data = await buildExport(await response.json(), calculateChanges, planning.meridian);
+          const inputs = await response.json();
+          try { rollupExposures(inputs.snapshot, planning.sectorRollup); } catch {
+            // The saved exposure report remains available if the display rollup fails.
+          }
+          const data = await buildExport(inputs, calculateChanges, planning.meridian);
           const headers = privateHeaders();
           if (!markdown) {
             headers.set("Content-Type", "application/json");

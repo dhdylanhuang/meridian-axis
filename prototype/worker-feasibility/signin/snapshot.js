@@ -4,7 +4,13 @@
   let snapshot = null, generation = 0, controller = null;
   let holdingScope = null, activeTab = 'axis-tab';
   const tabTrail = [];
-  let history = null, historyRequest = null, historyIndex = 0, overviewRequested = false;
+  let history = null, historyRequest = null, historyIndex = 0;
+  let historyRetry = null, historyFailures = 0, nextHistoryRead = 0;
+  const HISTORY_RETRY_DELAYS = [1500, 5000, 15000];
+  const HISTORY_TEMPORARY_STATES = new Set([
+    'funding_evidence_unavailable', 'calculation_timeout', 'calculation_unavailable',
+    'calculation_response_invalid', 'performance_service_unavailable', 'performance_service_timeout',
+  ]);
   let changesRequest = null, overviewRange = 30, exportRequest = null;
   let riskLoaded = false, riskRequest = null;
   const detailControllers = new Set();
@@ -42,7 +48,10 @@
   }
   function start() {
     active = true;
-    if (!document.hidden) void load();
+    if (!document.hidden) {
+      void load();
+      resumeHistory();
+    }
   }
   const amounts = ['total-value','investment-value','available-cash','unrealised-pnl','investment-cost','realised-pnl'];
   function decimal(value, currency) {
@@ -401,13 +410,20 @@
     return `${formatDay(start_date, start_date.slice(0, 4) === end_date.slice(0, 4))} – ${end}`;
   }
   const compactNumber = new Intl.NumberFormat('en-GB', {maximumFractionDigits:2});
-  function compactCell(row, value, {currency, unit = '', direction = false} = {}) {
-    if (value == null) return add(row, 'td', '—');
+  const chartMoney = new Intl.NumberFormat('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2});
+  function compactLabel(value, {currency, unit = '', direction = false, fixed = false} = {}) {
+    if (value == null) return '—';
     const number = Number(value);
     const negative = number < 0;
     const sign = negative ? '−' : direction === 'signed' && number > 0 ? '+' : '';
     const tiny = number !== 0 && Math.abs(number) < 0.005;
-    const label = `${sign}${tiny ? '<' : ''}${currency === 'GBP' ? '£' : ''}${tiny ? '0.01' : compactNumber.format(Math.abs(number))}${unit}`;
+    const format = fixed && currency === 'GBP' ? chartMoney : compactNumber;
+    return `${sign}${tiny ? '<' : ''}${currency === 'GBP' ? '£' : ''}${tiny ? '0.01' : format.format(Math.abs(number))}${unit}`;
+  }
+  function compactCell(row, value, options = {}) {
+    const {currency, unit = '', direction = false} = options;
+    if (value == null) return add(row, 'td', '—');
+    const label = compactLabel(value, options);
     const cell = direction ? outcome(row, 'td', label, value) : add(row, 'td', label);
     cell.title = decimal(value, currency) + unit;
     return cell;
@@ -986,7 +1002,6 @@
     }
   }
   function renderOverview() {
-    renderOverviewChart();
     const report = history?.performance;
     const matched = report?.benchmark?.latest_stretch;
     const comparison = el('overview-comparison');
@@ -1013,6 +1028,12 @@
       outcome(riskPeriod, 'span', overviewPct(drawdown.worst_pct), drawdown.worst_pct, true);
       add(riskPeriod, 'span', ` · eligible through ${when(drawdown.as_of)}${drawdown.later_unavailable_intervals
         ? ` · ${drawdown.later_unavailable_intervals} newer intervals unavailable` : ''}`);
+    }
+    try {
+      renderOverviewChart();
+    } catch {
+      el('overview-chart').hidden = true;
+      el('overview-history-caption').textContent = 'The saved value chart could not be drawn.';
     }
   }
   function renderOverviewSnapshot(data) {
@@ -1056,11 +1077,45 @@
     el('history-body').replaceChildren(body);
     el('history-results').hidden = false;
     el('history-status').textContent = `${periodRange(data)} UTC · ${observed} of ${data.days.length} days observed · ${missing} missing${unavailable ? ' · ' + unavailable + ' unavailable' : ''}. Read at ${when(data.as_of)}.`;
-    const latest = data.days.findLastIndex(point => point.status === 'observed');
+    const latest = data.days.map(point => point.status).lastIndexOf('observed');
     inspectDay(latest === -1 ? data.days.length - 1 : latest);
   }
+  function pauseHistoryRetry() {
+    clearTimeout(historyRetry);
+    historyRetry = null;
+  }
+
+  function resumeHistory() {
+    if (!active || document.hidden || historyRequest || historyRetry !== null ||
+        (history && !historyFailures) || historyFailures > HISTORY_RETRY_DELAYS.length) return;
+    const delay = nextHistoryRead - Date.now();
+    if (delay > 0) {
+      historyRetry = setTimeout(() => {
+        historyRetry = null;
+        resumeHistory();
+      }, delay);
+    } else void loadHistory();
+  }
+
+  function historyUnavailable(retryable) {
+    historyFailures = retryable ? historyFailures + 1 : HISTORY_RETRY_DELAYS.length + 1;
+    const delay = HISTORY_RETRY_DELAYS[historyFailures - 1];
+    const retrying = delay !== undefined && active;
+    nextHistoryRead = retrying ? Date.now() + delay : 0;
+    const message = retrying ? 'Performance is temporarily unavailable. Retrying…'
+      : 'Saved performance could not be loaded. Use Reload history to try again.';
+    if (!history?.performance) {
+      el('overview-comparison-period').textContent = message;
+      el('overview-risk-period').textContent = message;
+    }
+    el('history-status').textContent = history
+      ? `Reload failed. Showing the previously loaded observations.${retrying ? ' Retrying performance…' : ''}`
+      : message;
+  }
+
   async function loadHistory() {
     if (historyRequest) return;
+    pauseHistoryRetry();
     const request = new AbortController();
     historyRequest = request;
     el('reload-history').disabled = true;
@@ -1069,25 +1124,28 @@
       const response = await fetch('/api/v1/portfolio/history', {credentials:'same-origin', cache:'no-store', redirect:'error', signal:request.signal});
       if (historyRequest !== request) return;
       if ([401,403].includes(response.status)) { clear(); window.dispatchEvent(new Event('meridian-session-ended')); return; }
-      if (!response.ok) throw new Error('unavailable');
+      if (!response.ok) {
+        historyUnavailable(response.status >= 500 || [408,429].includes(response.status));
+        return;
+      }
       const data = await response.json();
       if (historyRequest !== request) return;
       if (data.source !== 'trading212' || data.basis !== 'broker_reported' || data.currency !== 'GBP' || data.days?.length !== 90) throw new Error('invalid');
+      if (!data.performance && HISTORY_TEMPORARY_STATES.has(data.performance_state)) {
+        if (!history?.performance) renderHistory(data);
+        historyUnavailable(true);
+        return;
+      }
+      historyFailures = 0;
+      nextHistoryRead = 0;
       renderHistory(data);
     } catch {
-      if (historyRequest === request) {
-        if (!history) {
-          renderOverview();
-          el('overview-comparison-period').textContent = 'Saved History could not be loaded.';
-          el('overview-risk-period').textContent = 'Saved History could not be loaded.';
-          el('overview-history-caption').textContent = 'Saved history could not be loaded.';
-        }
-        el('history-status').textContent = history ? 'Reload failed. Showing the previously loaded observations.' : 'Saved history could not be loaded. Use Reload history to try again.';
-      }
+      if (historyRequest === request) historyUnavailable(true);
     } finally {
       if (historyRequest === request) {
         historyRequest = null;
         el('reload-history').disabled = false;
+        resumeHistory();
       }
     }
   }
@@ -1151,6 +1209,105 @@
   const signed = (value, currency) => value != null && compare(value, '0') > 0
     ? '+' + decimal(value, currency) : decimal(value, currency);
 
+  function linkChangeEvidence(link, target) {
+    link.href = '#' + target.evidence.id;
+    link.addEventListener('click', () => {
+      target.evidence.open = true;
+      target.summary.focus?.();
+    });
+  }
+
+  function changeChart(parent, {title, caption, rows, empty, currency, unit = '', tone = 'holdings'}) {
+    const panel = add(parent, 'section');
+    panel.className = `changes-chart changes-chart-${tone}`;
+    add(panel, 'h3', title);
+    add(panel, 'p', caption);
+    if (!rows.length) {
+      add(panel, 'p', empty).className = 'changes-chart-empty';
+      return;
+    }
+    const max = Math.max(...rows.map(row => Math.abs(Number(row.value))));
+    const axis = add(panel, 'div');
+    axis.className = 'changes-chart-axis';
+    axis.setAttribute('aria-hidden', 'true');
+    const scale = add(axis, 'div');
+    add(scale, 'span', tone === 'sectors' ? 'Lower' : 'Loss');
+    add(scale, 'span', '0');
+    add(scale, 'span', tone === 'sectors' ? 'Higher' : 'Gain');
+    const list = add(panel, 'ul');
+    for (const {label, value, target} of rows) {
+      const item = add(list, 'li');
+      const link = add(item, 'a');
+      link.className = 'changes-chart-row';
+      linkChangeEvidence(link, target);
+      const name = add(link, 'span', label);
+      name.title = label;
+      const track = add(link, 'span');
+      track.className = 'changes-chart-track';
+      track.setAttribute('aria-hidden', 'true');
+      const bar = setOutcomeTone(add(track, 'span'), value);
+      bar.style.setProperty('--bar-width', `${Math.abs(Number(value)) / max * 50}%`);
+      const amount = outcome(link, 'strong', compactLabel(value, {currency, unit, direction:'signed', fixed:true}), value);
+      amount.title = signed(value, currency) + unit;
+    }
+  }
+
+  function renderChangeCharts(parent, data, holdings, sectors) {
+    const positive = [], negative = [];
+    let flat = 0, unavailable = 0;
+    for (const holding of data.holdings) {
+      const value = holding.value_change;
+      const direction = compare(value, '0');
+      if (value == null) unavailable++;
+      else if (!direction) flat++;
+      else (direction > 0 ? positive : negative).push({
+        label: holding.end.name || holding.start.name || holding.ticker,
+        value, target: holdings.get(holding.ticker),
+      });
+    }
+    const summary = add(parent, 'div');
+    summary.className = 'changes-summary';
+    for (const [label, endpoint] of [['Start ISA value', data.start], ['End ISA value', data.end]]) {
+      const card = add(summary, 'article');
+      add(card, 'h3', label);
+      const value = endpoint.portfolio_denominator;
+      const display = value == null ? 'Unavailable' : compactLabel(value, {currency:'GBP', fixed:true});
+      add(card, 'strong', display).title = decimal(value, 'GBP');
+      add(card, 'small', formatDay(endpoint.date));
+    }
+    const breadth = add(summary, 'article');
+    add(breadth, 'h3', 'Holdings by direction');
+    const counts = add(breadth, 'div');
+    counts.className = 'changes-breadth';
+    outcome(counts, 'strong', `${positive.length} up`, String(positive.length));
+    outcome(counts, 'strong', `${negative.length} down`, String(-negative.length));
+    add(breadth, 'small', `${flat} unchanged${unavailable ? ` · ${unavailable} unavailable` : ''}`);
+    if (positive.length || flat || negative.length) {
+      const track = add(breadth, 'div');
+      track.className = 'changes-breadth-track';
+      track.setAttribute('aria-hidden', 'true');
+      for (const [count, direction] of [[positive.length, '1'], [flat, '0'], [negative.length, '-1']]) {
+        if (!count) continue;
+        const segment = setOutcomeTone(add(track, 'span'), direction);
+        segment.style.setProperty('--holding-count', String(count));
+      }
+    }
+
+    const chartGrid = add(parent, 'div');
+    chartGrid.className = 'changes-charts';
+    changeChart(chartGrid, {title:'Largest holding moves', caption:'Reported GBP value · up to four per direction',
+      rows:[...positive.slice(0, 4), ...negative.slice(-4).reverse()],
+      empty:'No non-zero holding changes were available.', currency:'GBP'});
+    const sectorMoves = [...sectors.values()]
+      .filter(({item}) => item.weight_change_pp != null && compare(item.weight_change_pp, '0'))
+      .sort((a, b) => compare(b.item.weight_change_pp.replace('-', ''), a.item.weight_change_pp.replace('-', '')))
+      .slice(0, 6)
+      .map(({item, ...target}) => ({label:item.label ?? 'Unclassified', value:item.weight_change_pp, target}));
+    changeChart(chartGrid, {title:'Largest sector shifts', caption:'Share of the ISA · change in percentage points',
+      rows:sectorMoves, tone:'sectors', unit:' pp', empty:data.allocations.some(row => row.dimension === 'sectors' && row.comparable)
+        ? 'No non-zero sector weight changes were available.' : 'Both snapshots need comparable sector data.'});
+  }
+
   function renderChanges(data) {
     const section = el('changes-results');
     section.replaceChildren();
@@ -1178,8 +1335,10 @@
     }
     if (data.start.status !== 'observed' || data.end.status !== 'observed') return;
 
+    const visuals = add(section, 'div');
+    const sectorLinks = new Map();
     add(section, 'h3', 'Holding value changes');
-    add(section, 'p', 'Ranked by size of change. Reported changes can include price moves, FX and trades.');
+    add(section, 'p', 'Sorted from largest gain to largest loss in reported GBP value. Reported changes can include price moves, FX and trades.');
     const labels = {added:'Added', closed:'Closed', quantity_changed:'Quantity changed',
       quantity_unchanged:'Quantity unchanged', quantity_unavailable:'Quantity unavailable',
       identity_conflict:'Listing identity changed'};
@@ -1209,15 +1368,19 @@
     if (!links.size) add(section, 'p', 'Neither snapshot contains open positions.');
 
     const cashLabels = {availableToTrade:'Available to trade', inPies:'Cash in pies', reservedForOrders:'Reserved for orders'};
-    function weightChanges(title, rows) {
+    function weightChanges(title, rows, sector = false) {
       const compact = add(section, 'div');
       compact.className = 'compact-table';
       const body = exposureTable(compact, ['Exposure', 'GBP change', 'Weight change'], title);
-      for (const item of rows) {
+      for (const [index, item] of rows.entries()) {
         const row = add(body, 'tr'), cell = add(row, 'td');
         const label = cashLabels[item.label] ?? item.label ?? 'Unclassified';
         const detail = add(cell, 'details');
-        add(detail, 'summary', label);
+        const summary = add(detail, 'summary', label);
+        if (sector) {
+          detail.id = 'change-sector-' + index;
+          sectorLinks.set(item.label, {item, evidence:detail, summary});
+        }
         add(detail, 'small', `Start · ${decimal(item.start_value, 'GBP')} · ${percent(item.start_weight_pct)}`);
         add(detail, 'small', `End · ${decimal(item.end_value, 'GBP')} · ${percent(item.end_weight_pct)}`);
         add(detail, 'small', `Exact change · ${signed(item.value_change, 'GBP')} · ${signed(item.weight_change_pp)} pp`);
@@ -1228,11 +1391,7 @@
             const target = links.get(member.ticker);
             if (target) {
               const link = add(entry, 'a', member.ticker);
-              link.href = '#' + target.evidence.id;
-              link.addEventListener('click', () => {
-                target.evidence.open = true;
-                target.summary.focus?.();
-              });
+              linkChangeEvidence(link, target);
             } else add(entry, 'span', member.ticker);
             add(entry, 'small', `${decimal(member.start_value ?? '0', 'GBP')} → ${decimal(member.end_value ?? '0', 'GBP')}`);
           }
@@ -1252,16 +1411,17 @@
     const dimensions = {sectors:'Sectors', issuer_domiciles:'Country · direct issuer domicile',
       fund_markets:'Country · fund market allocation'};
     add(section, 'h3', 'Classification changes');
-    add(section, 'p', 'Coverage is classified GBP value out of observed GBP holding value within each view. Buckets reflect the classifications saved at each endpoint and can move as coverage changes.');
+    add(section, 'p', 'Sectors use the same categories as Exposures. Coverage is classified GBP value out of observed GBP holding value and can change between snapshots.');
     for (const allocation of data.allocations) {
       const title = dimensions[allocation.dimension];
       add(section, 'h4', title);
       const coverage = side => `${decimal(allocation[side + '_classified'], 'GBP')} of ${decimal(allocation[side + '_observed'], 'GBP')}`;
       add(section, 'p', `Classified value · Start ${coverage('start')} · End ${coverage('end')}`);
       if (!allocation.comparable) add(section, 'p', 'Comparable saved allocations or complete GBP holding values are unavailable at one or both endpoints.');
-      else if (allocation.buckets.length) weightChanges(title, allocation.buckets);
+      else if (allocation.buckets.length) weightChanges(title, allocation.buckets, allocation.dimension === 'sectors');
       else add(section, 'p', 'No observed allocation buckets in this view.');
     }
+    renderChangeCharts(visuals, data, links, sectorLinks);
   }
 
   async function loadChanges(start, end) {
@@ -1498,7 +1658,7 @@
     add(section, 'p', 'Shares are calculated separately for each component. Total cash allocation is unavailable because the broker field definitions do not establish that the components are disjoint.');
   }
   function clear() {
-    active = false; clearTimeout(timer); failures = 0; nextRead = 0; nextManual = 0;
+    active = false; loading = false; clearTimeout(timer); failures = 0; nextRead = 0; nextManual = 0;
     generation++; controller?.abort(); cancelDetails(); snapshot = null;
     exportRequest?.abort(); exportRequest = null;
     if (el('download-ai-brief')) el('download-ai-brief').disabled = false;
@@ -1513,7 +1673,9 @@
     if (el('cash-reconciliation')) { el('cash-reconciliation').replaceChildren(); el('cash-reconciliation').textContent = '—'; }
     el('snapshot-time').textContent = '—'; el('snapshot-status').textContent = ''; el('refresh-status').textContent = '';
     el('portfolio-exposures')?.replaceChildren();
-    historyRequest?.abort(); historyRequest = null; history = null; overviewRequested = false;
+    pauseHistoryRetry();
+    historyRequest?.abort(); historyRequest = null; history = null;
+    historyFailures = 0; nextHistoryRead = 0;
     for (const id of ['overview-comparison','overview-drawdown','overview-concentration']) el(id).textContent = '—';
     setOverviewRange(30);
     for (const id of ['overview-chart', 'overview-allocation']) {
@@ -1686,10 +1848,6 @@
       renderCash(data);
       renderExposures(data);
       renderOverviewSnapshot(data);
-      if (active && !overviewRequested && !history && !historyRequest) {
-        overviewRequested = true;
-        void loadHistory();
-      }
       if (!el('risk-panel').hidden) renderRiskExposure(data);
       health(data.refresh_health);
     } catch (error) {
@@ -1697,7 +1855,12 @@
         backoff();
         el('snapshot-status').textContent = snapshot ? 'Refresh failed. Last successful snapshot remains displayed. Automatic retries are paused.' : 'The saved snapshot could not be loaded. Automatic retries are paused.';
       }
-    } finally { loading = false; if (version === generation) schedule(); }
+    } finally {
+      if (version === generation) {
+        loading = false;
+        schedule();
+      }
+    }
   }
   function health(status) {
     const job = status?.jobs?.snapshot;
@@ -1751,7 +1914,11 @@
   el('clear-holding-scope').addEventListener('click', () => showHoldings(null));
   el('holding-search').addEventListener('input',renderHoldings); el('holding-sort').addEventListener('change',renderHoldings);
   el('reload-snapshot').addEventListener('click',load);
-  el('reload-history').addEventListener('click',loadHistory);
+  el('reload-history').addEventListener('click', () => {
+    historyFailures = 0;
+    nextHistoryRead = 0;
+    return loadHistory();
+  });
   el('history-cash-link').addEventListener('click', () => {
     selectTab('cash-tab');
     el('cash-heading').focus?.();
@@ -1843,7 +2010,11 @@
   el('refresh-broker').addEventListener('click',refreshBroker);
   document.addEventListener('visibilitychange', () => {
     clearTimeout(timer);
-    if (active && !document.hidden) void load();
+    pauseHistoryRetry();
+    if (active && !document.hidden) {
+      void load();
+      resumeHistory();
+    }
   });
   window.meridianSnapshot = {load,clear,start};
 })();

@@ -202,7 +202,8 @@ export function exportMarkdown(data) {
       const item = exposures[key];
       if (!item) continue;
       const delta = changes.allocations.find(row => row.dimension === key);
-      const movement = new Map((delta?.buckets ?? []).map(row => [row.label, row.weight_change_pp]));
+      const comparable = key !== "sectors" || exposures.sector_rollup_method === "broad_sectors_v1";
+      const movement = new Map((comparable ? (delta?.buckets ?? []) : []).map(row => [row.label, row.weight_change_pp]));
       lines.push("### " + label, "",
         ...table(["Exposure", "GBP", "ISA %", "Monthly change pp"],
           (item.buckets ?? item).map(row => [row.label ?? row.quote_currency ?? "Unclassified", row.value, row.weights?.portfolio_pct,

@@ -2,6 +2,22 @@
 
 Reviewed **22 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
+## Mobile home screen · 27 November 2026
+
+Gateway fix `5511cc4` loads ISA vs VUAG and Portfolio Drawdown directly from
+History when the authenticated workspace opens. Temporary network and performance
+service failures retry automatically while the page is visible. The cards show
+the existing evidence-availability labels when a comparison cannot be calculated.
+
+Deployed the fix over the active Allocation Charts release (`5a3a45507fc1757664f6`).
+Verified nine targeted UI checks and one phone-width Chrome navigation with
+synthetic data. Both cards rendered after an HTTP 503 and a partial History
+response. Verified all nine live assets, WASM health and anonymous access
+denials. Authenticated verification on a live phone remains open.
+
+The fix is on `fix/mobile-overview`. Include `5511cc4` in the next release
+branch to carry the mobile recovery forward.
+
 ## Start here
 
 The owner deferred new monitoring and alerts to project closeout (DC28).
@@ -230,6 +246,35 @@ return series. The full matrix, rolling correlation and shrinkage remain
 later work. The original code release supplied no daily evidence binding.
 
 ## Portfolio Changes sprint
+
+The visual redesign is live on gateway source `587c4d1`. It adds ISA values
+and holding counts at the top, plus linked charts for GBP holding changes and
+sector weight shifts. The focused Portfolio Changes UI test passed. Synthetic
+Chrome renders at 390 and 1440 CSS pixels displayed all 14 chart rows without
+page overflow. Hosted checks matched all nine assets and confirmed WASM health
+and protected route denials. Authenticated visual verification remains open.
+
+The 27 November follow-up is live on gateway source `619d03c`. Holdings now
+sort by signed GBP change, from largest gain to largest loss. Sector comparisons
+apply the Exposures mapping to both saved dates and merge holding contributions
+within each sector.
+
+- `cargo test --manifest-path rust/reconciliation/Cargo.toml --locked --offline --test changes --jobs 2`
+  passed three cases covering signed order, missing snapshots and merged sector contributions.
+- `cargo test --manifest-path rust/reconciliation/Cargo.toml --locked --offline --lib sector_rollup_merges_source_values --jobs 2`
+  passed the existing Exposures rollup case.
+- `node --test --test-name-pattern='Portfolio Changes identifies' prototype/worker-feasibility/tests/test_snapshot_ui.mjs`
+  passed the Changes display and drill-down case.
+- `cargo check --manifest-path rust/reconciliation/Cargo.toml --locked --offline --target wasm32-unknown-unknown --lib --jobs 2`
+  passed for the gateway's Rust target.
+
+The release used the active mobile and Allocation Charts baseline. The packaged
+WASM passed a synthetic comparison for signed order, merged Health Care totals
+and holding links. Hosted checks matched all nine assets, confirmed WASM
+readiness and protected route denials, and verified the existing bindings and
+schedule. An authenticated live comparison remains open for this follow-up.
+
+### Original deployment
 
 Implemented a dated comparison on the existing approved Trading 212 projections.
 The tab shows separate account and holdings capture times, signed GBP changes
