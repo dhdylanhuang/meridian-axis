@@ -239,11 +239,12 @@ later work. The original code release supplied no daily evidence binding.
 
 ## Portfolio Changes sprint
 
-The visual redesign is locally verified and pending release. It adds ISA values
+The visual redesign is live on gateway source `587c4d1`. It adds ISA values
 and holding counts at the top, plus linked charts for GBP holding changes and
 sector weight shifts. The focused Portfolio Changes UI test passed. Synthetic
 Chrome renders at 390 and 1440 CSS pixels displayed all 14 chart rows without
-page overflow.
+page overflow. Hosted checks matched all nine assets and confirmed WASM health
+and protected route denials. Authenticated visual verification remains open.
 
 The 27 November follow-up is live on gateway source `619d03c`. Holdings now
 sort by signed GBP change, from largest gain to largest loss. Sector comparisons
