@@ -2,6 +2,22 @@
 
 Reviewed **22 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
+## Mobile home screen · 27 November 2026
+
+Gateway fix `5511cc4` loads ISA vs VUAG and Portfolio Drawdown directly from
+History when the authenticated workspace opens. Temporary network and performance
+service failures retry automatically while the page is visible. The cards show
+the existing evidence-availability labels when a comparison cannot be calculated.
+
+Deployed the fix over the active Allocation Charts release (`5a3a45507fc1757664f6`).
+Verified nine targeted UI checks and one phone-width Chrome navigation with
+synthetic data. Both cards rendered after an HTTP 503 and a partial History
+response. Verified all nine live assets, WASM health and anonymous access
+denials. Authenticated verification on a live phone remains open.
+
+The fix is on `fix/mobile-overview`. Include `5511cc4` in the next release
+branch to carry the mobile recovery forward.
+
 ## Start here
 
 The owner deferred new monitoring and alerts to project closeout (DC28).
