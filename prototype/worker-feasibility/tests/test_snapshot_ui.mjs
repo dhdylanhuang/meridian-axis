@@ -7,7 +7,7 @@ const dates = fs.readFileSync(new URL('../signin/dates.js', import.meta.url), 'u
 const holdingDetail = fs.readFileSync(new URL('../signin/holding-detail.js', import.meta.url), 'utf8');
 const planning = fs.readFileSync(new URL('../signin/planning.js', import.meta.url), 'utf8');
 class Element {
-  constructor(tag){this.tag=tag;this.textContent='';this.value='';this.children=[];this.listeners={};this.attributes={};this.dataset={};}
+  constructor(tag){this.tag=tag;this.textContent='';this.value='';this.children=[];this.listeners={};this.attributes={};this.dataset={};this.style=new Map();this.style.setProperty=this.style.set;}
   append(child){child.parentElement=this;this.children.push(child);}
   remove(){this.parentElement.children=this.parentElement.children.filter(child=>child!==this);}
   querySelectorAll(selector){
@@ -686,20 +686,24 @@ test('Portfolio Changes identifies gaps and links exposure rows to dated holding
   const date = '2026-11-20', capture = date + 'T15:00:00.123456+00:00';
   const observed = {date,status:'observed',positions_captured_at:capture,
     account_captured_at:capture,observed_at:capture,portfolio_denominator:'1000'};
+  const holding = {ticker:'SYNTH',status:'quantity_changed',value_change:'10',
+    start:{present:true,value:'11',quantity:'1',weight_pct:'1.1'},
+    end:{present:true,value:'21',quantity:'2',weight_pct:'2.1'}};
+  const shift = {label:'Health Care',start_value:'11',end_value:'21',value_change:'10',
+    start_weight_pct:'1.1',end_weight_pct:'2.1',weight_change_pp:'1',
+    members:[{ticker:'SYNTH',start_value:'11',end_value:'21'}]};
   let missing = true;
   const ui = setup(async url => {
     assert.equal(url, '/api/v1/portfolio/changes?start=2026-11-19&end=2026-11-20');
     return {ok:true,status:200,json:async()=>({
       method:'observed_portfolio_changes_v1',
       start:{...observed,date:'2026-11-19',status:missing?'missing':'observed'}, end:observed,
-      holdings:[{ticker:'SYNTH',status:'quantity_changed',value_change:'10',
-        start:{present:true,value:'11',quantity:'1',weight_pct:'1.1'},
-        end:{present:true,value:'21',quantity:'2',weight_pct:'2.1'}}],
+      holdings:[holding,{...holding,ticker:'FLAT',value_change:'0'},
+        {...holding,ticker:'LOSS',value_change:'-20'},{...holding,ticker:'GAP',value_change:null}],
       cash:[{label:'availableToTrade',start_value:'3',end_value:'1.764322',value_change:'-1.235678',
-        start_weight_pct:'0.3',end_weight_pct:'0.18',weight_change_pp:'-0.12',members:[]}],allocations:[],
-      top_five:{label:'Top five holdings',start_value:'11',end_value:'21',value_change:'10',
-        start_weight_pct:'1.1',end_weight_pct:'2.1',weight_change_pp:'1',
-        members:[{ticker:'SYNTH',start_value:'11',end_value:'21'}]},
+        start_weight_pct:'0.3',end_weight_pct:'0.18',weight_change_pp:'-0.12',members:[]}],
+      allocations:[{dimension:'sectors',comparable:true,buckets:[shift]}],
+      top_five:{...shift,label:'Top five holdings'},
     })};
   });
   ui.el('changes-tab').listeners.click();
@@ -712,21 +716,31 @@ test('Portfolio Changes identifies gaps and links exposure rows to dated holding
   await submit();
   const results = ui.el('changes-results');
   assert.match(content(results), /No approved Trading 212 snapshot was saved/);
+  assert.equal(findNode(results, node => node.className === 'changes-charts'), undefined);
   missing = false;
   await submit();
   assert.match(content(results), /19–20 Nov 2026 UTC/);
   assert.match(content(results), /Sorted from largest gain to largest loss/);
   assert.match(content(results), /Quantity changed.*\+£10/s);
+  assert.match(content(results), /1 up.*1 down.*1 unchanged · 1 unavailable/s);
+  const charts = findNode(results, node => node.className === 'changes-charts');
+  const chartRows = descendants(charts).filter(node => node.className === 'changes-chart-row');
+  assert.deepEqual(chartRows.map(row => row.href), ['#change-holding-0', '#change-holding-2', '#change-sector-0']);
+  const bars = descendants(charts).filter(node => node.className === 'changes-chart-track').map(track => track.children[0]);
+  assert.deepEqual(bars.map(bar => bar.style.get('--bar-width')), ['25%', '50%', '50%']);
+  assert.deepEqual(bars.map(bar => bar.attributes['data-tone']), ['gain', 'loss', 'gain']);
+  chartRows[2].listeners.click();
+  assert.equal(findNode(results, node => node.id === 'change-sector-0').open, true);
   const snapshots = findNode(results, node => node.tag === 'details' &&
     node.children[0]?.textContent === 'Snapshot times and ISA values');
   assert.ok(snapshots && !snapshots.open);
   assert.match(content(snapshots), /3:00pm 20 Nov 2026/);
   const tables = results.children.filter(node => node.className === 'compact-table');
-  const holding = findNode(tables[0], node => node.tag === 'tbody').children[0];
-  assert.equal(holding.children.length, 4);
-  assert.equal(holding.children[1].textContent, '+£10');
-  assert.equal(holding.children[1].attributes['data-tone'], 'gain');
-  assert.equal(holding.children[2].attributes['data-tone'], undefined);
+  const holdingRow = findNode(tables[0], node => node.tag === 'tbody').children[0];
+  assert.equal(holdingRow.children.length, 4);
+  assert.equal(holdingRow.children[1].textContent, '+£10');
+  assert.equal(holdingRow.children[1].attributes['data-tone'], 'gain');
+  assert.equal(holdingRow.children[2].attributes['data-tone'], undefined);
   const cash = findNode(tables[1], node => node.tag === 'tbody').children[0];
   assert.equal(cash.children[1].textContent, '−£1.24');
   assert.equal(cash.children[1].title, '−£1.235678');
