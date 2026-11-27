@@ -7,6 +7,7 @@ use classification::{Allocation, AllocationBuilder, Classification};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
+pub(crate) use classification::broad_sector;
 #[cfg(target_arch = "wasm32")]
 pub(crate) use classification::sector_rollup_json;
 

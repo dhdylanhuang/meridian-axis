@@ -239,6 +239,22 @@ later work. The original code release supplied no daily evidence binding.
 
 ## Portfolio Changes sprint
 
+The 27 November follow-up is locally verified and pending release. Holdings now
+sort by signed GBP change, from largest gain to largest loss. Sector comparisons
+apply the Exposures mapping to both saved dates and merge holding contributions
+within each sector.
+
+- `cargo test --manifest-path rust/reconciliation/Cargo.toml --locked --offline --test changes --jobs 2`
+  passed three cases covering signed order, missing snapshots and merged sector contributions.
+- `cargo test --manifest-path rust/reconciliation/Cargo.toml --locked --offline --lib sector_rollup_merges_source_values --jobs 2`
+  passed the existing Exposures rollup case.
+- `node --test --test-name-pattern='Portfolio Changes identifies' prototype/worker-feasibility/tests/test_snapshot_ui.mjs`
+  passed the Changes display and drill-down case.
+- `cargo check --manifest-path rust/reconciliation/Cargo.toml --locked --offline --target wasm32-unknown-unknown --lib --jobs 2`
+  passed for the gateway's Rust target.
+
+### Original deployment
+
 Implemented a dated comparison on the existing approved Trading 212 projections.
 The tab shows separate account and holdings capture times, signed GBP changes
 ranked by magnitude, endpoint values, quantities and weights, and position

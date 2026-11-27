@@ -1230,7 +1230,7 @@
     if (data.start.status !== 'observed' || data.end.status !== 'observed') return;
 
     add(section, 'h3', 'Holding value changes');
-    add(section, 'p', 'Ranked by size of change. Reported changes can include price moves, FX and trades.');
+    add(section, 'p', 'Sorted from largest gain to largest loss in reported GBP value. Reported changes can include price moves, FX and trades.');
     const labels = {added:'Added', closed:'Closed', quantity_changed:'Quantity changed',
       quantity_unchanged:'Quantity unchanged', quantity_unavailable:'Quantity unavailable',
       identity_conflict:'Listing identity changed'};
@@ -1303,7 +1303,7 @@
     const dimensions = {sectors:'Sectors', issuer_domiciles:'Country · direct issuer domicile',
       fund_markets:'Country · fund market allocation'};
     add(section, 'h3', 'Classification changes');
-    add(section, 'p', 'Coverage is classified GBP value out of observed GBP holding value within each view. Buckets reflect the classifications saved at each endpoint and can move as coverage changes.');
+    add(section, 'p', 'Sectors use the same categories as Exposures. Coverage is classified GBP value out of observed GBP holding value and can change between snapshots.');
     for (const allocation of data.allocations) {
       const title = dimensions[allocation.dimension];
       add(section, 'h4', title);

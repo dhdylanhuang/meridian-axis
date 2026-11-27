@@ -231,6 +231,46 @@ impl AllocationBuilder {
     }
 }
 
+/// Broad reporting crosswalk for reviewed source categories. Unknown labels retain
+/// their identity so an unfamiliar manager category does not invent coverage.
+pub(crate) fn broad_sector(label: &str) -> &str {
+    match label {
+        "ICB · Technology"
+        | "Baillie Gifford · Technology"
+        | "J.P. Morgan · Technology – Semi & Hardware"
+        | "J.P. Morgan · Technology – Software" => "Information Technology",
+        "ICB · Telecommunications"
+        | "Baillie Gifford · Telecommunications"
+        | "J.P. Morgan · Media" => "Communication Services",
+        "ICB · Basic Materials"
+        | "Baillie Gifford · Basic Materials"
+        | "J.P. Morgan · Basic Industries" => "Materials",
+        "ICB · Financials"
+        | "Baillie Gifford · Financials"
+        | "J.P. Morgan · Banks"
+        | "J.P. Morgan · Financial Services"
+        | "J.P. Morgan · Insurance" => "Financials",
+        "ICB · Industrials"
+        | "Baillie Gifford · Industrials"
+        | "J.P. Morgan · Industrial Cyclical" => "Industrials",
+        "ICB · Consumer Discretionary"
+        | "Baillie Gifford · Consumer Discretionary"
+        | "J.P. Morgan · Retail"
+        | "J.P. Morgan · Automobiles & Auto Parts" => "Consumer Discretionary",
+        "ICB · Health Care"
+        | "Baillie Gifford · Healthcare"
+        | "J.P. Morgan · Pharmaceutical/Medical Technology"
+        | "J.P. Morgan · Health Services & Systems" => "Health Care",
+        "ICB · Real Estate" | "J.P. Morgan · Property" => "Real Estate",
+        "ICB · Consumer Staples" | "Baillie Gifford · Consumer Staples" => "Consumer Staples",
+        "ICB · Energy" | "Baillie Gifford · Energy" | "J.P. Morgan · Energy" => "Energy",
+        "ICB · Utilities" | "Baillie Gifford · Utilities" | "J.P. Morgan · Utilities" => {
+            "Utilities"
+        }
+        _ => label,
+    }
+}
+
 #[cfg(any(test, target_arch = "wasm32"))]
 mod sector_rollup;
 #[cfg(target_arch = "wasm32")]

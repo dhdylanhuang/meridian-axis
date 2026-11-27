@@ -715,6 +715,7 @@ test('Portfolio Changes identifies gaps and links exposure rows to dated holding
   missing = false;
   await submit();
   assert.match(content(results), /19–20 Nov 2026 UTC/);
+  assert.match(content(results), /Sorted from largest gain to largest loss/);
   assert.match(content(results), /Quantity changed.*\+£10/s);
   const snapshots = findNode(results, node => node.tag === 'details' &&
     node.children[0]?.textContent === 'Snapshot times and ISA values');
