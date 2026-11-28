@@ -265,7 +265,7 @@ export default {
           try { rollupExposures(inputs.snapshot, planning.sectorRollup); } catch {
             // The saved exposure report remains available if the display rollup fails.
           }
-          const data = await buildExport(inputs, calculateChanges, planning.meridian);
+          const data = await buildExport(inputs, calculateChanges, planning.meridian, planning);
           const headers = privateHeaders();
           if (!markdown) {
             headers.set("Content-Type", "application/json");

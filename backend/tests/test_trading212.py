@@ -499,3 +499,23 @@ def test_explicit_live_origin_and_invalid_environment():
             Trading212Client(api_key="x", api_secret="y", environment="other")
 
     asyncio.run(scenario())
+
+
+def test_pending_orders_read_only_and_fractional_fields():
+    def handler(request):
+        assert request.method == "GET" and request.url.path == ROOT + "orders"
+        return httpx.Response(200, json=[{
+            "ticker": INSTRUMENT["ticker"], "side": "SELL", "status": "NEW", "type": "LIMIT",
+            "currency": "GBP", "createdAt": "2026-11-16T10:00:00Z",
+            "quantity": -0.125, "filledQuantity": 0, "limitPrice": 12.34,
+        }])
+
+    async def scenario():
+        api, http, _ = reader(handler)
+        async with http:
+            row, = await api.pending_orders()
+        assert row["quantity"] == Decimal("-0.125")
+        assert row["limitPrice"] == Decimal("12.34")
+        assert row["stopPrice"] is None
+
+    asyncio.run(scenario())

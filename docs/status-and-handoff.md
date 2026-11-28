@@ -59,6 +59,21 @@ versions above refer to the application source. The documentation revision is
 tracked separately in Git history.
 
 
+## AI portfolio export · Schema 2 implementation
+
+Schema 2 adds independent weights and reconciliation, retained weekly
+anchors, flexible ISA funding, completed and pending trades, manual decision
+inputs and the embedded analyst prompt. The existing Meridian risk
+calculation is reused. See the [contract and changelog](api-and-ui.md#ai-portfolio-export)
+and the [synthetic sample](examples/ai-portfolio-export-v2.md).
+
+The active Workers still serve Schema 1. Local validation used
+`node --test prototype/worker-feasibility/tests/test_session_gateway.mjs prototype/worker-feasibility/tests/test_snapshot_ui.mjs`
+and, from `backend`,
+`PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_export_evidence.py tests/test_snapshot_access.py tests/test_trading212.py -k 'export or allowance or authenticated_snapshot or trading212'`.
+These passed 54 JavaScript and 44 Python checks. The owner, gateway and sync
+bundles passed Wrangler dry runs using the existing risk WASM artifact.
+
 ## AI portfolio export
 
 The Holdings download and private JSON endpoint reuse one approved saved

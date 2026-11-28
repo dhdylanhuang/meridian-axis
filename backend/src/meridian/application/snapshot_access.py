@@ -262,6 +262,27 @@ def _change_endpoint(row, fields=None):
     return endpoint
 
 
+def _export_snapshot_before(db, account_id, day, lower=None):
+    stmt = select(BrokerSnapshot).where(
+        BrokerSnapshot.account_id == account_id,
+        BrokerSnapshot.observed_at < datetime.combine(day + timedelta(days=1), time.min, UTC),
+    )
+    if lower is not None:
+        stmt = stmt.where(BrokerSnapshot.observed_at >= datetime.combine(lower, time.min, UTC))
+    latest = stmt.order_by(BrokerSnapshot.observed_at.desc(), BrokerSnapshot.id.desc()).limit(1)
+    return db.scalar(latest)
+
+
+def _export_anchor(row, day):
+    if row is None:
+        return {"date": day.isoformat(), "status": "missing"}
+    observed = row.observed_at.astimezone(UTC)
+    return _change_endpoint({
+        "day": observed.date().isoformat(), "id": row.id, "observed_at": observed.isoformat(),
+        "snapshot_json": row.snapshot_json, "digest": row.digest,
+    })
+
+
 def read_export_inputs(db, account_id, now):
     """Pin the latest snapshot and select at most one earlier monthly anchor."""
     row = db.scalar(
@@ -282,19 +303,47 @@ def read_export_inputs(db, account_id, now):
         raise RuntimeError("snapshot_contract_invalid")
     previous_month = observed.date().replace(day=1) - timedelta(days=1)
     target = previous_month.replace(day=min(observed.day, previous_month.day))
-    candidates = _daily_snapshots(
-        db, account_id, now, tuple(target - timedelta(days=i) for i in range(8)),
-        "SELECT * FROM selected WHERE id IS NOT NULL ORDER BY day DESC LIMIT 1",
+    baseline = _export_snapshot_before(db, account_id, target)
+    start = _export_anchor(baseline, target)
+    baseline_positions = []
+    if start["status"] == "observed":
+        baseline_positions = _history_fields(
+            {"snapshot_json": baseline.snapshot_json, "digest": baseline.digest}, False
+        )["positions"]
+    anniversary = observed.date().replace(year=observed.year - 1, day=1)
+    next_month = (anniversary + timedelta(days=32)).replace(day=1)
+    anniversary = anniversary.replace(day=min(observed.day, (next_month - timedelta(days=1)).day))
+    turnover_open = _export_anchor(
+        _export_snapshot_before(db, account_id, anniversary, anniversary - timedelta(days=7)),
+        anniversary,
     )
-    earlier = next(iter(candidates), None)
-    start = (
-        _change_endpoint(earlier) if earlier is not None
-        else {"date": target.isoformat(), "status": "missing"}
-    )
+    # Daily retention already preserves at least one full snapshot for each
+    # captured week. Reuse those immutable rows for the recent weekly views.
+    weekly = []
+    week = observed.date() - timedelta(days=observed.weekday() + 1)
+    for index in range(5):
+        end_day = week - timedelta(weeks=index)
+        saved = _export_snapshot_before(db, account_id, end_day, end_day - timedelta(days=6))
+        anchor = _export_anchor(saved, end_day)
+        if anchor["status"] == "observed":
+            fields = decode_snapshot(saved.snapshot_json, saved.digest)
+            anchor["positions"] = [
+                {key: position.get(key) for key in (
+                    "ticker", "quantity", "current_price", "current_value",
+                    "instrument_currency", "account_currency",
+                )}
+                for position in fields["positions"]
+            ]
+        weekly.append(anchor)
     return {
         "snapshot": snapshot,
         "changes": {"start": start, "end": end},
         "target_date": target.isoformat(),
+        "baseline_positions": baseline_positions,
+        "weekly": weekly,
+        "turnover_open": {key: turnover_open.get(key) for key in (
+            "status", "account_captured_at", "invested_value",
+        )},
     }
 
 

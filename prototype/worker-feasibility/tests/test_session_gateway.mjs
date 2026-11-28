@@ -401,7 +401,7 @@ test("portfolio export checks membership, pins Meridian input, and renders priva
   const json = await gateway.fetch(request(path, session), env, null, opts);
   const data = await json.json();
   assert.equal(data.current.snapshot_id, "synthetic-save");
-  assert.equal(data.holdings[0].unrealised_pnl_on_cost_pct, "50.10");
+  assert.equal(data.holdings[0].unrealised_pnl_on_cost_pct, "50.1");
   assert.equal(data.comparison.reason, "baseline_missing");
   assert.equal(data.meridian_risk.reason, "meridian_unavailable");
 
@@ -411,4 +411,50 @@ test("portfolio export checks membership, pins Meridian input, and renders priva
   assert.ok(text.includes("A \\| &lt;b&gt; B"));
   assert.ok(text.includes("15.01") && text.includes("Monthly comparison unavailable"));
   assert.ok(!text.includes("private diagnostic"));
+});
+
+test("Schema 2 derives weights without exposures and renders stale baseline and decision evidence", async () => {
+  const { buildExport, exportMarkdown } = await import("../src/portfolio_export.mjs");
+  const { inputs, changesReport, options } = await import("./fixtures/export_v2.mjs");
+  const result = await buildExport(inputs, changesReport, null, options);
+  assert.equal(result.schema_version, 2);
+  assert.equal(result.exposures, null);
+  assert.equal(result.comparison.reason, "baseline_stale");
+  assert.deepEqual(result.holdings.map(row => [row.display_ticker, row.isa_weight_pct, row.invested_weight_pct, row.price_gbp]),
+    [["SYN", "60", "75", "12"], ["FND", "20", "25", "80"]]);
+  assert.equal(result.portfolio.holdings_plus_cash_isa_pct, "100");
+  assert.equal(result.portfolio.reconciliation, "within_1_gbp");
+  assert.equal(result.portfolio.total_pnl_pct, "15.71");
+  assert.deepEqual(result.portfolio.concentration.map(row => row.weights.portfolio_pct), ["60", "80", "80"]);
+  assert.equal(result.monthly_changes.market_fx_and_other_gbp, "50");
+  assert.equal(result.monthly_changes.largest_weight_moves[0].weight_change_pp, "3.33");
+  assert.equal(result.holdings[0].decision.distance_to_stop_pct, "16.67");
+  assert.equal(result.holdings[0].decision.gbp_at_risk_to_stop, "100");
+  assert.equal(result.holdings[0].decision.size_vs_max_pp, "5");
+  assert.equal(result.holdings[1].decision.role, null);
+  assert.deepEqual(result.holdings[1].monthly_return_split,
+    { price_gbp: "7.5", fx_gbp: "42.5", dividends_gbp: "0", reason: null });
+  assert.equal(result.pending_orders.rows[0].pre_clearance_expiry, "2026-12-02");
+  assert.equal(result.trade_log.rows[0].realised_pnl_gbp, "4");
+  const markdown = exportMarkdown(result);
+  assert.ok(markdown.indexOf("Copy this prompt") < markdown.indexOf("Portfolio at a glance"));
+  for (const text of ["Synthetic &amp; Co", "baseline\\_stale", "Completed trades", "The Meridian risk"]) {
+    assert.ok(markdown.includes(text), text);
+  }
+});
+
+test("Schema 2 keeps unknown holding weights, funding, risk and manual fields explicit", async () => {
+  const { buildExport, exportMarkdown } = await import("../src/portfolio_export.mjs");
+  const { inputs } = await import("./fixtures/export_v2.mjs");
+  const incomplete = structuredClone(inputs);
+  incomplete.changes.start = { status: "missing", date: inputs.target_date };
+  delete incomplete.snapshot.positions[0].current_value;
+  incomplete.snapshot.cash_components.availableToTrade = "90";
+  const data = await buildExport(incomplete, null, null);
+  assert.equal(data.monthly_changes.net_deposits_gbp, null);
+  assert.equal(data.holdings[1].isa_weight_pct, null);
+  assert.equal(data.holdings[1].weight_reason, "GBP position mark missing.");
+  assert.equal(data.portfolio.reconciliation, "outside_1_gbp_tolerance");
+  assert.equal(data.meridian_risk.reason, "meridian_unavailable");
+  assert.ok(exportMarkdown(data).includes("GBP position mark missing."));
 });

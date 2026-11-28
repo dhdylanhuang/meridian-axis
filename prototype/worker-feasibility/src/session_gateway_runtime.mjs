@@ -6,6 +6,20 @@ export default {
   scheduled: gateway.scheduled,
   async fetch(request, env) {
     const response = await gateway.fetch(request, env, portfolioChangesJSON, {
+      exportConfig: env.AXIS_EXPORT_CONFIG,
+      exportEvidence: async inputs => {
+        const start = inputs.changes.start.account_captured_at;
+        const end = inputs.changes.end.account_captured_at;
+        const weekly = Object.fromEntries((inputs.weekly ?? [])
+          .filter(row => row.status === "observed").map(row => [row.date, row.account_captured_at]));
+        const service = env.SYNC.get(env.SYNC.idFromName("shared-isa"));
+        const reply = await service.fetch(new Request("https://sync.internal/export-evidence", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ start: start < end ? start : null, end, weekly,
+            turnover_open: inputs.turnover_open, securities_gbp: inputs.changes.end.invested_value }),
+        }));
+        return reply.ok ? reply.json() : null;
+      },
       meridian: async (snapshot, options) => {
         const holdings = Object.fromEntries(snapshot.positions
           .filter(row => typeof row.isin === 'string' && /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/.test(row.isin))

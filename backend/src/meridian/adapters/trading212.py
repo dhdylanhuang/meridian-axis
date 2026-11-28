@@ -26,6 +26,7 @@ Raw = dict[str, Any]
 T = TypeVar("T")
 PREFIX = "/api/v0/equity/"
 INTERVALS = {
+    PREFIX + "orders": 5,
     PREFIX + "account/summary": 5.0,
     PREFIX + "positions": 1.0,
     PREFIX + "history/orders": 3.0,
@@ -544,6 +545,22 @@ class Trading212Client:
 
     async def positions(self) -> list[Position]:
         return await self._array(PREFIX + "positions", _position)
+
+    async def pending_orders(self):
+        def project(raw):
+            instrument = _object(raw.get("instrument") or {})
+            return {
+                "ticker": _text(raw.get("ticker") or instrument.get("ticker")),
+                "side": _text(raw["side"]),
+                "status": _text(raw["status"]),
+                "type": _optional_text(raw.get("type")),
+                "currency": _currency(raw["currency"]),
+                "created_at": _datetime(raw["createdAt"]).isoformat(),
+                **{key: _optional_decimal(raw.get(key))
+                   for key in ("quantity", "filledQuantity", "limitPrice", "stopPrice")},
+            }
+
+        return await self._array(PREFIX + "orders", project)
 
     async def order_history(self) -> list[HistoricalOrder]:
         return await self._history("orders", _order)

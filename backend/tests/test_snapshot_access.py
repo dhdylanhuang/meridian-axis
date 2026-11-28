@@ -430,7 +430,6 @@ def test_portfolio_export_clamps_month_and_picks_only_nearest_saved_baseline(eng
         seed_row = db.scalar(select(BrokerSnapshot))
         for identity, observed in (
             ("outside", datetime(2026, 2, 20, 15, tzinfo=UTC)),
-            ("seven", datetime(2026, 2, 21, 15, tzinfo=UTC)),
             ("current-a", current),
             ("current-z", current),
         ):
@@ -451,12 +450,12 @@ def test_portfolio_export_clamps_month_and_picks_only_nearest_saved_baseline(eng
     with Session(engine) as db:
         report = read_export_inputs(db, "shared-isa", current)
         assert report["target_date"] == "2026-02-28"
-        assert report["changes"]["start"]["snapshot_id"] == "seven"
+        assert report["changes"]["start"]["snapshot_id"] == "outside"
         assert report["changes"]["end"]["snapshot_id"] == "current-z"
         assert read_export_inputs(db, "other-account", current) is None
     with engine.begin() as c:
         c.execute(
-            text("UPDATE broker_snapshots SET digest=:digest WHERE id='seven'"),
+            text("UPDATE broker_snapshots SET digest=:digest WHERE id='outside'"),
             {"digest": "a" * 64},
         )
     with Session(engine) as db:

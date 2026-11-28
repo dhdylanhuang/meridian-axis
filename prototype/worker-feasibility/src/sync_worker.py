@@ -18,6 +18,8 @@ class BrokerSyncDO(DurableObject):
         from urllib.parse import urlsplit
 
         path = urlsplit(request.url).path
+        if path == "/export-evidence" and request.method == "POST":
+            return await self.export_evidence(request)
         if path == "/cutoff-holdings" and request.method == "POST":
             return await self.cutoff_holdings(request)
         if (
@@ -137,6 +139,63 @@ class BrokerSyncDO(DurableObject):
             status=503 if result["status"] == "unavailable" else 200,
             headers={"Cache-Control": "no-store"},
         )
+
+    async def export_evidence(self, request):
+        import json
+        from datetime import UTC, datetime
+
+        from meridian.adapters.trading212 import Trading212Client
+        from meridian.application.broker_jobs import BrokerJobs
+        from meridian.application.broker_sync import decimal_strings
+        from meridian.application.export_evidence import export_history
+        from meridian.security.hosted import create_binding_engine
+        from sqlalchemy.orm import Session
+
+        headers = {"Cache-Control": "no-store"}
+        engine = None
+        try:
+            raw = await request.text()
+            if len(raw.encode()) > 4096:
+                return Response.json({"error": "request_invalid"}, status=400, headers=headers)
+            async with _LOCK:
+                now = int(time.time() * 1000)
+                blocked = deadline(await self.ctx.storage.get("database-not-before"))
+                if now < blocked:
+                    return Response.json(
+                        {"error": "export_evidence_unavailable"}, status=503, headers=headers
+                    )
+                engine = create_binding_engine(
+                    self.env.HYPERDRIVE, expected_role="meridian_sync_public"
+                )
+                with engine.connect() as connection:
+                    if connection.dialect.name == "postgresql":
+                        connection.exec_driver_sql(
+                            "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"
+                        )
+                        connection.exec_driver_sql("SET LOCAL statement_timeout = '2s'")
+                    with Session(bind=connection) as db:
+                        result = export_history(db, json.loads(raw), datetime.now(UTC))
+            result["orders"] = {"reason": "pending_orders_unavailable", "rows": None}
+            jobs = BrokerJobs(engine, "shared-isa")
+            try:
+                async with asyncio.timeout(2), Trading212Client(
+                    api_key=self.env.BROKER_API_KEY,
+                    api_secret=self.env.BROKER_API_SECRET,
+                    environment=self.env.BROKER_ENVIRONMENT,
+                    max_attempts=1, reserve_request=jobs.reserve, observe_response=jobs.observe,
+                ) as api:
+                    pending = await api.pending_orders()
+                if len(pending) <= 1000:
+                    result["orders"] = {"reason": None, "rows": decimal_strings(pending),
+                                        "as_of": datetime.now(UTC).isoformat()}
+            except Exception:  # noqa: BLE001 — keep completed history if the live read fails.
+                result["orders"]["reason"] = "pending_orders_unavailable"
+            return Response.json(result, headers=headers)
+        except Exception:  # noqa: BLE001 — keep private inputs out of HTTP errors.
+            return Response.json({"error": "export_evidence_unavailable"}, status=503, headers=headers)
+        finally:
+            if engine is not None:
+                engine.dispose()
 
     async def cutoff_holdings(self, request):
         import json

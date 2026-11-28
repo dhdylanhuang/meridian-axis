@@ -420,28 +420,91 @@ Holdings includes a **Download AI brief** action. The same-origin route
 `GET /api/v1/portfolio/export` returns versioned JSON. With exactly
 `?format=markdown` it returns a dated Markdown attachment. Both use the live
 ISA membership check, private/no-store headers and the same pinned source.
-The gateway sends one authorised request to the private session owner and
-keeps the financial inputs in the request. Files are generated on demand.
+The download starts with a copyable prompt for evidence checks, changes,
+portfolio sizing, risks and the forward calendar.
 
-The comparison targets one calendar month before the latest saved UTC
-observation, clamped at month end. If that day has no saved capture, the
-selector uses the nearest earlier capture within seven days. The target and
-actual dates, offset, observation IDs and separate retrieval times are
-reported. An invalid selected baseline remains unavailable. A missing or
-invalid baseline preserves current holdings and leaves changes unavailable.
-An absent current snapshot returns 404 and an integrity or service failure
-returns a safe 503.
+### Schema 2 changelog
 
-The export reuses observed Portfolio Changes for holdings, cash, concentration
-and comparable allocation deltas. It includes broker value, cost, P&L,
-current weights, exposure coverage and source attribution. The export adapter
-uses fixed-scale exact integer arithmetic for presentation-only deltas and
-P&L-to-cost ratios. The Meridian section reuses the 90-session Rust report
-with the pinned holdings and includes matched bounds, exclusions, capital
-and variance shares, clusters and strongest positive peers. A missing sample
-or unavailable risk calculation preserves the rest of the response. Markdown
-cells are escaped and the browser drops late downloads after sign-out.
+- Weights and top-position weights use exact saved GBP marks independently of
+  the optional exposure projection. ISA weights use total ISA value including
+  cash. Invested weights use broker-reported current securities value. Cash
+  components remain independent broker fields. If no separate account cash
+  total exists, the download labels cash as ISA value less securities. The
+  separate marks and component checks show discrepancies above £1.
+- Renames the invested value display to Securities value. Adds broker cost,
+  realised and unrealised P&L and their sum over current reported cost. That
+  percentage is a management ratio with a current-cost denominator.
+- Uses the latest saved observation on or before the previous-calendar-month
+  target. A capture more than seven UTC dates earlier is marked stale and
+  remains comparable if verified. The latest corrupt candidate produces an
+  unavailable baseline. The five previous completed UTC weeks project the last
+  observation from each week. Existing refresh and daily-anchor retention
+  persist the full observations more often than weekly when captures succeed.
+  The export joins cumulative tax-year deposits net of withdrawals from
+  immutable funding evidence at each cutoff. Missing weeks stay explicit.
+- Adds flexible-ISA subscriptions, a deposit bridge and trade and dividend
+  evidence. UK tax-year boundaries use London civil time. Current-year
+  withdrawals reduce current subscriptions first. Subsequent deposits replace
+  eligible earlier funds in this ISA before adding subscriptions. £20,000 less
+  net subscriptions is labelled as the result from this account only. External
+  ISA activity and uncleared transfers can change the true allowance. The ISA
+  estimate and monthly funding require completed, compatible coverage at both
+  boundaries. The value move after net funding is a residual that may include
+  income, fees and valuation timing alongside markets and FX.
+- Adds clean display tickers, retains broker identities, and computes GBP per
+  share from the GBP quote, GBX quote divided by 100, or implied GBP value per
+  unit. Monthly price and FX figures require matching units and compatible
+  marks with complete fill and corporate-action coverage. Dividend figures
+  use completed GBP cash evidence for the same account interval.
+- Adds a trailing 12-month completed fill table and pending orders read.
+  Completed trades use Trading 212 fill facts and broker GBP wallet amounts.
+  The most recent 1,000 fills are shown, with the observed count. Turnover uses
+  absolute GBP net fill amounts over mean opening and closing securities
+  value. It requires full coverage, priced fills and an opening mark within
+  seven days of the anniversary date. The pending-order lookup is separately
+  timestamped and read-only. It uses the existing private sync scope and
+  broker rate-reservation mechanism.
+- Adds user decision fields, theme totals, stop distance and GBP scenario
+  downside, size versus max, catalyst dates, pre-clearance and cash interest.
+  Omitted or invalid fields are shown as unavailable. The Meridian risk
+  calculation and eligibility remain on the existing method.
 
-The format covers saved observations and summaries. Trade sizing scenarios,
-reconciled monthly transaction attribution, constituent-level overlap and
-external research inputs are follow-on work.
+The private sync Worker reads completed history after the signed-in gateway
+has received the pinned snapshot. Its export-only adapter uses Decimal for
+cash history arithmetic alongside the exact integer export formatting in
+the gateway. This leaves the existing Rust change and risk services in place.
+Optional private evidence failures preserve the core download.
+
+Sources: [HMRC flexible ISA rules](https://www.gov.uk/guidance/manage-isa-subscriptions-for-your-investors#flexible-isas-individual-savings-accounts),
+[Trading 212 historical orders](https://docs.trading212.com/api/historical-events/orders_1)
+and [pending orders](https://docs.trading212.com/api/orders/orders).
+
+### Private owner configuration
+
+Set the gateway's `AXIS_EXPORT_CONFIG` secret binding to a JSON string. Use raw
+broker tickers as keys. Money and percentage fields are decimal strings.
+Dates use `YYYY-MM-DD`. Cash interest is an owner-recorded dated input.
+
+```json
+{
+  "holdings": {
+    "SYNl_EQ": {
+      "role": "core",
+      "theme": "Infrastructure",
+      "conviction": 4,
+      "thesis_status": "Under review",
+      "date_bought": "2026-08-04",
+      "stop_gbp": "10",
+      "max_isa_pct": "55",
+      "next_catalyst": "2026-12-17",
+      "pre_clearance_status": "Approved",
+      "pre_clearance_expiry": "2026-12-02"
+    }
+  },
+  "cash_interest": { "rate_pct": "3.25", "basis": "AER", "as_of": "2026-11-28" }
+}
+```
+
+For real settings use the private Worker configuration. A configured review
+price is GBP per share and indicates a review threshold, with no assumption
+about execution or fill price. See the [synthetic Schema 2 sample](examples/ai-portfolio-export-v2.md).
