@@ -1,6 +1,6 @@
 # Current status and handoff
 
-Reviewed **27 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
+Reviewed **28 November 2026**. This file is the authoritative implementation snapshot. Dated delivery evidence and superseded instructions are retained in [historical checkpoints](status-history.md).
 
 ## Mobile home screen · 27 November 2026
 
@@ -33,8 +33,8 @@ deployed work and the evidence available to the next contributor.
 | Portfolio Changes | Two approved UTC dates, ranked signed GBP holding changes, quantity flags, cash and concentration, and comparable saved classification weights with dated holding evidence |
 | AI portfolio export | Holdings Markdown download and versioned same-origin JSON with monthly changes, exposures and Meridian risk |
 
-**Deployed sources at handoff** are gateway and session owner `503abda`
-and sync `5eabca4f`. The gateway runs the private Rust WASM service and
+**Deployed sources at handoff** are gateway, session owner and sync
+`1c25a07`. The gateway runs the private Rust WASM service and
 serves the dashboard. The existing session and sync Workers enforce the
 two-member scope around database and broker work. Schema `0008` and the
 ten-minute refresh with sixty-day detailed retention are the operating baseline.
@@ -59,7 +59,7 @@ versions above refer to the application source. The documentation revision is
 tracked separately in Git history.
 
 
-## AI portfolio export · Schema 2 implementation
+## AI portfolio export · Schema 2 release
 
 Schema 2 adds independent weights and reconciliation, retained weekly
 anchors, flexible ISA funding, completed and pending trades, manual decision
@@ -67,14 +67,24 @@ inputs and the embedded analyst prompt. The existing Meridian risk
 calculation is reused. See the [contract and changelog](api-and-ui.md#ai-portfolio-export)
 and the [synthetic sample](examples/ai-portfolio-export-v2.md).
 
-The active Workers still serve Schema 1. Local validation used
+On 28 November 2026 the gateway, session owner and sync Workers switched to
+Schema 2 at source `1c25a07`. The release preserved the existing bindings,
+ten-minute schedule and packaged risk WASM. The served assets and health
+probe matched the expected release. Both formats denied anonymous access.
+A short-lived approved member session verified the JSON weights against the
+saved observations and fetched the Markdown attachment with the analyst
+prompt. The verification session was revoked. The private history and
+pending order reads responded. Manual decision fields and ISA figures retain
+their configuration and coverage gates. Full release evidence stays private.
+
+Local validation used
 `node --test prototype/worker-feasibility/tests/test_session_gateway.mjs prototype/worker-feasibility/tests/test_snapshot_ui.mjs`
 and, from `backend`,
 `PYTHONPATH=src python -m pytest -q -p no:cacheprovider tests/test_export_evidence.py tests/test_snapshot_access.py tests/test_trading212.py -k 'export or allowance or authenticated_snapshot or trading212'`.
 These passed 54 JavaScript and 44 Python checks. The owner, gateway and sync
 bundles passed Wrangler dry runs using the existing risk WASM artifact.
 
-## AI portfolio export
+## AI portfolio export · Schema 1 release
 
 The Holdings download and private JSON endpoint reuse one approved saved
 snapshot for observed monthly changes, current exposures and the 90-session
